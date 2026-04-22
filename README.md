@@ -20,10 +20,10 @@ The codebase is  cross-platform (Windows, Linux, macOS).
 
 ## Feature Preview
 
-# Work across multiple tabs
+### Work across multiple tabs
 ![Work across multiple tabs](./docs/images/multi-tab-view.png)
 
-# Different features
+### Different features
 ![Different features](./docs/images/features.png)
 
 ## Requirements

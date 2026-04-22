@@ -19,10 +19,10 @@ My-Code-X 让你可以从手机、平板或电脑浏览器中使用 Codex，支�
 
 ## 功能示意
 
-# 多页签同时工作
+### 多页签同时工作
 ![多页签同时工作](./docs/images/multi-tab-view.png)
 
-# 支持不同功能
+### 支持不同功能
 ![不同功能](./docs/images/features.png)
 
 ## 依赖要求
