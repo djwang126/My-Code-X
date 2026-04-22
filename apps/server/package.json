@@ -1,0 +1,26 @@
+{
+  "name": "my-code-x-backend",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/app/index.ts",
+    "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "typecheck:full": "tsc -p tsconfig.json --noEmit",
+    "compile": "tsc -p tsconfig.build.json",
+    "build": "npm run typecheck && npm run compile",
+    "start": "node dist/app/index.js",
+    "test": "tsx --test --test-reporter=dot src/**/*.test.ts test/**/*.test.ts",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" \"test-support/**/*.ts\""
+  },
+  "dependencies": {
+    "@my-code-x/contracts": "file:../../packages/contracts",
+    "@my-code-x/utils": "file:../../packages/utils",
+    "busboy": "^1.6.0",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  },
+  "license": "AGPL-3.0-only"
+}

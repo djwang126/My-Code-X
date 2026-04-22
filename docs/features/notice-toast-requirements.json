@@ -1,0 +1,76 @@
+{
+  "feature": "notice toast",
+  "allowed_status": "planned/test-prepared/need-review/done",
+  "requirements": [
+    {
+      "id": "1",
+      "name": "backend-curated codex notice allowlist",
+      "status": "done",
+      "key UX": [
+        "The backend only converts the following Codex notifications into user-facing notices: configWarning, deprecationNotice, windows/worldWritableWarning, account/updated, skills/changed, app/list/updated, fs/changed, thread/compacted, and turn/plan/updated.",
+        "Low-signal or debug-heavy Codex notifications do not surface as user-facing notices.",
+        "The session notice channel remains intentionally curated instead of a broad pass-through of many possible Codex events."
+      ]
+    },
+    {
+      "id": "2",
+      "name": "notice semantics stay stable across bootstrap and stream updates",
+      "status": "done",
+      "key UX": [
+        "Allowed notices continue to flow through the existing session notice state so bootstrap snapshots and live SSE updates stay consistent.",
+        "Notice ids remain stable enough for reducer upsert behavior, preventing duplicate copies of the same backend notice during streaming.",
+        "turn/plan/updated remains part of the notice payload because the frontend still needs it as the source for the standalone todo-list panel."
+      ]
+    },
+    {
+      "id": "3",
+      "name": "remove transcript-level notice rendering",
+      "status": "done",
+      "key UX": [
+        "The chat transcript no longer renders generic SessionNotice blocks at the top of the message area.",
+        "The transcript surface stops accepting and rendering generic notices inline with chat content.",
+        "This avoids duplicated presentation where transcript content and a second app-level notice surface report the same event family."
+      ]
+    },
+    {
+      "id": "4",
+      "name": "session notices render in a dedicated toast-style region",
+      "status": "need-review",
+      "key UX": [
+        "Session notices render in a dedicated session-toast region outside the transcript.",
+        "The toast region only reflects backend session notices and does not absorb unrelated action-blocking messages.",
+        "Toast styling is distinct from transcript cards and blocking states, preserving a clean app-level feedback surface."
+      ]
+    },
+    {
+      "id": "5",
+      "name": "workspace switch blocking feedback stays outside the session toast stream",
+      "status": "need-review",
+      "key UX": [
+        "Workspace-switch blocking reasons are treated as action feedback rather than as session notices.",
+        "Blocking reasons do not appear in the session-toast region alongside backend notices.",
+        "This keeps the session-toast stream limited to backend-curated notices instead of mixing durable interaction guards into the same surface."
+      ]
+    },
+    {
+      "id": "6",
+      "name": "todo-list notices stay out of the session toast region when promoted into the todo panel",
+      "status": "done",
+      "key UX": [
+        "turn/plan/updated notices continue to drive the standalone todo-list panel for the active thread.",
+        "Any notice consumed by the todo-list presentation layer is excluded from the session-toast region so the same plan update is not shown twice.",
+        "This preserves todo-list promotion behavior while keeping the remaining visible notices in the app-level toast surface."
+      ]
+    },
+    {
+      "id": "7",
+      "name": "delete obsolete feedback-card notice plumbing",
+      "status": "need-review",
+      "key UX": [
+        "The app removes the old transcript notice rendering path and any component wiring that only existed to support those inline notice cards.",
+        "Generic feedback components remain reusable for other product states, but chat notices are modeled and named as toasts rather than as banners.",
+        "Tests assert session-toast behavior and todo-list filtering instead of the older banner-oriented naming."
+      ]
+    }
+  ]
+}

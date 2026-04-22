@@ -1,0 +1,111 @@
+name: portable-release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing tag to rebuild and publish, for example v0.0.1
+        required: false
+        type: string
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-release-${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: 24
+
+jobs:
+  build-release:
+    name: build ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            label: windows
+          - os: ubuntu-latest
+            label: linux
+          - os: macos-latest
+            label: macos
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '' && format('refs/tags/{0}', github.event.inputs.release_tag) || github.ref }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run root tests
+        run: npm run test:root
+
+      - name: Run backend tests
+        run: npm run test:backend
+
+      - name: Build portable release
+        run: npm run release:build
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: portable-${{ matrix.label }}-${{ runner.arch }}
+          path: |
+            output/release/*.zip
+            output/release/*.tar.gz
+            output/release/*/release-manifest.json
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-release:
+    name: publish GitHub release
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '')
+    needs: build-release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag != '' && format('refs/tags/{0}', github.event.inputs.release_tag) || github.ref }}
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v5
+        with:
+          path: artifacts
+
+      - name: Publish archives to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.release_tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          shopt -s globstar nullglob
+          files=(artifacts/**/*.zip artifacts/**/*.tar.gz)
+
+          if [ "${#files[@]}" -eq 0 ]; then
+            echo "No release archives found."
+            exit 1
+          fi
+
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "${files[@]}" --clobber
+          else
+            gh release create "$RELEASE_TAG" "${files[@]}" --generate-notes
+          fi

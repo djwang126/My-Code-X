@@ -1,0 +1,56 @@
+{
+  "feature": "collab mode",
+  "allowed_status": "planned/test-prepared/need-review/done",
+  "requirements": [
+    {
+      "id": "1",
+      "name": "backend-driven collaboration mode preset discovery",
+      "status": "done",
+      "key UX": [
+        "The backend asks Codex for `collaborationMode/list` during startup and exposes the returned presets through runtime options.",
+        "Each preset carries a stable mode kind plus a user-facing label, with optional model and reasoning effort overrides when Codex provides them.",
+        "If Codex omits a display name, the product still shows a readable label generated from the mode key instead of hiding the preset."
+      ]
+    },
+    {
+      "id": "2",
+      "name": "mode selection in runtime settings",
+      "status": "done",
+      "key UX": [
+        "The runtime settings drawer includes a dedicated `Mode` selector alongside model, approval, sandbox, and reasoning settings.",
+        "The selected collaboration mode is stored in viewer-scoped runtime preferences so the user does not need to reselect it on every visit.",
+        "If a previously saved mode is no longer returned by the backend, the UI keeps it visible as `Unavailable: <mode>` instead of silently resetting the selection."
+      ]
+    },
+    {
+      "id": "3",
+      "name": "bootstrap and restore rules for collaboration mode",
+      "status": "done",
+      "key UX": [
+        "Stored collaboration mode preferences merge with backend runtime defaults rather than being discarded during bootstrap.",
+        "When a thread already exists, the restored session mode from the backend is treated as authoritative for that thread.",
+        "When bootstrapping without an existing thread, the product can fall back to the stored mode preference so the next send still uses the user's last choice."
+      ]
+    },
+    {
+      "id": "4",
+      "name": "per-turn collaboration mode submission",
+      "status": "done",
+      "key UX": [
+        "The next user message carries the currently selected collaboration mode through the chat send API instead of leaving mode as local-only UI state.",
+        "The backend splits collaboration mode from the rest of runtime settings and forwards it as a Codex `collaborationMode` payload on turn start.",
+        "If the current selection is cleared or unsupported, the send path can omit collaboration mode instead of forcing an invalid preset."
+      ]
+    },
+    {
+      "id": "5",
+      "name": "plan mode handoff to implementation mode",
+      "status": "done",
+      "key UX": [
+        "When the assistant finishes a plan turn and the thread is waiting for input, the latest plan item shows inline follow-up actions instead of forcing the user to type the next step manually.",
+        "Choosing `Implement plan` auto-submits `Implement the plan.` in `default` mode so execution continues outside of Plan mode.",
+        "Choosing `Stay in Plan mode` dismisses the shortcut without changing the current mode, and failed implementation auto-submits leave Plan mode selected so the user can retry."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,182 @@
+{
+  "feature": "chat transcript",
+  "allowed_status": "implement-planned/refactor-planned/test-prepared/need-code-review/done",
+  "requirements": [
+    {
+      "id": "1",
+      "name": "统一时间线 transcript 模型",
+      "status": "need-code-review",
+      "key UX": [
+        "Transcript 不是只显示 user 和 assistant 的纯消息流，而是统一承载 message、special item、fallback item 三类时间线条目。",
+        "用户可以在同一条主时间线中看到提问、回答、计划、推理、命令执行、文件变更、工具调用等真实工作痕迹。",
+        "即使遇到当前没有专门渲染器的未知条目类型，transcript 也不会直接丢弃该条目，而会以 fallback 形式保留可见性。"
+      ],
+      "design detail": "Transcript 必须保留未知或暂未专门渲染的 timeline item，并以 fallback 形式维持可见性。"
+    },
+    {
+      "id": "2",
+      "name": "turn 驱动的对话连续性",
+      "status": "need-code-review",
+      "key UX": [
+        "每次用户发送消息后，只有在项目后端已经接收到该消息并成功建立本轮 turn 时，transcript 才显示这条用户消息，避免用户误以为消息已发出但实际上没有送达。",
+        "同一个 turn 下的 assistant 回复、工具活动和特殊条目保持上下文关联，形成一轮完整工作记录。",
+        "turn 完成前 transcript 保持运行态，turn 完成后输入恢复可用，用户能自然进入下一轮。"
+      ],
+      "design detail": "用户消息在 transcript 中首次可见的前提，是后端已经接受该消息并建立 turn。"
+    },
+    {
+      "id": "3",
+      "name": "流式更新与后端确认后的原地对账",
+      "status": "need-code-review",
+      "key UX": [
+        "Assistant 流式输出会在已有消息上原地增长，而不是反复插入新的消息卡片。",
+        "特殊条目既支持整条更新，也支持按 delta 字段持续补全，用户能看到命令输出、计划文本等逐步成形。",
+        "后端返回 canonical 用户消息数据时，transcript 会在已有用户行上原地补齐结构化内容和最终标识，而不是新增一条视觉上重复的用户消息。"
+      ],
+      "design detail": "Transcript 更新模型需要兼容 snapshot、assistant_delta、message_completed、timeline_item_updated、timeline_item_delta 等事件，并统一归并为稳定的时间线更新行为。"
+    },
+    {
+      "id": "4",
+      "name": "基于上游 Thread Resume 的 transcript rehydration",
+      "status": "need-code-review",
+      "key UX": [
+        "刷新页面、重开标签页或恢复 thread 后，用户能看到结构化 transcript 被完整恢复，而不是退化成最后一条纯文本摘要。",
+        "这类 transcript rehydration 应直接复用上游 Codex 的 Thread Resume 返回结果，而不是在我们项目里自行读取一套日志文件再重建 transcript。",
+        "如果恢复时线程仍处于进行中，rehydrated transcript 会保留未完成态，并继续接上后续实时事件，保持一次连续工作流而不是切成两段体验。"
+      ],
+      "design detail": "Transcript rehydration 以上游 `thread/resume` 返回结果为权威来源，不额外引入本地日志扫描或回放链路。"
+    },
+    {
+      "id": "5",
+      "name": "面向移动端的渐进披露",
+      "status": "need-code-review",
+      "key UX": [
+        " Command execution 与 File change 这两类文本量极大的 transcript item，在主时间线中只显示 title，不显示正文、预览或摘要。",
+        "主 transcript 的 SSE 通道不承载这类大文本条目的具体内容，只保留用户理解当前时间线推进所需的最小标题级信息。",
+        "这样可以把主时间线实时流量留给消息、状态和轻量事件，减少大块 stdout、diff 或文件输出对移动端阅读和弱网体验的干扰。",
+        "当用户对此类条目的具体信息有阅读需求时，可以点击卡片标题，展开卡牌，此时进行详情加载（不走SSE）。若加载失败，出现“重新加载”按钮，用户可点击按钮再次尝试。"
+      ],
+      "design detail": "none"
+    },
+    {
+      "id": "6",
+      "name": "按语义选择 markdown 或 literal 渲染",
+      "status": "need-code-review",
+      "key UX": [
+        "普通聊天消息按 markdown 渲染，支持标题、强调、列表、表格、引用、代码块等富文本表达。",
+        "命令输出、文件输出等结构化字段按 literal 文本渲染，避免 shell 输出被错误解释成 markdown 标题、列表或链接。",
+        "像 reasoning summary 这类面向用户阅读的摘要字段可以保留 markdown 能力，而 raw content 仍维持原始语义。"
+      ],
+      "design detail": "渲染策略需要显式区分“可阅读内容”和“原始执行证据”。"
+    },
+    {
+      "id": "7",
+      "name": "结构化输入与特殊工作项的可读表达",
+      "status": "need-code-review",
+      "key UX": [
+        "用户消息中的结构化片段，如 skill、mention、placeholder，应在 transcript 中以可辨认的移动端友好行内元素呈现。",
+        "特殊工作项需要有稳定的人类可读标签，例如 Command execution、File change、MCP tool call、Web search、Review mode 等。",
+        "空的 reasoning 等条目在没有可展示正文时，也应以静态标签保留其存在，而不是回退成奇怪的占位文本。"
+      ],
+      "design detail": ""
+    },
+    {
+      "id": "8",
+      "name": "workspace 感知的文件引用导航",
+      "status": "need-code-review",
+      "key UX": [
+        "当 transcript 中出现 workspace 内文件路径或文件链接时，用户可以把它当成可展开的文件引用，而不是普通网页链接。",
+        "用户先点击可读标签，再点击展开后的目标路径，即可触发文件打开行为。",
+        "非 workspace 的普通网页链接继续保持标准外链语义，不和本地文件导航混淆。"
+      ],
+      "design detail": ""
+    },
+    {
+      "id": "9",
+      "name": "已完成 turn 的前端瞬时缓存回显",
+      "status": "need-code-review",
+      "key UX": [
+        "当用户从别的页签切回时，如果当前 thread 最近一次状态对应的是已完成 turn，前端应优先用本地缓存立刻回显最近可展示的 transcript，而不是先让用户等待一次 bootstrap 或 resume 完成。",
+        "这份瞬时缓存至少应覆盖 transcript messages，并可一并回显 thread name，让用户在权威恢复完成前先看到接近完整的会话外观。",
+        "用户看到缓存 transcript 后应能尽快继续常规操作，后端的 Session Bootstrap 和上游 Thread Resume 仍在后台完成权威校准。",
+        "如果后台返回结果与缓存不一致，前端应静默完成 transcript 对账，而不是把缓存层设计成另一套独立真相来源。"
+      ],
+      "design detail": "瞬时缓存仅用于 bootstrap 或 resume 权威结果返回前的临时回显，只缓存低误导风险字段；权威结果返回后直接整包覆盖，不做双真相合并。"
+    },
+    {
+      "id": "10",
+      "name": "用户主导的滚动保持",
+      "status": "need-code-review",
+      "key UX": [
+        "当用户正在向上滚动 transcript 查看历史消息时，即使主 SSE 仍持续收到新的消息或时间线更新，页面也不应强制自动跳回最底部。",
+        "只有在用户仍停留在底部附近、并明显处于跟随实时对话的状态时，transcript 才应继续自动跟随最新内容。",
+        "这保证用户在查看历史上下文时不会被实时流打断，同时又不影响正常跟随最新输出的对话体验。"
+      ],
+      "design detail": "自动滚动策略以用户当前滚动意图为最高优先级，需要区分“用户正在读历史”与“用户正在跟随直播输出”两种状态。"
+    },
+    {
+      "id": "11",
+      "name": "transcript 只承接 conversation-scoped 的错误",
+      "status": "need-code-review",
+      "key UX": [
+        "Chat transcript 只显示已经进入当前对话流、并且用户会自然理解为这轮聊天内容一部分的错误反馈。",
+        "bootstrap 失败、鉴权失效、workspace explorer 失败、thread history 失败、runtime settings 保存失败等 page 或 panel 级问题，不应塞进 transcript。",
+        "transcript 不作为全局错误垃圾桶，而是保持消息流语义清晰，让用户能判断这个错误到底属于哪一层交互。"
+      ],
+      "design detail": "错误处理按作用域分层：只有 conversation-scoped 的失败进入 transcript。"
+    },
+    {
+      "id": "12",
+      "name": "已被后端接受的codex turn 上游失败在 transcript 内按 turn-level 渲染，样式沿用message卡片",
+      "status": "need-code-review",
+      "key UX": [
+        "如果用户消息已经被后端接受并建立了 turn，但后续上游 Codex 或 app-server 在本轮执行中失败，用户应在 transcript 内看到这轮 turn 失败，而不是只看到页面级泛化报错。",
+        "这类失败应出现在当前 turn 相关消息之后、接近用户原本期待 assistant 继续输出的位置，让用户理解为“这轮对话失败了”。",
+        "codex turn-level 失败属于会话事实而不是瞬时按钮报错，因此 transcript 在恢复、rehydrate 或 snapshot 后仍应能继续表达这轮失败状态。",
+        "非上游codex turn-level 失败的其他错误chat消息不应该以tanscript item的形式出现。其他非特殊设计的chat error，传递至通用chatpage error"
+      ],
+      "design detail": ""
+    },
+    {
+      "id": "13",
+      "name": "pending request 的失败传递至通用chatpage error",
+      "status": "need-code-review",
+      "key UX": [
+        "当用户提交某个 pending request 的响应失败时，错误应显示在通用chatpage error"
+      ],
+      "design detail": "none。"
+    },
+    {
+      "id": "14",
+      "name": "消息级懒加载或结构化内容失败只在对应卡片内部显示",
+      "status": "need-code-review",
+      "key UX": [
+        "如果某条 transcript item 的懒加载内容、文件内容或结构化字段读取失败，错误只在对应卡片内部显示。",
+        "用户可以看到出错条目展开但显示failed loading error，可点击卡片内的retry按钮重试。",
+        "这类局部失败不会把整个 transcript 标成错误，也不会干扰其他message/item的消息阅读。"
+      ],
+      "design detail": "none"
+    },
+    {
+      "id": "15",
+      "name": "pre-turn 动作失败不写入 transcript",
+      "status": "need-code-review",
+      "key UX": [
+        "如果发送动作在后端真正接受消息并建立 turn 之前就失败，transcript 不应新增一条用户消息，也不应插入一条伪造的失败行。",
+        "用户只有在 transcript 中看到自己的消息时，才应理解为后端已经收到了这次请求。",
+        "这样可以避免 transcript 呈现与真实会话状态不一致的“像是发出去了但其实没送达”的误导体验。"
+      ],
+      "design detail": "pre-turn failure 属于 action 或 page 层反馈，不属于 transcript 事实。"
+    },
+    {
+      "id": "16",
+      "name": "session notice 继续留在 transcript 外部",
+      "status": "need-code-review",
+      "key UX": [
+        "session notices 继续通过独立的 toast 区域表达，而不是混入 transcript 的消息流或错误流。",
+        "transcript 专注于会话时间线本身，notice 区域专注于应用级提示，两者职责边界保持稳定。"
+      ],
+      "design detail": "session notice 不属于 transcript item。"
+    }
+  ]
+}

@@ -1,0 +1,136 @@
+{
+  "feature": "file explorer",
+  "allowed_status": "planned/test-prepared/need-review/done",
+  "requirements": [
+    {
+      "id": "1",
+      "name": "tools-sidebar explorer entry with focused overlay",
+      "status": "done",
+      "key UX": [
+        "The File Explorer still launches from the Tools sidebar and keeps the existing workspace gating logic.",
+        "Opening the explorer closes competing overlays and brings up a dedicated explorer surface instead of a cramped utility pane feel.",
+        "The new UI keeps the old open and close behavior, but visually frames the explorer as a primary workspace task."
+      ]
+    },
+    {
+      "id": "2",
+      "name": "mobile-first single-focus layout",
+      "status": "need-review",
+      "key UX": [
+        "The explorer now uses one single mobile-first flow across screen sizes instead of keeping a separate desktop split-pane logic.",
+        "Folder browsing, file preview, and file editing are distinct full-surface states so the user focuses on one task at a time.",
+        "The UI no longer expands into a desktop-specific dual-pane layout; the same single-column navigation model is reused everywhere."
+      ]
+    },
+    {
+      "id": "3",
+      "name": "header with breadcrumb path and clear session actions",
+      "status": "need-review",
+      "key UX": [
+        "The top area now switches between a close action for the file list and a Back action for file detail states, with the current file context in the center.",
+        "Breadcrumb navigation remains available for folder browsing, but file detail actions such as Edit and Preview are anchored in the header instead of sharing space with the list.",
+        "Primary actions such as close, return to files, and edit or save are anchored in predictable header or footer positions."
+      ]
+    },
+    {
+      "id": "4",
+      "name": "icon-led directory and file list",
+      "status": "need-review",
+      "key UX": [
+        "Folder and file rows are now distinguished primarily through icons rather than literal `[dir]` or `[file]` labels.",
+        "Each row remains a full-width tap target and still maps to the same old behavior: folders navigate deeper and files attempt to open.",
+        "List rows stay on one line and only show compact supporting metadata such as size and non-default file state like read-only, instead of repeating type information from the filename."
+      ]
+    },
+    {
+      "id": "5",
+      "name": "existing workspace-rooted navigation logic with cleaner hierarchy",
+      "status": "done",
+      "key UX": [
+        "The explorer still opens at workspace root and still supports entering folders and going upward through the current path hierarchy.",
+        "The Up behavior and workspace-relative path logic remain unchanged, but the UI presents parent navigation as part of the list and breadcrumb hierarchy.",
+        "Empty folders, loading states, and load failures are shown as deliberate explorer states instead of feeling like missing layout."
+      ]
+    },
+    {
+      "id": "6",
+      "name": "preview-first file detail flow using old open rules",
+      "status": "need-review",
+      "key UX": [
+        "The current file-open rules stay intact, but the UI now moves from the file list into a dedicated preview screen before the user enters editing.",
+        "Supported text files still open with filename, encoding, and content, yet the new layout treats file detail as a focused reading and editing surface rather than a side pane.",
+        "The explorer no longer shows the file list and editor together; returning from preview or edit goes back to the list flow."
+      ]
+    },
+    {
+      "id": "7",
+      "name": "editability gating preserved with clearer visual states",
+      "status": "done",
+      "key UX": [
+        "The allowlist logic for editable files remains exactly the same, including supported config and text formats and the existing v1 limitations.",
+        "Files that are visible but not editable are presented with a clear read-only visual state instead of blending into editable entries.",
+        "This keeps the old backend and frontend capability boundaries while making the UI honest about what can and cannot be edited."
+      ]
+    },
+    {
+      "id": "8",
+      "name": "too-large and unsupported fallback logic with better state screens",
+      "status": "need-review",
+      "key UX": [
+        "The old fallback behavior for unsupported or oversized files remains in place, including the 256 KB size limit.",
+        "The UI now expresses these outcomes as explicit single-purpose state screens tied to the target file context instead of feeling like an abrupt generic fallback.",
+        "Users can return to the file list directly from these state screens without the old split-pane mental model."
+      ]
+    },
+    {
+      "id": "9",
+      "name": "sticky save flow and visible dirty state",
+      "status": "need-review",
+      "key UX": [
+        "The old save behavior stays unchanged: only existing editable files can be saved, and Save enables only when the draft is dirty and a save is not already running.",
+        "The redesigned UI gives unsaved changes a stronger visual presence through a persistent dirty indicator and a fixed bottom action area in edit mode.",
+        "Successful saves still update local state and file size while keeping the user inside the focused preview/edit flow."
+      ]
+    },
+    {
+      "id": "10",
+      "name": "unchanged unsaved-change protection with calmer exit affordances",
+      "status": "done",
+      "key UX": [
+        "The current protection logic remains the same when the user closes the explorer, opens another file, or navigates away with unsaved changes.",
+        "The new UI makes the risk more visible before the user hits the blocking confirm step, so the browser confirmation is no longer the only signal.",
+        "This preserves the old guardrails while making accidental loss of edits feel less abrupt."
+      ]
+    },
+    {
+      "id": "11",
+      "name": "chat-linked file opening with integrated explorer context",
+      "status": "done",
+      "key UX": [
+        "The existing `file://` handoff logic from chat remains unchanged and still rejects targets outside the active workspace.",
+        "The redesigned UI opens linked folders and files inside the same focused explorer flow, so chat-origin navigation feels native instead of bolted on.",
+        "Linked file opens still honor the same editable, unsupported, too-large, and outside-workspace rules as direct explorer navigation."
+      ]
+    },
+    {
+      "id": "12",
+      "name": "tolerant AI-generated path recognition for file jumps",
+      "status": "done",
+      "key UX": [
+        "File jump parsing should become more tolerant of AI-generated path variants, including unstable `file://` prefixes, mixed slash styles, encoded separators such as `%5C`, and lightly wrapped path text.",
+        "The resolver should normalize noisy path strings into a stable workspace-relative target before deciding whether to open a folder or file.",
+        "Recognition should become smarter without weakening safety: ambiguous or outside-workspace targets must still be rejected instead of guessing aggressively."
+      ]
+    },
+    {
+      "id": "13",
+      "name": "workspace safety and race handling preserved behind the new UI",
+      "status": "done",
+      "key UX": [
+        "The redesign does not change the existing workspace-boundary protections, symlink filtering, or path validation rules.",
+        "The redesign also keeps the current race-safe async behavior where only the latest request is allowed to win.",
+        "Visually the explorer feels cleaner and more intentional, but its underlying safety model and state consistency rules remain the old ones."
+      ]
+    }
+  ]
+}

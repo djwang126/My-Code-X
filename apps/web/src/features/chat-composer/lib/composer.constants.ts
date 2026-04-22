@@ -1,0 +1,2 @@
+export const COMPOSER_MIN_HEIGHT_PX = 64;
+export const COMPOSER_MAX_HEIGHT_PX = 140;
