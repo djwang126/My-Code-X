@@ -1,10 +1,12 @@
 import { createHttpError } from '../../../common/errors/http-error.js';
+import { createThreadBootstrapState } from './thread-bootstrap-policy.js';
 import { canRuntimeInterrupt, markRuntimeTurnInterrupting } from '../shared/chat-turn-lifecycle.js';
 import type { ChatSessionRegistry, ChatSessionState } from '../shared/chat-types.js';
-import type { CodexGatewayLike } from '../../../common/codex/codex-types.js';
+import type { CodexGatewayLike, PromptOverrideResolver, RuntimeSettings } from '../../../common/codex/codex-types.js';
 interface ThreadActionsServiceDependencies {
     codexGateway: CodexGatewayLike;
     registry: ChatSessionRegistry;
+    promptOverrideResolver?: PromptOverrideResolver | null;
     sessionService: {
         ensureLoadedThreadRuntime(input: {
             slotId: string;
@@ -20,7 +22,21 @@ interface ThreadActionsServiceDependencies {
         }): Promise<ChatSessionState>;
     };
 }
-export function createThreadActionsService({ codexGateway, registry, sessionService }: ThreadActionsServiceDependencies) {
+
+interface ForkThreadBootstrapStateInput {
+    runtimeSettings?: RuntimeSettings | null;
+    promptOverrideResolver?: PromptOverrideResolver | null;
+}
+
+async function createForkThreadBootstrapState({ runtimeSettings, promptOverrideResolver, }: ForkThreadBootstrapStateInput) {
+    return createThreadBootstrapState({
+        runtimeSettings,
+        promptOverrideResolver,
+        includeBaseInstructions: true,
+    });
+}
+
+export function createThreadActionsService({ codexGateway, registry, promptOverrideResolver = null, sessionService }: ThreadActionsServiceDependencies) {
     async function interruptTurn({ slotId, threadId }: {
         slotId: string;
         threadId: string;
@@ -95,6 +111,10 @@ export function createThreadActionsService({ codexGateway, registry, sessionServ
         preservedTurnCount: number;
     }) {
         const runtime = await sessionService.ensureLoadedThreadRuntime({ slotId, threadId, workspace });
+        const bootstrapState = await createForkThreadBootstrapState({
+            runtimeSettings: runtime.appliedThreadRuntimeOverrides,
+            promptOverrideResolver,
+        });
         const totalTurnCount = runtime.messages.filter(message => message.kind === 'message' && message.role === 'user' && message.threadId === runtime.threadId).length;
         if (!Number.isInteger(preservedTurnCount) || preservedTurnCount < 1) {
             throw createHttpError('preservedTurnCount must be a positive integer', 400);
@@ -108,6 +128,8 @@ export function createThreadActionsService({ codexGateway, registry, sessionServ
         const forkedThread = await codexGateway.forkThread!({
             threadId: runtime.threadId,
             workspace: workspace || runtime.workspace,
+            runtimeSettings: bootstrapState.normalizedRuntimeSettings,
+            baseInstructions: bootstrapState.baseInstructions,
         });
         const rollbackTurns = totalTurnCount - preservedTurnCount;
         if (rollbackTurns > 0) {

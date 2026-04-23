@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import { createChatService } from '../index.js';
-import { createAssistantTimelineMessage, createUserTimelineMessage } from '../testing/chat-service-test-helpers.js';
+import { CAT_PROMPT_OVERRIDE_INSTRUCTIONS, createAssistantTimelineMessage, createPromptOverrideResolver, createUserTimelineMessage } from '../testing/chat-service-test-helpers.js';
 
 test('interruptTurn interrupts the active turn tracked by the runtime', async () => {
   const calls = [];
@@ -51,6 +51,7 @@ test('interruptTurn interrupts the active turn tracked by the runtime', async ()
 test('forkThread creates a new thread and rolls it back to the preserved completed turn count', async () => {
   const calls = [];
   const service = createChatService({
+    promptOverrideResolver: createPromptOverrideResolver(),
     codexGateway: {
       async startThread() {
         return { threadId: 'thread-1' };
@@ -62,8 +63,8 @@ test('forkThread creates a new thread and rolls it back to the preserved complet
         calls.push({ method: 'startTurn', threadId, text });
         return { turnId: `turn-${calls.filter(call => call.method === 'startTurn').length}` };
       },
-      async forkThread({ threadId, workspace }) {
-        calls.push({ method: 'forkThread', threadId, workspace });
+      async forkThread({ threadId, workspace, runtimeSettings, baseInstructions }) {
+        calls.push({ method: 'forkThread', threadId, workspace, runtimeSettings, baseInstructions });
         return { threadId: 'thread-forked' };
       },
       async rollbackThread({ threadId, numTurns }) {
@@ -80,6 +81,11 @@ test('forkThread creates a new thread and rolls it back to the preserved complet
     workspace: 'D:/workspaces/My-Code-X',
     threadId: '',
     text: 'first message',
+    runtimeSettings: {
+      promptOverride: 'cat',
+      modelContextWindow: 200_000,
+      modelAutoCompactTokenLimit: 150_000,
+    },
   });
 
   service.applyGatewayEvent({
@@ -100,6 +106,11 @@ test('forkThread creates a new thread and rolls it back to the preserved complet
     workspace: 'D:/workspaces/My-Code-X',
     threadId: 'thread-1',
     text: 'second message',
+    runtimeSettings: {
+      promptOverride: 'cat',
+      modelContextWindow: 200_000,
+      modelAutoCompactTokenLimit: 150_000,
+    },
   });
 
   service.applyGatewayEvent({
@@ -128,7 +139,17 @@ test('forkThread creates a new thread and rolls it back to the preserved complet
   assert.deepEqual(calls, [
     { method: 'startTurn', threadId: 'thread-1', text: 'first message' },
     { method: 'startTurn', threadId: 'thread-1', text: 'second message' },
-    { method: 'forkThread', threadId: 'thread-1', workspace: 'D:/workspaces/My-Code-X' },
+    {
+      method: 'forkThread',
+      threadId: 'thread-1',
+      workspace: 'D:/workspaces/My-Code-X',
+      runtimeSettings: {
+        promptOverride: 'cat',
+        modelContextWindow: 200_000,
+        modelAutoCompactTokenLimit: 150_000,
+      },
+      baseInstructions: CAT_PROMPT_OVERRIDE_INSTRUCTIONS,
+    },
     { method: 'rollbackThread', threadId: 'thread-forked', numTurns: 1 },
   ]);
 });

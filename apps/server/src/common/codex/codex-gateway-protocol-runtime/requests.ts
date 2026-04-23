@@ -1,11 +1,46 @@
 import { createCollaborationModeSettings } from './collaboration-mode.js';
 import { sanitizeRuntimeSettings, readThreadScopedRuntimeConfig, readOptionalPossiblyEmptyString } from './shared.js';
 import type { CollaborationModePreset, LooseRecord, RuntimePreferences, RuntimeSettings, } from '../codex-types.js';
+
 const codexClientInfo = {
     name: 'codex_vscode',
     title: 'Codex VS Code Extension',
     version: '0.1.0',
 };
+
+interface ThreadRequestBaseInput {
+    cwd?: string;
+    runtimeSettings?: RuntimeSettings | null;
+}
+
+interface StartThreadParamsInput extends ThreadRequestBaseInput {
+    dynamicToolSpecs?: LooseRecord[];
+    baseInstructions?: string;
+}
+
+interface ResumeThreadParamsInput extends ThreadRequestBaseInput {
+    threadId?: string;
+    baseInstructions?: string;
+}
+
+interface ForkThreadParamsInput extends ThreadRequestBaseInput {
+    threadId?: string;
+    baseInstructions?: string;
+}
+
+interface TurnRequestDefaultsInput {
+    cwd?: string;
+    runtimeSettings?: RuntimeSettings | null;
+}
+
+interface StartTurnParamsInput extends TurnRequestDefaultsInput {
+    threadId?: string;
+    text?: string;
+    content?: LooseRecord[];
+    runtimePreferences?: RuntimePreferences;
+    collaborationMode?: CollaborationModePreset | null;
+}
+
 function createSandboxPolicyFromMode(sandboxMode: any) {
     switch (sandboxMode) {
         case 'read-only':
@@ -32,9 +67,8 @@ function normalizeTurnInputContent(content: any, text: any) {
     }
     return [{ type: 'text', text, text_elements: [] }];
 }
-export function createThreadRequestDefaults(cwd?: string, runtimeSettings?: RuntimeSettings | null, { includePersistExtendedHistory = true }: {
-    includePersistExtendedHistory?: boolean;
-} = {}) {
+
+function buildThreadRequestBase({ cwd, runtimeSettings }: ThreadRequestBaseInput) {
     const settings = sanitizeRuntimeSettings(runtimeSettings);
     const config = readThreadScopedRuntimeConfig(runtimeSettings);
     return Object.fromEntries(Object.entries({
@@ -43,10 +77,15 @@ export function createThreadRequestDefaults(cwd?: string, runtimeSettings?: Runt
         approvalPolicy: settings.approvalPolicy,
         sandbox: settings.sandboxMode,
         config,
-        persistExtendedHistory: includePersistExtendedHistory ? false : undefined,
+        persistExtendedHistory: true,
     }).filter(([, value]: any) => value !== undefined));
 }
-export function createTurnRequestDefaults(cwd?: string, runtimeSettings?: RuntimeSettings | null) {
+
+export function createThreadRequestDefaults(cwd?: string, runtimeSettings?: RuntimeSettings | null) {
+    return buildThreadRequestBase({ cwd, runtimeSettings });
+}
+
+export function createTurnRequestDefaults({ cwd, runtimeSettings }: TurnRequestDefaultsInput) {
     const settings = sanitizeRuntimeSettings(runtimeSettings);
     return Object.fromEntries(Object.entries({
         cwd,
@@ -57,6 +96,7 @@ export function createTurnRequestDefaults(cwd?: string, runtimeSettings?: Runtim
         sandboxPolicy: settings.sandboxMode ? createSandboxPolicyFromMode(settings.sandboxMode) : undefined,
     }).filter(([, value]: any) => value !== undefined));
 }
+
 export function createInitializeParams() {
     return {
         clientInfo: codexClientInfo,
@@ -65,44 +105,36 @@ export function createInitializeParams() {
         },
     };
 }
-export function createStartThreadParams({ cwd, dynamicToolSpecs = [], runtimeSettings, baseInstructions, }: {
-    cwd?: string;
-    dynamicToolSpecs?: LooseRecord[];
-    runtimeSettings?: RuntimeSettings | null;
-    baseInstructions?: string;
-} = {}) {
+
+export function createStartThreadParams({ cwd, dynamicToolSpecs = [], runtimeSettings, baseInstructions, }: StartThreadParamsInput = {}) {
     return Object.fromEntries(Object.entries({
-        ...createThreadRequestDefaults(cwd, runtimeSettings),
+        ...buildThreadRequestBase({ cwd, runtimeSettings }),
         baseInstructions: readOptionalPossiblyEmptyString(baseInstructions),
-        experimentalRawEvents: false,
         dynamicTools: Array.isArray(dynamicToolSpecs) && dynamicToolSpecs.length ? dynamicToolSpecs : undefined,
     }).filter(([, value]: any) => value !== undefined));
 }
-export function createResumeThreadParams({ threadId, cwd, runtimeSettings, baseInstructions, }: {
-    threadId?: string;
-    cwd?: string;
-    runtimeSettings?: RuntimeSettings | null;
-    baseInstructions?: string;
-} = {}) {
+
+export function createResumeThreadParams({ threadId, cwd, runtimeSettings, baseInstructions, }: ResumeThreadParamsInput = {}) {
     return Object.fromEntries(Object.entries({
         threadId,
-        ...createThreadRequestDefaults(cwd, runtimeSettings, { includePersistExtendedHistory: false }),
+        ...buildThreadRequestBase({ cwd, runtimeSettings }),
         baseInstructions: readOptionalPossiblyEmptyString(baseInstructions),
     }).filter(([, value]: any) => value !== undefined));
 }
-export function createStartTurnParams({ threadId, text, content, cwd, runtimeSettings, runtimePreferences, collaborationMode, }: {
-    threadId?: string;
-    text?: string;
-    content?: LooseRecord[];
-    cwd?: string;
-    runtimeSettings?: RuntimeSettings | null;
-    runtimePreferences?: RuntimePreferences;
-    collaborationMode?: CollaborationModePreset | null;
-} = {}) {
+
+export function createForkThreadParams({ threadId, cwd, runtimeSettings, baseInstructions, }: ForkThreadParamsInput = {}) {
+    return Object.fromEntries(Object.entries({
+        threadId,
+        ...buildThreadRequestBase({ cwd, runtimeSettings }),
+        baseInstructions: readOptionalPossiblyEmptyString(baseInstructions),
+    }).filter(([, value]: any) => value !== undefined));
+}
+
+export function createStartTurnParams({ threadId, text, content, cwd, runtimeSettings, runtimePreferences, collaborationMode, }: StartTurnParamsInput = {}) {
     return Object.fromEntries(Object.entries({
         threadId,
         input: normalizeTurnInputContent(content, text),
-        ...createTurnRequestDefaults(cwd, runtimeSettings),
+        ...createTurnRequestDefaults({ cwd, runtimeSettings }),
         collaborationMode: createCollaborationModeSettings({ collaborationMode, runtimeSettings, runtimePreferences }),
     }).filter(([, value]: any) => value !== undefined));
 }

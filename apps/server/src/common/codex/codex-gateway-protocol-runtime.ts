@@ -16,6 +16,7 @@ export {
 
 export {
   createInitializeParams,
+  createForkThreadParams,
   createResumeThreadParams,
   createStartThreadParams,
   createStartTurnParams,

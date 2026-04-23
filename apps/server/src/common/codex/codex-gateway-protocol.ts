@@ -1,6 +1,7 @@
 export {
   createDefaultRuntimeOptions,
   createDefaultRuntimePreferences,
+  createForkThreadParams,
   createInitializeParams,
   mapCodexCollaborationModePresets,
   mergeRuntimePreferencesWithEnvDefaults,

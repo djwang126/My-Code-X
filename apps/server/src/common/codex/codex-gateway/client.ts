@@ -1,4 +1,4 @@
-import { createDefaultRuntimePreferences, createResumeThreadParams, createStartThreadParams, createStartTurnParams, normalizeResumeThreadResult, } from '../codex-gateway-protocol.js';
+import { createDefaultRuntimePreferences, createForkThreadParams, createResumeThreadParams, createStartThreadParams, createStartTurnParams, normalizeResumeThreadResult, } from '../codex-gateway-protocol.js';
 import { buildCodexWorkspacePathStrategy } from '../codex-workspace-path.js';
 import { listThreadsWithWorkspaceFallback } from './thread-list.js';
 import type { CodexJsonlTransport, GatewayState, LooseRecord, RuntimeSettings, } from '../codex-types.js';
@@ -28,14 +28,18 @@ export function createGatewayClient({ cwd, dynamicToolSpecs, state, transport, w
             await transport.sendRequest('thread/compact/start', { threadId });
             return { ok: true, threadId };
         },
-        async forkThread({ threadId, workspace }: {
+        async forkThread({ threadId, workspace, runtimeSettings, baseInstructions, }: {
             threadId?: string;
             workspace?: string;
+            runtimeSettings?: RuntimeSettings;
+            baseInstructions?: string;
         } = {}) {
-            const result = await transport.sendRequest('thread/fork', {
+            const result = await transport.sendRequest('thread/fork', createForkThreadParams({
                 threadId,
                 cwd: resolveWorkspaceCwd(workspace),
-            });
+                runtimeSettings,
+                baseInstructions,
+            }));
             return {
                 threadId: result.thread.id,
             };

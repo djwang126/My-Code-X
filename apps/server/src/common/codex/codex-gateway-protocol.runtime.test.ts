@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   createDefaultRuntimePreferences,
+  createForkThreadParams,
   createInitializeParams,
   mapCodexConfigToRuntimePreferences,
   mapCodexRuntimeOptions,
@@ -121,8 +122,7 @@ test('mapCodexNotificationToRuntimeEvent maps realtime thread failures as shared
 test('createStartThreadParams only includes dynamic tools when explicitly configured', () => {
   assert.deepEqual(createStartThreadParams({ cwd: 'D:/workspace/example-app' }), {
     cwd: 'D:/workspace/example-app',
-    persistExtendedHistory: false,
-    experimentalRawEvents: false,
+    persistExtendedHistory: true,
   });
 
   assert.deepEqual(
@@ -145,8 +145,7 @@ test('createStartThreadParams only includes dynamic tools when explicitly config
     }),
     {
       cwd: 'D:/workspace/example-app',
-      persistExtendedHistory: false,
-      experimentalRawEvents: false,
+      persistExtendedHistory: true,
       dynamicTools: [
         {
           name: 'lookup_ticket',
@@ -176,8 +175,7 @@ test('createStartThreadParams and createStartTurnParams do not inject approval o
     {
       cwd: 'D:/workspace/example-app',
       model: 'gpt-5.4',
-      persistExtendedHistory: false,
-      experimentalRawEvents: false,
+      persistExtendedHistory: true,
     },
   );
 
@@ -237,8 +235,7 @@ test('createStartThreadParams includes explicit thread-scoped model config overr
         model_context_window: 200_000,
         model_auto_compact_token_limit: 150_000,
       },
-      persistExtendedHistory: false,
-      experimentalRawEvents: false,
+      persistExtendedHistory: true,
     },
   );
 
@@ -275,8 +272,7 @@ test('createStartThreadParams and createStartTurnParams apply explicit runtime s
       model: 'gpt-5.4',
       approvalPolicy: 'on-request',
       sandbox: 'workspace-write',
-      persistExtendedHistory: false,
-      experimentalRawEvents: false,
+      persistExtendedHistory: true,
     },
   );
 
@@ -315,8 +311,7 @@ test('createStartThreadParams and createResumeThreadParams preserve empty base i
     {
       cwd: 'D:/workspace/example-app',
       baseInstructions: '',
-      persistExtendedHistory: false,
-      experimentalRawEvents: false,
+      persistExtendedHistory: true,
     },
   );
 
@@ -329,6 +324,7 @@ test('createStartThreadParams and createResumeThreadParams preserve empty base i
     {
       threadId: 'thread-1',
       cwd: 'D:/workspace/example-app',
+      persistExtendedHistory: true,
       baseInstructions: '',
     },
   );
@@ -343,8 +339,7 @@ test('createStartThreadParams and createResumeThreadParams pass through explicit
     {
       cwd: 'D:/workspace/example-app',
       baseInstructions: 'You are a cute cat',
-      persistExtendedHistory: false,
-      experimentalRawEvents: false,
+      persistExtendedHistory: true,
     },
   );
 
@@ -357,6 +352,37 @@ test('createStartThreadParams and createResumeThreadParams pass through explicit
     {
       threadId: 'thread-1',
       cwd: 'D:/workspace/example-app',
+      persistExtendedHistory: true,
+      baseInstructions: 'You are a supportive teammate',
+    },
+  );
+});
+
+test('createForkThreadParams reuses the same thread request base as start and resume', () => {
+  assert.deepEqual(
+    createForkThreadParams({
+      threadId: 'thread-1',
+      cwd: 'D:/workspace/example-app',
+      runtimeSettings: {
+        model: 'gpt-5.4',
+        approvalPolicy: 'on-request',
+        sandboxMode: 'workspace-write',
+        modelContextWindow: 200_000,
+        modelAutoCompactTokenLimit: 150_000,
+      },
+      baseInstructions: 'You are a supportive teammate',
+    }),
+    {
+      threadId: 'thread-1',
+      cwd: 'D:/workspace/example-app',
+      model: 'gpt-5.4',
+      approvalPolicy: 'on-request',
+      sandbox: 'workspace-write',
+      config: {
+        model_context_window: 200_000,
+        model_auto_compact_token_limit: 150_000,
+      },
+      persistExtendedHistory: true,
       baseInstructions: 'You are a supportive teammate',
     },
   );

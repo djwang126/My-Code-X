@@ -149,6 +149,7 @@ export function createChatService({ codexGateway: codexGatewayOverrides = create
     });
     const threadActionsService = createThreadActionsService({
         codexGateway,
+        promptOverrideResolver,
         registry,
         sessionService,
     });

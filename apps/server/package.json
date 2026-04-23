@@ -4,12 +4,16 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "prepare:shared": "npm run build --workspace @my-code-x/contracts && npm run build --workspace @my-code-x/utils",
     "dev": "tsx watch src/app/index.ts",
+    "pretypecheck": "npm run prepare:shared",
     "typecheck": "tsc -p tsconfig.build.json --noEmit",
+    "pretypecheck:full": "npm run prepare:shared",
     "typecheck:full": "tsc -p tsconfig.json --noEmit",
     "compile": "tsc -p tsconfig.build.json",
     "build": "npm run typecheck && npm run compile",
     "start": "node dist/app/index.js",
+    "pretest": "npm run prepare:shared",
     "test": "tsx --test --test-reporter=dot src/**/*.test.ts test/**/*.test.ts",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\" \"test-support/**/*.ts\""
   },
