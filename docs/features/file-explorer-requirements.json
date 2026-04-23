@@ -25,11 +25,11 @@
     {
       "id": "3",
       "name": "header with breadcrumb path and clear session actions",
-      "status": "need-review",
+      "status": "planned",
       "key UX": [
-        "The top area now switches between a close action for the file list and a Back action for file detail states, with the current file context in the center.",
-        "Breadcrumb navigation remains available for folder browsing, but file detail actions such as Edit and Preview are anchored in the header instead of sharing space with the list.",
-        "Primary actions such as close, return to files, and edit or save are anchored in predictable header or footer positions."
+        "The top area switches between a close action for the file list and a Back action for file detail states, with the current file context in the center.",
+        "Breadcrumb navigation remains available for folder browsing, while file edit actions are removed from the header so the top bar stays focused on navigation and context.",
+        "Primary file actions must live in the bottom action area instead of the header, keeping the mobile-first interaction model consistent."
       ]
     },
     {
@@ -55,11 +55,11 @@
     {
       "id": "6",
       "name": "preview-first file detail flow using old open rules",
-      "status": "need-review",
+      "status": "planned",
       "key UX": [
         "The current file-open rules stay intact, but the UI now moves from the file list into a dedicated preview screen before the user enters editing.",
         "Supported text files still open with filename, encoding, and content, yet the new layout treats file detail as a focused reading and editing surface rather than a side pane.",
-        "The explorer no longer shows the file list and editor together; returning from preview or edit goes back to the list flow."
+        "The preview screen exposes Edit from the bottom action area, the edit screen exposes Discard and Save from the same bottom action area, and edit mode no longer shows a Preview button in the header."
       ]
     },
     {
@@ -85,21 +85,22 @@
     {
       "id": "9",
       "name": "sticky save flow and visible dirty state",
-      "status": "need-review",
+      "status": "planned",
       "key UX": [
         "The old save behavior stays unchanged: only existing editable files can be saved, and Save enables only when the draft is dirty and a save is not already running.",
-        "The redesigned UI gives unsaved changes a stronger visual presence through a persistent dirty indicator and a fixed bottom action area in edit mode.",
-        "Successful saves still update local state and file size while keeping the user inside the focused preview/edit flow."
+        "The redesigned UI gives unsaved changes a stronger visual presence through a persistent dirty indicator and a fixed bottom action area for Edit, Discard, and Save.",
+        "Successful saves update local state and file size, then return the user to preview mode for the same file instead of leaving them stranded in edit mode.",
+        "Failed saves keep the user in edit mode with their draft intact."
       ]
     },
     {
       "id": "10",
-      "name": "unchanged unsaved-change protection with calmer exit affordances",
-      "status": "done",
+      "name": "unsaved-change protection across all edit exits",
+      "status": "planned",
       "key UX": [
-        "The current protection logic remains the same when the user closes the explorer, opens another file, or navigates away with unsaved changes.",
-        "The new UI makes the risk more visible before the user hits the blocking confirm step, so the browser confirmation is no longer the only signal.",
-        "This preserves the old guardrails while making accidental loss of edits feel less abrupt."
+        "When a draft has unsaved changes, any attempt to leave edit mode must confirm before discarding work, including Back to preview, closing the explorer, opening another file, or navigating to another folder.",
+        "The dirty indicator remains visible before the confirm step so the warning does not feel abrupt.",
+        "If the user cancels the confirmation, they stay in the current edit state with the draft untouched."
       ]
     },
     {
@@ -130,6 +131,16 @@
         "The redesign does not change the existing workspace-boundary protections, symlink filtering, or path validation rules.",
         "The redesign also keeps the current race-safe async behavior where only the latest request is allowed to win.",
         "Visually the explorer feels cleaner and more intentional, but its underlying safety model and state consistency rules remain the old ones."
+      ]
+    },
+    {
+      "id": "14",
+      "name": "preview and edit mode retain reading position",
+      "status": "planned",
+      "key UX": [
+        "Switching between preview and edit for the same file should keep the user at the same approximate reading position instead of jumping back to the top.",
+        "The retained position should work in both directions: preview to edit and edit back to preview.",
+        "Position retention is scoped to the currently open file and should reset when the user opens a different file."
       ]
     }
   ]

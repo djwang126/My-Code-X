@@ -797,6 +797,12 @@
   min-height: 100%;
 }
 
+.workspace-editor-preview-content > pre {
+  margin: 0;
+  font: inherit;
+  white-space: inherit;
+}
+
 .workspace-editor-footer {
   display: flex;
   align-items: center;

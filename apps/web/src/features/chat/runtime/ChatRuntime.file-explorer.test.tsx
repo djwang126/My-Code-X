@@ -337,6 +337,8 @@ describe('ChatRuntime workspace file explorer flow', () => {
       content: '{"ok":false}\n',
     });
     await waitFor(() => expect(screen.getByText('Saved settings.json')).toBeInTheDocument());
+    expect(screen.queryByRole('textbox', { name: 'File content' })).toBeNull();
+    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
 
   it('shows a dedicated too-large state when a large file is opened from the explorer list', async () => {

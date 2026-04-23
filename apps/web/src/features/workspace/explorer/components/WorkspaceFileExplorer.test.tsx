@@ -205,10 +205,10 @@ describe('WorkspaceFileExplorer mobile-first flow', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
 
-    expect(screen.getByRole('button', { name: 'Preview' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: 'File content' })).toBeInTheDocument();
     expect(screen.getByText('Unsaved changes')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /save/i })).toBeEnabled();
+    expect(screen.queryByRole('button', { name: 'Preview' })).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: /save/i }));
     expect(onSave).toHaveBeenCalledOnce();
@@ -228,7 +228,7 @@ describe('WorkspaceFileExplorer mobile-first flow', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Discard' }));
 
-    expect(window.confirm).toHaveBeenCalledWith('Discard unsaved file changes?');
+    expect(window.confirm).toHaveBeenCalledWith('You have unsaved file changes. Discard them?');
     expect(onDraftChange).toHaveBeenCalledWith('export function App() {}\n');
     expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });

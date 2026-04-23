@@ -192,7 +192,7 @@ export function ChatPageChrome(props: ChatPageChromeProps) {
         onDraftChange={props.onWorkspaceFileDraftChange}
         onNavigate={path => void props.onWorkspaceExplorerNavigate?.(path)}
         onOpenFile={path => void props.onWorkspaceFileOpen?.(path)}
-        onSave={() => void props.onWorkspaceFileSave?.()}
+        onSave={props.onWorkspaceFileSave}
         open={props.workspaceExplorerOpen}
         saving={props.workspaceFileSaving}
       />
