@@ -35,8 +35,8 @@ describe('FeedbackMessage', () => {
   });
 
   it('renders a compact empty state without description', () => {
-    render(<FeedbackEmptyState compact title="No thread history yet." />);
+    render(<FeedbackEmptyState compact title="No saved threads yet." />);
 
-    expect(screen.getByText('No thread history yet.')).toHaveClass('feedback-empty-title');
+    expect(screen.getByText('No saved threads yet.')).toHaveClass('feedback-empty-title');
   });
 });

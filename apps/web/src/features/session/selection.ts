@@ -1,15 +1,20 @@
 import { useCallback } from 'react';
 
-import { rememberWorkspaceThread } from '../workspace-bookmarks';
+import { rememberWorkspaceThread } from '../workspace/bookmarks';
 import { useSessionDispatch, useSessionState } from './context';
 import { setActiveWorkspacePath, synchronizeStoredThreadId } from './lib/session-selection-storage';
+
+type SessionSelectionInput = {
+  workspace: string;
+  threadId: string;
+};
 
 export function useSessionSelection() {
   const dispatch = useSessionDispatch();
   const state = useSessionState();
 
   const updateSelection = useCallback(
-    ({ workspace, threadId }: { workspace: string; threadId: string }) => {
+    ({ workspace, threadId }: SessionSelectionInput) => {
       setActiveWorkspacePath(state.slotId, workspace);
       synchronizeStoredThreadId(state.slotId, threadId);
       dispatch({ type: 'selection/updated', workspace, threadId });
@@ -29,7 +34,7 @@ export function useSessionSelection() {
   );
 
   const selectThread = useCallback(
-    ({ workspace, threadId }: { workspace: string; threadId: string }) => {
+    ({ workspace, threadId }: SessionSelectionInput) => {
       updateSelection({ workspace, threadId });
     },
     [updateSelection],

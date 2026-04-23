@@ -1,14 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 
-import { resolveBootstrapCollaborationModeKind } from '../../../shared/lib/collaboration-mode';
 import { SessionApiError } from '../../../shared/lib/app-api-client';
-import {
-  applySessionRuntimeMetadata,
-  loadStoredRuntimePreferences,
-  mergeRuntimeSettings,
-  persistRuntimePreferences,
-  readRuntimeSettings,
-} from '../../runtime-settings';
 import {
   SLOT_DISPLACED_MESSAGE,
   claimSlotOwnership,
@@ -18,14 +10,67 @@ import {
   isCurrentPageSlotOwner,
   parseSlotOwnershipRecord,
 } from '../scope';
-import { fetchSessionPayload } from '../../chat-runtime/bootstrap';
-import { useChatRuntimeDispatch } from '../../chat-runtime/context';
 import { useSessionDispatch } from '../context';
 import { useSessionSelection } from '../selection';
 
-export function useSessionBootstrap({ autoStart = true }: { autoStart?: boolean } = {}) {
+type SessionBootstrapFetchInput = {
+  viewerId: string;
+  slotId: string;
+  workspace: string;
+  threadId: string;
+};
+
+type SessionBootstrapSelectionInput = {
+  workspace: string;
+  threadId: string;
+};
+
+type SessionBootstrapSucceededInput = {
+  viewerId: string;
+  slotId: string;
+  workspace: string;
+  threadId: string;
+  serverInstanceId: string;
+};
+
+type SessionBootstrapStateResetInput = {
+  workspace: string;
+  threadId: string;
+};
+
+type ApplySessionBootstrapPayloadInput<TPayload> = {
+  payload: TPayload;
+  selectThread: (input: SessionBootstrapSelectionInput) => void;
+  dispatchSessionBootstrapSucceeded: (input: SessionBootstrapSucceededInput) => void;
+};
+
+type UseSessionBootstrapOptions<TPayload> = {
+  autoStart?: boolean;
+  fetchBootstrapPayload: (input: SessionBootstrapFetchInput) => Promise<TPayload>;
+  resetBootstrapState: (input: SessionBootstrapStateResetInput) => void;
+  applyBootstrapPayload: (input: ApplySessionBootstrapPayloadInput<TPayload>) => void;
+};
+
+type BootstrapIdentityOverride = ReturnType<typeof getBootstrapIdentity> | null;
+
+type BootstrapRunInput = {
+  resetPhase: boolean;
+  identityOverride?: BootstrapIdentityOverride;
+  claimOwnership?: boolean;
+};
+
+type ResumeThreadInput = {
+  workspace: string;
+  threadId: string;
+};
+
+export function useSessionBootstrap<TPayload>({
+  autoStart = true,
+  fetchBootstrapPayload,
+  resetBootstrapState,
+  applyBootstrapPayload,
+}: UseSessionBootstrapOptions<TPayload>) {
   const dispatch = useSessionDispatch();
-  const chatDispatch = useChatRuntimeDispatch();
   const { selectThread, selectWorkspace } = useSessionSelection();
   const bootstrapRequestIdRef = useRef(0);
   const bootstrapLifecycleIdRef = useRef(0);
@@ -35,17 +80,10 @@ export function useSessionBootstrap({ autoStart = true }: { autoStart?: boolean 
     bootstrapRequestIdRef.current += 1;
   }, []);
 
-  const resetChatRuntime = useCallback(
-    ({ workspace, threadId }: { workspace: string; threadId: string }) => {
-      chatDispatch({ type: 'bootstrap/reset', workspace, threadId });
-    },
-    [chatDispatch],
-  );
-
   const dispatchSlotDisplaced = useCallback(
     (slotId: string) => {
       invalidateBootstrap();
-      resetChatRuntime({ workspace: '', threadId: '' });
+      resetBootstrapState({ workspace: '', threadId: '' });
       dispatch({
         type: 'slot/displaced',
         viewerId: getBootstrapIdentity().viewerId,
@@ -53,7 +91,7 @@ export function useSessionBootstrap({ autoStart = true }: { autoStart?: boolean 
         errorMessage: SLOT_DISPLACED_MESSAGE,
       });
     },
-    [dispatch, invalidateBootstrap, resetChatRuntime],
+    [dispatch, invalidateBootstrap, resetBootstrapState],
   );
 
   const bootstrap = useCallback(
@@ -61,11 +99,7 @@ export function useSessionBootstrap({ autoStart = true }: { autoStart?: boolean 
       resetPhase,
       identityOverride = null,
       claimOwnership = false,
-    }: {
-      resetPhase: boolean;
-      identityOverride?: ReturnType<typeof getBootstrapIdentity> | null;
-      claimOwnership?: boolean;
-    }) => {
+    }: BootstrapRunInput) => {
       const resolvedIdentity = identityOverride ?? getBootstrapIdentity();
       const requestId = ++bootstrapRequestIdRef.current;
       const lifecycleId = bootstrapLifecycleIdRef.current;
@@ -85,10 +119,10 @@ export function useSessionBootstrap({ autoStart = true }: { autoStart?: boolean 
 
           if (resetPhase) {
             dispatch({ type: 'bootstrap/started', viewerId, slotId, workspace, threadId });
-            resetChatRuntime({ workspace, threadId });
+            resetBootstrapState({ workspace, threadId });
           }
 
-          return fetchSessionPayload({ viewerId, slotId, workspace, threadId });
+          return fetchBootstrapPayload({ viewerId, slotId, workspace, threadId });
         })
         .then(payload => {
           if (!payload) {
@@ -105,43 +139,15 @@ export function useSessionBootstrap({ autoStart = true }: { autoStart?: boolean 
             return;
           }
 
-          const storedRuntimePreferences = loadStoredRuntimePreferences(slotId);
-          const mergedRuntimeSettings = mergeRuntimeSettings({
-            defaults: readRuntimeSettings(payload.preferences),
-            stored: storedRuntimePreferences,
+          applyBootstrapPayload({
+            payload,
+            selectThread,
+            dispatchSessionBootstrapSucceeded: input =>
+              dispatch({
+                type: 'bootstrap/succeeded',
+                ...input,
+              }),
           });
-          const nextCollaborationModeKind = resolveBootstrapCollaborationModeKind({
-            threadId: payload.session.threadId,
-            payloadKind: payload.session.collaborationModeKind,
-            storedKind: storedRuntimePreferences?.collaborationModeKind,
-          });
-          const nextRuntimeSettings = applySessionRuntimeMetadata(mergedRuntimeSettings, {
-            collaborationModeKind: nextCollaborationModeKind,
-            ...(Object.prototype.hasOwnProperty.call(payload.session, 'promptOverride')
-              ? { promptOverride: payload.session.promptOverride }
-              : {}),
-          });
-          const nextPayload = nextRuntimeSettings
-            ? {
-                ...payload,
-                preferences: nextRuntimeSettings,
-              }
-            : payload;
-
-          if (nextRuntimeSettings) {
-            persistRuntimePreferences(slotId, nextRuntimeSettings);
-          }
-
-          selectThread({ workspace: payload.session.workspace, threadId: payload.session.threadId });
-          dispatch({
-            type: 'bootstrap/succeeded',
-            viewerId: payload.viewer.viewerId,
-            slotId: payload.viewer.slotId,
-            workspace: payload.session.workspace,
-            threadId: payload.session.threadId,
-            serverInstanceId: payload.server.serverInstanceId,
-          });
-          chatDispatch({ type: 'bootstrap/succeeded', payload: nextPayload });
         })
         .catch(error => {
           const { viewerId, slotId, workspace, threadId } = resolvedIdentity;
@@ -153,7 +159,7 @@ export function useSessionBootstrap({ autoStart = true }: { autoStart?: boolean 
             return;
           }
 
-          resetChatRuntime({ workspace, threadId });
+          resetBootstrapState({ workspace, threadId });
 
           if (error instanceof SessionApiError && (error.status === 401 || error.code === 'unauthorized')) {
             dispatch({ type: 'bootstrap/auth-required', viewerId, slotId });
@@ -168,7 +174,7 @@ export function useSessionBootstrap({ autoStart = true }: { autoStart?: boolean 
           });
         });
     },
-    [chatDispatch, dispatch, dispatchSlotDisplaced, resetChatRuntime, selectThread],
+    [applyBootstrapPayload, dispatch, dispatchSlotDisplaced, fetchBootstrapPayload, resetBootstrapState, selectThread],
   );
 
   const startFresh = useCallback(() => {
@@ -223,7 +229,7 @@ export function useSessionBootstrap({ autoStart = true }: { autoStart?: boolean 
   );
 
   const resumeThread = useCallback(
-    ({ workspace, threadId }: { workspace: string; threadId: string }) => {
+    ({ workspace, threadId }: ResumeThreadInput) => {
       const identity = getBootstrapIdentity();
       selectThread({ workspace, threadId });
       bootstrap({

@@ -1,7 +1,8 @@
-export { SessionGate } from './components/SessionGate';
 export { SessionProvider, useSessionDispatch, useSessionState } from './context';
+export { SessionBlockingState } from './feedback';
 export { useSessionBootstrap } from './hooks/useSessionBootstrap';
 export { useSessionSelection } from './selection';
+export type { SessionAction, SessionPhase, SessionState } from './public-types';
 export {
   getActiveWorkspacePath,
   getStoredThreadId,

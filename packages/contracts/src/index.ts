@@ -122,3 +122,26 @@ export {
   type CreateCanonicalUserMessageIdInput,
   type ReconcileCanonicalUserMessageTimelineItemInput,
 } from './session-user-message-id.js';
+
+export type {
+  ThreadCompactAcceptedPayload,
+  ThreadForkAcceptedPayload,
+  ThreadRollbackAcceptedPayload,
+} from './chat-command-types.js';
+
+export type { ReviewStartAcceptedPayload, ReviewStartTarget } from './tools-review-types.js';
+
+export type { AppRestartAcceptedPayload } from './tools-restart-types.js';
+
+export type { WorkspaceThreadEntry, WorkspaceThreadsPayload } from './workspace-thread-types.js';
+
+export type {
+  WorkspaceEditableFileDetail,
+  WorkspaceFile,
+  WorkspaceFileDetail,
+  WorkspaceFileEntry,
+  WorkspaceFileSaveAcceptedPayload,
+  WorkspaceFilesPayload,
+  WorkspaceReadOnlyFileDetail,
+  WorkspaceTooLargeFileDetail,
+} from './workspace-file-types.js';

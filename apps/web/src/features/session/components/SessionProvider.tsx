@@ -6,7 +6,11 @@ import { createInitialSessionState, type SessionAction, type SessionState } from
 const SessionStateContext = createContext<SessionState | null>(null);
 const SessionDispatchContext = createContext<Dispatch<SessionAction> | null>(null);
 
-export function SessionProvider({ children }: { children: ReactNode }) {
+type SessionProviderProps = {
+  children: ReactNode;
+};
+
+export function SessionProvider({ children }: SessionProviderProps) {
   const [state, dispatch] = useReducer(sessionReducer, undefined, createInitialSessionState);
 
   return (
