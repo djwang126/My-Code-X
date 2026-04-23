@@ -228,13 +228,14 @@ test('GET /api/v2/workspace/file returns image detail and serves image bytes thr
       });
 
       assert.equal(response.status, 200);
+      const expectedContentSearch = new URLSearchParams({ workspace, path: 'photo.png' });
       assert.deepEqual(body, {
         kind: 'image',
         path: 'photo.png',
         name: 'photo.png',
         size: 4,
         contentType: 'image/png',
-        url: `/api/v2/workspace/file/content?workspace=${encodeURIComponent(workspace)}&path=photo.png`,
+        url: `/api/v2/workspace/file/content?${expectedContentSearch.toString()}`,
       });
 
       const contentSearch = new URLSearchParams({ workspace, path: 'photo.png' });
