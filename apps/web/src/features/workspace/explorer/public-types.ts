@@ -1,10 +1,13 @@
 export type {
-  WorkspaceEditableFileDetail,
+  WorkspaceBinaryFile,
+  WorkspaceContentKind,
+  WorkspaceDirectoryEntry,
   WorkspaceFile,
   WorkspaceFileDetail,
   WorkspaceFileEntry,
+  WorkspaceImageFile,
+  WorkspaceListedFileEntry,
   WorkspaceFileSaveAcceptedPayload,
   WorkspaceFilesPayload,
-  WorkspaceReadOnlyFileDetail,
-  WorkspaceTooLargeFileDetail,
+  WorkspaceTextFile,
 } from '@my-code-x/contracts';

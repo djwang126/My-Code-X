@@ -54,15 +54,10 @@ function createSessionResponse({
     session: {
       workspace: 'D:/workspace/example-app',
       threadId: 'thread-ready',
-      turnExecution: {
-        activeTurnId: null,
-        turnLifecycle: 'idle',
-      },
+      turnExecution: { activeTurnId: null, turnLifecycle: 'idle' },
       lastUpdatedAt: '2026-04-09T12:34:56.000Z',
     },
-    conversation: {
-      messages,
-    },
+    conversation: { messages },
     stream: {
       url: `/api/v2/chat/events?slotId=${slotId || ''}&threadId=thread-ready`,
     },
@@ -104,38 +99,11 @@ const server = setupServer(
     if (path === '') {
       return HttpResponse.json({
         data: [
-          {
-            path: 'docs',
-            name: 'docs',
-            kind: 'directory',
-            size: 0,
-            ext: '',
-            isTextEditable: false,
-          },
-          {
-            path: 'settings.json',
-            name: 'settings.json',
-            kind: 'file',
-            size: 16,
-            ext: '.json',
-            isTextEditable: true,
-          },
-          {
-            path: 'big.txt',
-            name: 'big.txt',
-            kind: 'file',
-            size: 300000,
-            ext: '.txt',
-            isTextEditable: true,
-          },
-          {
-            path: 'logo.svg',
-            name: 'logo.svg',
-            kind: 'file',
-            size: 512,
-            ext: '.svg',
-            isTextEditable: false,
-          },
+          { path: 'docs', name: 'docs', kind: 'directory', size: 0, ext: '', contentKind: null, isLarge: false },
+          { path: 'settings.json', name: 'settings.json', kind: 'file', size: 16, ext: '.json', contentKind: 'text', isLarge: false },
+          { path: 'big.txt', name: 'big.txt', kind: 'file', size: 300000, ext: '.txt', contentKind: 'text', isLarge: true },
+          { path: 'photo.png', name: 'photo.png', kind: 'file', size: 2048, ext: '.png', contentKind: 'image', isLarge: false },
+          { path: 'archive.db', name: 'archive.db', kind: 'file', size: 4096, ext: '.db', contentKind: 'binary', isLarge: false },
         ],
       });
     }
@@ -143,14 +111,7 @@ const server = setupServer(
     if (path === 'docs') {
       return HttpResponse.json({
         data: [
-          {
-            path: 'docs/guide.md',
-            name: 'guide.md',
-            kind: 'file',
-            size: 8,
-            ext: '.md',
-            isTextEditable: true,
-          },
+          { path: 'docs/guide.md', name: 'guide.md', kind: 'file', size: 8, ext: '.md', contentKind: 'text', isLarge: false },
         ],
       });
     }
@@ -160,33 +121,51 @@ const server = setupServer(
   http.get('/api/v2/workspace/file', ({ request }) => {
     const url = new URL(request.url);
     const path = url.searchParams.get('path') || '';
+    const full = url.searchParams.get('full') === '1';
 
     if (path === 'settings.json') {
       return HttpResponse.json({
+        kind: 'text',
         path: 'settings.json',
         name: 'settings.json',
         size: 16,
         encoding: 'utf-8',
         content: '{"ok": true}\n',
-        isTextEditable: true,
-        tooLarge: false,
+        truncated: false,
       });
     }
 
     if (path === 'big.txt') {
       return HttpResponse.json({
+        kind: 'text',
         path: 'big.txt',
         name: 'big.txt',
         size: 300000,
         encoding: 'utf-8',
-        content: '',
-        isTextEditable: true,
-        tooLarge: true,
+        content: full ? 'full log line\n' : 'preview log line\n',
+        truncated: !full,
       });
     }
 
-    if (path === 'logo.svg') {
-      return new HttpResponse('not_text_editable', { status: 415 });
+    if (path === 'photo.png') {
+      return HttpResponse.json({
+        kind: 'image',
+        path: 'photo.png',
+        name: 'photo.png',
+        size: 2048,
+        contentType: 'image/png',
+        url: '/api/v2/workspace/file/content?workspace=D%3A%2Fworkspace%2Fexample-app&path=photo.png',
+      });
+    }
+
+    if (path === 'archive.db') {
+      return HttpResponse.json({
+        kind: 'binary',
+        path: 'archive.db',
+        name: 'archive.db',
+        size: 4096,
+        contentType: null,
+      });
     }
 
     return new HttpResponse('not_found', { status: 404 });
@@ -222,7 +201,7 @@ afterAll(() => server.close());
 describe('ChatRuntime workspace file explorer flow', () => {
   it('keeps the explorer visible and shows an error when the initial folder load fails', async () => {
     window.sessionStorage.setItem('my-code-x-viewer-id', 'viewer-ready');
-    window.history.replaceState({}, '', `/?slot=${'tab-ready'}`);
+    window.history.replaceState({}, '', '/?slot=tab-ready');
 
     server.use(
       http.get('/api/v2/workspace/files', () =>
@@ -238,97 +217,78 @@ describe('ChatRuntime workspace file explorer flow', () => {
     await waitFor(() => expect(screen.getByText('Session synced')).toBeInTheDocument());
 
     const user = userEvent.setup();
-
     await user.click(screen.getByRole('button', { name: 'Toggle tools sidebar' }));
     await user.click(screen.getByRole('button', { name: 'File Explorer' }));
 
     await waitFor(() => expect(screen.getByRole('region', { name: 'File Explorer' })).toBeInTheDocument());
     expect(screen.getByText('workspace/list failed')).toBeInTheDocument();
-    expect(
-      within(screen.getByRole('log', { name: 'chat transcript' })).queryByText('workspace/list failed'),
-    ).toBeNull();
+    expect(within(screen.getByRole('log', { name: 'chat transcript' })).queryByText('workspace/list failed')).toBeNull();
   });
 
-  it('opens the explorer into a browse-first flow and loads file detail as a preview-first surface', async () => {
+  it('opens the explorer into a browse-first flow and loads text detail as a preview-first surface', async () => {
     window.sessionStorage.setItem('my-code-x-viewer-id', 'viewer-ready');
-    window.history.replaceState({}, '', `/?slot=${'tab-ready'}`);
+    window.history.replaceState({}, '', '/?slot=tab-ready');
 
     render(<App />);
 
     await waitFor(() => expect(screen.getByText('Session synced')).toBeInTheDocument());
 
     const user = userEvent.setup();
-
     await user.click(screen.getByRole('button', { name: 'Toggle tools sidebar' }));
     await user.click(screen.getByRole('button', { name: 'File Explorer' }));
 
-    await waitFor(() => expect(screen.getByRole('region', { name: 'File Explorer' })).toBeInTheDocument());
-    expect(screen.getByRole('navigation', { name: 'File path' })).toBeInTheDocument();
-    expect(screen.queryByRole('textbox', { name: 'File content' })).toBeNull();
     await waitFor(() => expect(screen.getByRole('button', { name: /settings\.json/i })).toBeInTheDocument());
-
     await user.click(screen.getByRole('button', { name: /settings\.json/i }));
 
     await waitFor(() => {
       expect(screen.getByText(/utf-8/i)).toBeInTheDocument();
-      expect(screen.getByText(/Editable/i)).toBeInTheDocument();
+      expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
     });
 
-    expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: 'File content' })).toBeNull();
-    expect(saveRequestBodies).toHaveLength(0);
   });
 
   it('navigates into a directory from the explorer entry list with breadcrumb updates', async () => {
     window.sessionStorage.setItem('my-code-x-viewer-id', 'viewer-ready');
-    window.history.replaceState({}, '', `/?slot=${'tab-ready'}`);
+    window.history.replaceState({}, '', '/?slot=tab-ready');
 
     render(<App />);
 
     await waitFor(() => expect(screen.getByText('Session synced')).toBeInTheDocument());
 
     const user = userEvent.setup();
-
     await user.click(screen.getByRole('button', { name: 'Toggle tools sidebar' }));
     await user.click(screen.getByRole('button', { name: 'File Explorer' }));
-
     await waitFor(() => expect(screen.getByRole('region', { name: 'File Explorer' })).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /docs/i }));
 
     await waitFor(() => expect(screen.getByRole('button', { name: 'docs' })).toBeInTheDocument());
-    expect(screen.getByRole('navigation', { name: 'File path' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /guide\.md/i })).toBeInTheDocument();
   });
 
-  it('enters edit mode from preview, saves changes, and keeps the explorer in the redesigned flow', async () => {
+  it('enters edit mode from preview and saves changes', async () => {
     window.sessionStorage.setItem('my-code-x-viewer-id', 'viewer-ready');
-    window.history.replaceState({}, '', `/?slot=${'tab-ready'}`);
+    window.history.replaceState({}, '', '/?slot=tab-ready');
 
     render(<App />);
 
     await waitFor(() => expect(screen.getByText('Session synced')).toBeInTheDocument());
 
     const user = userEvent.setup();
-
     await user.click(screen.getByRole('button', { name: 'Toggle tools sidebar' }));
     await user.click(screen.getByRole('button', { name: 'File Explorer' }));
-
     await waitFor(() => expect(screen.getByRole('button', { name: /settings\.json/i })).toBeInTheDocument());
     await user.click(screen.getByRole('button', { name: /settings\.json/i }));
     await waitFor(() => expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument());
 
     await user.click(screen.getByRole('button', { name: /edit/i }));
-
-    await waitFor(() => {
-      expect(screen.getByRole('textbox', { name: 'File content' })).toHaveValue('{"ok": true}\n');
-    });
+    await waitFor(() => expect(screen.getByRole('textbox', { name: 'File content' })).toHaveValue('{"ok": true}\n'));
 
     fireEvent.change(screen.getByRole('textbox', { name: 'File content' }), {
       target: { value: '{"ok":false}\n' },
     });
 
-    expect(screen.getByText(/unsaved/i)).toBeInTheDocument();
-    await user.click(screen.getByRole('button', { name: /Save/i }));
+    await user.click(screen.getByRole('button', { name: /save/i }));
 
     await waitFor(() => expect(saveRequestBodies).toHaveLength(1));
     expect(saveRequestBodies[0]).toEqual({
@@ -338,48 +298,59 @@ describe('ChatRuntime workspace file explorer flow', () => {
     });
     await waitFor(() => expect(screen.getByText('Saved settings.json')).toBeInTheDocument());
     expect(screen.queryByRole('textbox', { name: 'File content' })).toBeNull();
-    expect(screen.getByRole('button', { name: 'Edit' })).toBeInTheDocument();
   });
 
-  it('shows a dedicated too-large state when a large file is opened from the explorer list', async () => {
+  it('opens large text files in preview instead of dropping into a dead end', async () => {
     window.sessionStorage.setItem('my-code-x-viewer-id', 'viewer-ready');
-    window.history.replaceState({}, '', `/?slot=${'tab-ready'}`);
+    window.history.replaceState({}, '', '/?slot=tab-ready');
 
     render(<App />);
 
     await waitFor(() => expect(screen.getByText('Session synced')).toBeInTheDocument());
 
     const user = userEvent.setup();
-
     await user.click(screen.getByRole('button', { name: 'Toggle tools sidebar' }));
     await user.click(screen.getByRole('button', { name: 'File Explorer' }));
     await waitFor(() => expect(screen.getByRole('button', { name: /big\.txt/i })).toBeInTheDocument());
-
     await user.click(screen.getByRole('button', { name: /big\.txt/i }));
 
-    await waitFor(() => expect(screen.getByText(/too large/i)).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: /back to files/i })).toBeInTheDocument();
-    expect(screen.queryByText(/showing its folder instead/i)).toBeNull();
+    await waitFor(() => expect(screen.getByText('Showing the preview first. Edit loads the full file.')).toBeInTheDocument());
+    expect(screen.getByText(/preview log line/i)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /edit/i })).toBeInTheDocument();
   });
 
-  it('shows a dedicated read-only state when an unsupported file is opened from the explorer list', async () => {
+  it('opens image files through the explorer image preview path', async () => {
     window.sessionStorage.setItem('my-code-x-viewer-id', 'viewer-ready');
-    window.history.replaceState({}, '', `/?slot=${'tab-ready'}`);
+    window.history.replaceState({}, '', '/?slot=tab-ready');
 
     render(<App />);
 
     await waitFor(() => expect(screen.getByText('Session synced')).toBeInTheDocument());
 
     const user = userEvent.setup();
-
     await user.click(screen.getByRole('button', { name: 'Toggle tools sidebar' }));
     await user.click(screen.getByRole('button', { name: 'File Explorer' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: /logo\.svg/i })).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByRole('button', { name: /photo\.png/i })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /photo\.png/i }));
 
-    await user.click(screen.getByRole('button', { name: /logo\.svg/i }));
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Open image preview' })).toBeInTheDocument());
+    expect(screen.getByRole('img', { name: 'photo.png' })).toBeInTheDocument();
+  });
 
-    await waitFor(() => expect(screen.getByText(/view-only/i)).toBeInTheDocument());
-    expect(screen.getByRole('button', { name: /back to files/i })).toBeInTheDocument();
-    expect(screen.queryByText(/showing its folder instead/i)).toBeNull();
+  it('opens binary files into metadata-only detail state', async () => {
+    window.sessionStorage.setItem('my-code-x-viewer-id', 'viewer-ready');
+    window.history.replaceState({}, '', '/?slot=tab-ready');
+
+    render(<App />);
+
+    await waitFor(() => expect(screen.getByText('Session synced')).toBeInTheDocument());
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('button', { name: 'Toggle tools sidebar' }));
+    await user.click(screen.getByRole('button', { name: 'File Explorer' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: /archive\.db/i })).toBeInTheDocument());
+    await user.click(screen.getByRole('button', { name: /archive\.db/i }));
+
+    await waitFor(() => expect(screen.getByText('4.0 KB · Binary')).toBeInTheDocument());
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 
 import type { WorkspaceFileDetail, WorkspaceFileEntry } from '../public-types';
 
@@ -10,11 +10,11 @@ export type WorkspaceExplorerActionGuard = {
 };
 
 export type WorkspaceExplorerMutators = {
-  setWorkspaceExplorerEntries: (entries: WorkspaceFileEntry[]) => void;
+  setWorkspaceExplorerEntries: Dispatch<SetStateAction<WorkspaceFileEntry[]>>;
   setWorkspaceExplorerPath: (path: string) => void;
   setWorkspaceExplorerOpen: (open: boolean) => void;
   setWorkspaceExplorerNotice: (notice: string) => void;
-  setWorkspaceFileDetail: (detail: WorkspaceFileDetail | null) => void;
+  setWorkspaceFileDetail: Dispatch<SetStateAction<WorkspaceFileDetail | null>>;
   setWorkspaceFileDraft: (draft: string) => void;
   clearWorkspaceEditor: () => void;
 };
@@ -35,8 +35,8 @@ export function useWorkspaceExplorerState({ workspace }: UseWorkspaceExplorerSta
   const [workspaceFileSaving, setWorkspaceFileSaving] = useState(false);
   const latestActionIdRef = useRef(0);
 
-  const workspaceFileDirty = workspaceFileDetail?.kind === 'editable'
-    ? workspaceFileDraft !== workspaceFileDetail.file.content
+  const workspaceFileDirty = workspaceFileDetail?.kind === 'text'
+    ? workspaceFileDraft !== workspaceFileDetail.content
     : false;
 
   function clearWorkspaceEditor() {

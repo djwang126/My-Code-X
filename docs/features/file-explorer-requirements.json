@@ -39,7 +39,7 @@
       "key UX": [
         "Folder and file rows are now distinguished primarily through icons rather than literal `[dir]` or `[file]` labels.",
         "Each row remains a full-width tap target and still maps to the same old behavior: folders navigate deeper and files attempt to open.",
-        "List rows stay on one line and only show compact supporting metadata such as size and non-default file state like read-only, instead of repeating type information from the filename."
+        "List rows stay on one line and show compact factual metadata such as size and file kind hints like text, image, or large-file state instead of policy-driven labels that only reflect old editability rules."
       ]
     },
     {
@@ -54,44 +54,70 @@
     },
     {
       "id": "6",
-      "name": "preview-first file detail flow using old open rules",
+      "name": "preview-first file detail flow for text files",
       "status": "planned",
       "key UX": [
-        "The current file-open rules stay intact, but the UI now moves from the file list into a dedicated preview screen before the user enters editing.",
-        "Supported text files still open with filename, encoding, and content, yet the new layout treats file detail as a focused reading and editing surface rather than a side pane.",
-        "The preview screen exposes Edit from the bottom action area, the edit screen exposes Discard and Save from the same bottom action area, and edit mode no longer shows a Preview button in the header."
-      ]
+        "When a workspace file is recognized as text, the UI moves from the file list into a dedicated preview screen before the user enters editing.",
+        "Source code, config files, docs, scripts, and other decodable text files all use the same focused reading and editing surface instead of being blocked by an extension allowlist.",
+        "The preview screen exposes Edit from the bottom action area, and the edit screen exposes Discard and Save from the same bottom action area."
+      ],
+      "design detail": "Text-file support should be decided by real content and decoding success, not by a narrow extension allowlist. The explorer contract should represent whether a file is text, image, or another binary type so the UI can choose the correct detail screen."
     },
     {
       "id": "7",
-      "name": "editability gating preserved with clearer visual states",
-      "status": "done",
+      "name": "text-file detection replaces editable allowlist gating",
+      "status": "planned",
       "key UX": [
-        "The allowlist logic for editable files remains exactly the same, including supported config and text formats and the existing v1 limitations.",
-        "Files that are visible but not editable are presented with a clear read-only visual state instead of blending into editable entries.",
-        "This keeps the old backend and frontend capability boundaries while making the UI honest about what can and cannot be edited."
-      ]
+        "Any workspace file that can be decoded as text can be opened for preview and editing regardless of extension, including common source files such as `.ts`, `.tsx`, `.js`, `.jsx`, `.py`, `.go`, `.rs`, `.java`, shell scripts, and SVG source files.",
+        "Read-only or blocked states are no longer caused by a hand-maintained extension allowlist; if the explorer can open a file as text, the user can edit it inline.",
+        "The product stops treating code browsing as a special exception and instead makes remote code and document inspection a first-class explorer use case."
+      ],
+      "design detail": "Replace allowlist-based `isTextEditable` decisions with content-based text detection and stable decoding rules so view and edit capability come from the same text classification path."
     },
     {
       "id": "8",
-      "name": "too-large and unsupported fallback logic with better state screens",
-      "status": "need-review",
+      "name": "large text files use loading strategy instead of hard unsupported fallback",
+      "status": "planned",
       "key UX": [
-        "The old fallback behavior for unsupported or oversized files remains in place, including the 256 KB size limit.",
-        "The UI now expresses these outcomes as explicit single-purpose state screens tied to the target file context instead of feeling like an abrupt generic fallback.",
-        "Users can return to the file list directly from these state screens without the old split-pane mental model."
-      ]
+        "Large text files still open from the file list instead of dropping into an empty too-large dead end.",
+        "The explorer may load large text content progressively or partially, but the user stays in the same file context and can continue reading without being bounced back to the list.",
+        "Large-file handling is treated as a performance concern, not as a product rule that arbitrarily revokes file viewing or editing."
+      ],
+      "design detail": "The old 256 KB cutoff should stop being the user-facing capability boundary. The backend and UI may use partial reads, progressive loading, or deferred full-content fetches for large text files, but those tactics should preserve the same file-open flow."
+    },
+    {
+      "id": "8a",
+      "name": "image files reuse the existing image preview pipeline",
+      "status": "planned",
+      "key UX": [
+        "When the selected workspace file is an image, the explorer opens to an actual image preview instead of a generic unsupported or binary state.",
+        "Users can inspect the image at normal explorer size and tap through to the same larger preview interaction the app already uses for chat images.",
+        "The explorer does not invent a second image system; it reuses the product's existing image rendering and preview behavior so image files feel native across chat and workspace surfaces."
+      ],
+      "design detail": "Explorer image detail should reuse the existing image display route and preview overlay patterns that already serve chat attachments, instead of introducing a separate bespoke viewer."
+    },
+    {
+      "id": "8b",
+      "name": "non-text non-image files use factual metadata-only detail states",
+      "status": "planned",
+      "key UX": [
+        "When a workspace file is neither text nor image, the explorer shows a minimal detail state centered on useful facts such as file name, size, and type.",
+        "The UI avoids filler copy like explaining that a binary file cannot be edited inline; the screen should tell the user what the file is, not restate an obvious limitation.",
+        "Users can always back out to the file list from this detail state without losing explorer context."
+      ],
+      "design detail": "Non-text non-image detail states should stay intentionally sparse and factual. They do not need a pseudo-read-only editor frame or generic explanatory prose."
     },
     {
       "id": "9",
       "name": "sticky save flow and visible dirty state",
       "status": "planned",
       "key UX": [
-        "The old save behavior stays unchanged: only existing editable files can be saved, and Save enables only when the draft is dirty and a save is not already running.",
+        "Existing text files that are open in the explorer can be saved back to the workspace, and Save enables only when the draft is dirty and a save is not already running.",
         "The redesigned UI gives unsaved changes a stronger visual presence through a persistent dirty indicator and a fixed bottom action area for Edit, Discard, and Save.",
         "Successful saves update local state and file size, then return the user to preview mode for the same file instead of leaving them stranded in edit mode.",
         "Failed saves keep the user in edit mode with their draft intact."
-      ]
+      ],
+      "design detail": "Save eligibility should follow the same text-file classification path as open and edit, instead of duplicating a separate extension-based policy gate."
     },
     {
       "id": "10",
@@ -106,11 +132,11 @@
     {
       "id": "11",
       "name": "chat-linked file opening with integrated explorer context",
-      "status": "done",
+      "status": "planned",
       "key UX": [
         "The existing `file://` handoff logic from chat remains unchanged and still rejects targets outside the active workspace.",
         "The redesigned UI opens linked folders and files inside the same focused explorer flow, so chat-origin navigation feels native instead of bolted on.",
-        "Linked file opens still honor the same editable, unsupported, too-large, and outside-workspace rules as direct explorer navigation."
+        "Linked file opens should route into the same text, image, and large-file detail behaviors as direct explorer navigation instead of keeping a second-class fallback path."
       ]
     },
     {

@@ -18,7 +18,7 @@ export class WorkspaceFileNotTextEditableError extends Error {
   readonly path: string;
 
   constructor({ path }: WorkspacePathErrorInput) {
-    super(`The workspace file "${path}" is not text editable.`);
+    super(`The workspace file "${path}" is not a text file.`);
     this.name = 'WorkspaceFileNotTextEditableError';
     this.path = path;
   }

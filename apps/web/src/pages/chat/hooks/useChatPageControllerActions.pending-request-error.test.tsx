@@ -49,6 +49,7 @@ describe('useChatPageControllerActions pending request error routing', () => {
             handleWorkspaceExplorerOpen: async () => false,
             handleWorkspaceExplorerNavigate: async () => false,
             handleWorkspaceFileOpen: async () => false,
+            handleWorkspaceTextEditStart: async () => false,
             handleWorkspaceFileSave: async () => false,
             handleWorkspaceFileLinkOpen: async () => false,
           },

@@ -15,6 +15,7 @@ type FetchWorkspaceFilesInput = {
 type FetchWorkspaceFileInput = {
   workspace: string;
   path: string;
+  full?: boolean;
 };
 
 type PostWorkspaceFileSaveInput = {
@@ -52,11 +53,13 @@ export async function fetchWorkspaceFiles({
 export async function fetchWorkspaceFile({
   workspace,
   path,
+  full = false,
 }: FetchWorkspaceFileInput): Promise<WorkspaceFile> {
   try {
     const search = new URLSearchParams({
       workspace,
       path,
+      ...(full ? { full: '1' } : {}),
     });
     const response = await fetch(`/api/v2/workspace/file?${search.toString()}`);
     await ensureOk(response);
@@ -65,6 +68,17 @@ export async function fetchWorkspaceFile({
   } catch (error) {
     throw resolveWorkspaceExplorerApiError({ error, path });
   }
+}
+
+export function buildWorkspaceFileContentUrl({
+  workspace,
+  path,
+}: {
+  workspace: string;
+  path: string;
+}) {
+  const search = new URLSearchParams({ workspace, path });
+  return `/api/v2/workspace/file/content?${search.toString()}`;
 }
 
 export async function postWorkspaceFileSave({

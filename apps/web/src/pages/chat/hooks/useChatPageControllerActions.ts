@@ -23,6 +23,7 @@ type UseChatPageControllerActionsInput = {
     handleWorkspaceExplorerOpen: () => Promise<boolean>;
     handleWorkspaceExplorerNavigate: (path: string) => Promise<boolean>;
     handleWorkspaceFileOpen: (path: string) => Promise<boolean>;
+    handleWorkspaceTextEditStart: () => Promise<boolean>;
     handleWorkspaceFileSave: () => Promise<boolean>;
     handleWorkspaceFileLinkOpen: (href: string) => Promise<boolean>;
   };
@@ -143,6 +144,7 @@ export function useChatPageControllerActions({
       runAction('workspaceFileOpen', () => workspaceExplorer.handleWorkspaceExplorerNavigate(path)),
     handleWorkspaceFileOpen: (path: string) =>
       runAction('workspaceFileOpen', () => workspaceExplorer.handleWorkspaceFileOpen(path)),
+    handleWorkspaceTextEditStart: () => runAction('workspaceFileOpen', workspaceExplorer.handleWorkspaceTextEditStart),
     handleWorkspaceFileSave: () => runAction('workspaceFileSave', workspaceExplorer.handleWorkspaceFileSave),
     handleWorkspaceFileLinkOpen: (href: string) =>
       runAction('workspaceFileOpen', () => workspaceExplorer.handleWorkspaceFileLinkOpen(href)),

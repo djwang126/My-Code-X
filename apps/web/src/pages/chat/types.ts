@@ -125,6 +125,7 @@ export type ChatPageProps = {
   onWorkspaceExplorerNavigate?: ChatPageWorkspaceFilePathHandler;
   onWorkspaceFileOpen?: ChatPageWorkspaceFilePathHandler;
   onWorkspaceFileDraftChange?: ChatPageWorkspaceFileDraftChangeHandler;
+  onWorkspaceTextEditStart?: ChatPageActionHandler;
   onWorkspaceFileSave?: ChatPageActionHandler;
   onWorkspaceFileLinkOpen?: ChatPageWorkspaceFileLinkHandler;
   isWorkspaceFileLink?: ChatPageWorkspaceFileLinkMatcher;

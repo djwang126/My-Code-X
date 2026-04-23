@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { createApp } from '../../app/app.js';
 import { withServer } from '../../common/testing/http-test-helpers.js';
 
-async function withWorkspace(run) {
+async function withWorkspace(run: (input: { workspace: string }) => Promise<void>) {
   const workspace = await mkdtemp(join(tmpdir(), 'my-code-x-workspace-'));
 
   try {
@@ -17,11 +17,31 @@ async function withWorkspace(run) {
   }
 }
 
-test('GET /api/v2/workspace/files lists workspace-relative directory entries', async () => {
+async function fetchWorkspaceJson({
+  port,
+  path,
+  workspace,
+}: {
+  port: number;
+  path: string;
+  workspace: string;
+}) {
+  const search = new URLSearchParams({ workspace, path });
+  const response = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file?${search.toString()}`, {
+    headers: { Authorization: 'Bearer session-auth' },
+  });
+  return {
+    response,
+    body: await response.json(),
+  };
+}
+
+test('GET /api/v2/workspace/files lists workspace-relative entries with content kinds', async () => {
   await withWorkspace(async ({ workspace }) => {
     await mkdir(join(workspace, 'docs'));
     await writeFile(join(workspace, 'docs', 'guide.md'), '# hello', 'utf8');
     await writeFile(join(workspace, 'config.json'), '{"ok":true}', 'utf8');
+    await writeFile(join(workspace, 'photo.png'), Buffer.from([0x89, 0x50, 0x4e, 0x47]));
 
     const app = createApp({ authToken: 'session-auth' });
 
@@ -41,7 +61,8 @@ test('GET /api/v2/workspace/files lists workspace-relative directory entries', a
             kind: 'directory',
             size: 0,
             ext: '',
-            isTextEditable: false,
+            contentKind: null,
+            isLarge: false,
           },
           {
             path: 'config.json',
@@ -49,7 +70,17 @@ test('GET /api/v2/workspace/files lists workspace-relative directory entries', a
             kind: 'file',
             size: 11,
             ext: '.json',
-            isTextEditable: true,
+            contentKind: 'text',
+            isLarge: false,
+          },
+          {
+            path: 'photo.png',
+            name: 'photo.png',
+            kind: 'file',
+            size: 4,
+            ext: '.png',
+            contentKind: 'image',
+            isLarge: false,
           },
         ],
       });
@@ -57,75 +88,24 @@ test('GET /api/v2/workspace/files lists workspace-relative directory entries', a
   });
 });
 
-test('GET /api/v2/workspace/files sorts directories before files and keeps names alphabetical within each kind', async () => {
-  await withWorkspace(async ({ workspace }) => {
-    await mkdir(join(workspace, 'zeta'));
-    await mkdir(join(workspace, 'alpha'));
-    await writeFile(join(workspace, 'z-last.json'), '{"ok":true}', 'utf8');
-    await writeFile(join(workspace, 'a-first.json'), '{"ok":true}', 'utf8');
-
-    const app = createApp({ authToken: 'session-auth' });
-
-    await withServer(app, async ({ port }) => {
-      const search = new URLSearchParams({ workspace, path: '' });
-      const response = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/files?${search.toString()}`, {
-        headers: { Authorization: 'Bearer session-auth' },
-      });
-      const body = await response.json();
-
-      assert.equal(response.status, 200);
-      assert.deepEqual(body, {
-        data: [
-          {
-            path: 'alpha',
-            name: 'alpha',
-            kind: 'directory',
-            size: 0,
-            ext: '',
-            isTextEditable: false,
-          },
-          {
-            path: 'zeta',
-            name: 'zeta',
-            kind: 'directory',
-            size: 0,
-            ext: '',
-            isTextEditable: false,
-          },
-          {
-            path: 'a-first.json',
-            name: 'a-first.json',
-            kind: 'file',
-            size: 11,
-            ext: '.json',
-            isTextEditable: true,
-          },
-          {
-            path: 'z-last.json',
-            name: 'z-last.json',
-            kind: 'file',
-            size: 11,
-            ext: '.json',
-            isTextEditable: true,
-          },
-        ],
-      });
-    });
-  });
-});
-
-test('GET /api/v2/workspace/files omits symlinked entries that resolve outside the workspace', async () => {
+test('GET /api/v2/workspace/files sorts directories before files and omits outside symlinks', async () => {
   await withWorkspace(async ({ workspace }) => {
     const outside = await mkdtemp(join(tmpdir(), 'my-code-x-outside-workspace-'));
 
     try {
-      await writeFile(join(workspace, 'config.json'), '{"ok":true}', 'utf8');
+      await mkdir(join(workspace, 'zeta'));
+      await mkdir(join(workspace, 'alpha'));
+      await writeFile(join(workspace, 'z-last.json'), '{"ok":true}', 'utf8');
+      await writeFile(join(workspace, 'a-first.json'), '{"ok":true}', 'utf8');
 
       try {
         await symlink(outside, join(workspace, 'outside-link'), 'junction');
       } catch (error) {
-        if (error?.code === 'EPERM' || error?.code === 'EACCES' || error?.code === 'ENOTSUP') {
-          return;
+        if (error && typeof error === 'object' && 'code' in error) {
+          const code = String((error as { code?: string }).code || '');
+          if (code === 'EPERM' || code === 'EACCES' || code === 'ENOTSUP') {
+            return;
+          }
         }
 
         throw error;
@@ -143,13 +123,25 @@ test('GET /api/v2/workspace/files omits symlinked entries that resolve outside t
         assert.equal(response.status, 200);
         assert.deepEqual(body, {
           data: [
+            { path: 'alpha', name: 'alpha', kind: 'directory', size: 0, ext: '', contentKind: null, isLarge: false },
+            { path: 'zeta', name: 'zeta', kind: 'directory', size: 0, ext: '', contentKind: null, isLarge: false },
             {
-              path: 'config.json',
-              name: 'config.json',
+              path: 'a-first.json',
+              name: 'a-first.json',
               kind: 'file',
               size: 11,
               ext: '.json',
-              isTextEditable: true,
+              contentKind: 'text',
+              isLarge: false,
+            },
+            {
+              path: 'z-last.json',
+              name: 'z-last.json',
+              kind: 'file',
+              size: 11,
+              ext: '.json',
+              contentKind: 'text',
+              isLarge: false,
             },
           ],
         });
@@ -160,101 +152,124 @@ test('GET /api/v2/workspace/files omits symlinked entries that resolve outside t
   });
 });
 
-test('GET /api/v2/workspace/files skips broken symlinked entries instead of failing the whole listing', async () => {
+test('GET /api/v2/workspace/file reads text files, including source files', async () => {
   await withWorkspace(async ({ workspace }) => {
-    await writeFile(join(workspace, 'config.json'), '{"ok":true}', 'utf8');
-
-    try {
-      await symlink(
-        join(workspace, 'missing-target'),
-        join(workspace, 'broken-link'),
-        process.platform === 'win32' ? 'junction' : undefined,
-      );
-    } catch (error) {
-      if (error?.code === 'EPERM' || error?.code === 'EACCES' || error?.code === 'ENOTSUP') {
-        return;
-      }
-
-      throw error;
-    }
+    await mkdir(join(workspace, 'src'));
+    await writeFile(join(workspace, 'src', 'app.tsx'), 'export function App() {}\n', 'utf8');
 
     const app = createApp({ authToken: 'session-auth' });
 
     await withServer(app, async ({ port }) => {
-      const search = new URLSearchParams({ workspace, path: '' });
-      const response = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/files?${search.toString()}`, {
-        headers: { Authorization: 'Bearer session-auth' },
+      const { response, body } = await fetchWorkspaceJson({
+        port,
+        workspace,
+        path: 'src/app.tsx',
       });
-      const body = await response.json();
 
       assert.equal(response.status, 200);
       assert.deepEqual(body, {
-        data: [
-          {
-            path: 'config.json',
-            name: 'config.json',
-            kind: 'file',
-            size: 11,
-            ext: '.json',
-            isTextEditable: true,
-          },
-        ],
-      });
-    });
-  });
-});
-
-test('GET /api/v2/workspace/file reads a small editable text file', async () => {
-  await withWorkspace(async ({ workspace }) => {
-    await mkdir(join(workspace, 'docs'));
-    await writeFile(join(workspace, 'docs', 'guide.md'), '# hello\nworld\n', 'utf8');
-
-    const app = createApp({ authToken: 'session-auth' });
-
-    await withServer(app, async ({ port }) => {
-      const search = new URLSearchParams({ workspace, path: 'docs/guide.md' });
-      const response = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file?${search.toString()}`, {
-        headers: { Authorization: 'Bearer session-auth' },
-      });
-      const body = await response.json();
-
-      assert.equal(response.status, 200);
-      assert.deepEqual(body, {
-        path: 'docs/guide.md',
-        name: 'guide.md',
-        size: 14,
+        kind: 'text',
+        path: 'src/app.tsx',
+        name: 'app.tsx',
+        size: 25,
         encoding: 'utf-8',
-        content: '# hello\nworld\n',
-        isTextEditable: true,
-        tooLarge: false,
+        content: 'export function App() {}\n',
+        truncated: false,
       });
     });
   });
 });
 
-test('GET /api/v2/workspace/file returns tooLarge for files over 256 KB', async () => {
+test('GET /api/v2/workspace/file keeps large text files readable and supports full fetches', async () => {
   await withWorkspace(async ({ workspace }) => {
-    const oversized = 'a'.repeat(256 * 1024 + 1);
+    const oversized = 'a'.repeat(140 * 1024);
     await writeFile(join(workspace, 'big.txt'), oversized, 'utf8');
 
     const app = createApp({ authToken: 'session-auth' });
 
     await withServer(app, async ({ port }) => {
-      const search = new URLSearchParams({ workspace, path: 'big.txt' });
-      const response = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file?${search.toString()}`, {
+      const previewSearch = new URLSearchParams({ workspace, path: 'big.txt' });
+      const previewResponse = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file?${previewSearch.toString()}`, {
         headers: { Authorization: 'Bearer session-auth' },
       });
-      const body = await response.json();
+      const previewBody = await previewResponse.json();
+
+      assert.equal(previewResponse.status, 200);
+      assert.equal(previewBody.kind, 'text');
+      assert.equal(previewBody.truncated, true);
+      assert.ok(String(previewBody.content).length > 0);
+
+      const fullSearch = new URLSearchParams({ workspace, path: 'big.txt', full: '1' });
+      const fullResponse = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file?${fullSearch.toString()}`, {
+        headers: { Authorization: 'Bearer session-auth' },
+      });
+      const fullBody = await fullResponse.json();
+
+      assert.equal(fullResponse.status, 200);
+      assert.equal(fullBody.kind, 'text');
+      assert.equal(fullBody.truncated, false);
+      assert.equal(fullBody.content.length, oversized.length);
+    });
+  });
+});
+
+test('GET /api/v2/workspace/file returns image detail and serves image bytes through content route', async () => {
+  await withWorkspace(async ({ workspace }) => {
+    const imageBody = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
+    await writeFile(join(workspace, 'photo.png'), imageBody);
+
+    const app = createApp({ authToken: 'session-auth' });
+
+    await withServer(app, async ({ port }) => {
+      const { response, body } = await fetchWorkspaceJson({
+        port,
+        workspace,
+        path: 'photo.png',
+      });
 
       assert.equal(response.status, 200);
       assert.deepEqual(body, {
-        path: 'big.txt',
-        name: 'big.txt',
-        size: 256 * 1024 + 1,
-        encoding: 'utf-8',
-        content: '',
-        isTextEditable: true,
-        tooLarge: true,
+        kind: 'image',
+        path: 'photo.png',
+        name: 'photo.png',
+        size: 4,
+        contentType: 'image/png',
+        url: `/api/v2/workspace/file/content?workspace=${encodeURIComponent(workspace)}&path=photo.png`,
+      });
+
+      const contentSearch = new URLSearchParams({ workspace, path: 'photo.png' });
+      const contentResponse = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file/content?${contentSearch.toString()}`, {
+        headers: { Authorization: 'Bearer session-auth' },
+      });
+      const contentBuffer = Buffer.from(await contentResponse.arrayBuffer());
+
+      assert.equal(contentResponse.status, 200);
+      assert.equal(contentResponse.headers.get('content-type'), 'image/png');
+      assert.deepEqual(contentBuffer, imageBody);
+    });
+  });
+});
+
+test('GET /api/v2/workspace/file returns metadata for binary files', async () => {
+  await withWorkspace(async ({ workspace }) => {
+    await writeFile(join(workspace, 'archive.db'), Buffer.from([0x00, 0x01, 0x02]));
+
+    const app = createApp({ authToken: 'session-auth' });
+
+    await withServer(app, async ({ port }) => {
+      const { response, body } = await fetchWorkspaceJson({
+        port,
+        workspace,
+        path: 'archive.db',
+      });
+
+      assert.equal(response.status, 200);
+      assert.deepEqual(body, {
+        kind: 'binary',
+        path: 'archive.db',
+        name: 'archive.db',
+        size: 3,
+        contentType: null,
       });
     });
   });
@@ -315,7 +330,7 @@ testIfWindows('workspace file APIs reject Windows drive-prefixed paths', async (
   });
 });
 
-test('POST /api/v2/workspace/file saves editable text content', async () => {
+test('POST /api/v2/workspace/file saves text content', async () => {
   await withWorkspace(async ({ workspace }) => {
     await writeFile(join(workspace, 'config.json'), '{"ok":true}\n', 'utf8');
 
@@ -347,7 +362,7 @@ test('POST /api/v2/workspace/file saves editable text content', async () => {
   });
 });
 
-test('POST /api/v2/workspace/file rejects creating a new file in v1', async () => {
+test('POST /api/v2/workspace/file rejects creating a new file', async () => {
   await withWorkspace(async ({ workspace }) => {
     const app = createApp({ authToken: 'session-auth' });
 
@@ -399,9 +414,9 @@ test('POST /api/v2/workspace/file rejects save targets outside the workspace', a
   });
 });
 
-test('POST /api/v2/workspace/file rejects oversized content', async () => {
+test('POST /api/v2/workspace/file rejects binary save targets', async () => {
   await withWorkspace(async ({ workspace }) => {
-    await writeFile(join(workspace, 'notes.txt'), 'small\n', 'utf8');
+    await writeFile(join(workspace, 'archive.db'), Buffer.from([0x00, 0x01, 0x02]));
 
     const app = createApp({ authToken: 'session-auth' });
 
@@ -414,14 +429,14 @@ test('POST /api/v2/workspace/file rejects oversized content', async () => {
         },
         body: JSON.stringify({
           workspace,
-          path: 'notes.txt',
-          content: 'a'.repeat(256 * 1024 + 1),
+          path: 'archive.db',
+          content: 'blocked\n',
         }),
       });
       const body = await response.json();
 
-      assert.equal(response.status, 413);
-      assert.deepEqual(body, { error: { code: 'too_large', message: 'too_large', status: 413 } });
+      assert.equal(response.status, 415);
+      assert.deepEqual(body, { error: { code: 'not_text_file', message: 'not_text_file', status: 415 } });
     });
   });
 });
@@ -449,122 +464,40 @@ test('POST /api/v2/workspace/file returns 400 for invalid json', async () => {
   });
 });
 
-test('GET /api/v2/workspace/file rejects non-editable files', async () => {
+test('GET /api/v2/workspace/file/content rejects non-image files', async () => {
   await withWorkspace(async ({ workspace }) => {
-    await writeFile(join(workspace, 'image.svg'), '<svg></svg>\n', 'utf8');
+    await writeFile(join(workspace, 'notes.txt'), 'hello\n', 'utf8');
 
     const app = createApp({ authToken: 'session-auth' });
 
     await withServer(app, async ({ port }) => {
-      const search = new URLSearchParams({ workspace, path: 'image.svg' });
-      const response = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file?${search.toString()}`, {
+      const search = new URLSearchParams({ workspace, path: 'notes.txt' });
+      const response = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file/content?${search.toString()}`, {
         headers: { Authorization: 'Bearer session-auth' },
       });
       const body = await response.json();
 
       assert.equal(response.status, 415);
-      assert.deepEqual(body, { error: { code: 'not_text_editable', message: 'not_text_editable', status: 415 } });
+      assert.deepEqual(body, { error: { code: 'not_image_file', message: 'not_image_file', status: 415 } });
     });
   });
 });
 
-test('GET /api/v2/workspace/file treats .env files as editable config files', async () => {
+test('GET /api/v2/workspace/file classifies .env and .gitignore as text', async () => {
   await withWorkspace(async ({ workspace }) => {
     await writeFile(join(workspace, '.env'), 'API_KEY=test\n', 'utf8');
-
-    const app = createApp({ authToken: 'session-auth' });
-
-    await withServer(app, async ({ port }) => {
-      const listSearch = new URLSearchParams({ workspace, path: '' });
-      const listResponse = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/files?${listSearch.toString()}`, {
-        headers: { Authorization: 'Bearer session-auth' },
-      });
-      const listBody = await listResponse.json();
-
-      assert.equal(listResponse.status, 200);
-      assert.deepEqual(listBody, {
-        data: [
-          {
-            path: '.env',
-            name: '.env',
-            kind: 'file',
-            size: 13,
-            ext: '',
-            isTextEditable: true,
-          },
-        ],
-      });
-
-      const readSearch = new URLSearchParams({ workspace, path: '.env' });
-      const readResponse = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file?${readSearch.toString()}`, {
-        headers: { Authorization: 'Bearer session-auth' },
-      });
-      const readBody = await readResponse.json();
-
-      assert.equal(readResponse.status, 200);
-      assert.deepEqual(readBody, {
-        path: '.env',
-        name: '.env',
-        size: 13,
-        encoding: 'utf-8',
-        content: 'API_KEY=test\n',
-        isTextEditable: true,
-        tooLarge: false,
-      });
-    });
-  });
-});
-
-test('GET /api/v2/workspace/file treats .env.* files as editable config files', async () => {
-  await withWorkspace(async ({ workspace }) => {
-    await writeFile(join(workspace, '.env.local'), 'API_KEY=local\n', 'utf8');
-
-    const app = createApp({ authToken: 'session-auth' });
-
-    await withServer(app, async ({ port }) => {
-      const search = new URLSearchParams({ workspace, path: '.env.local' });
-      const response = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file?${search.toString()}`, {
-        headers: { Authorization: 'Bearer session-auth' },
-      });
-      const body = await response.json();
-
-      assert.equal(response.status, 200);
-      assert.deepEqual(body, {
-        path: '.env.local',
-        name: '.env.local',
-        size: 14,
-        encoding: 'utf-8',
-        content: 'API_KEY=local\n',
-        isTextEditable: true,
-        tooLarge: false,
-      });
-    });
-  });
-});
-
-test('GET /api/v2/workspace/file treats .gitignore as an editable config file', async () => {
-  await withWorkspace(async ({ workspace }) => {
     await writeFile(join(workspace, '.gitignore'), 'node_modules/\n', 'utf8');
 
     const app = createApp({ authToken: 'session-auth' });
 
     await withServer(app, async ({ port }) => {
-      const search = new URLSearchParams({ workspace, path: '.gitignore' });
-      const response = await fetch(`http://127.0.0.1:${port}/api/v2/workspace/file?${search.toString()}`, {
-        headers: { Authorization: 'Bearer session-auth' },
-      });
-      const body = await response.json();
+      for (const path of ['.env', '.gitignore']) {
+        const { response, body } = await fetchWorkspaceJson({ port, workspace, path });
 
-      assert.equal(response.status, 200);
-      assert.deepEqual(body, {
-        path: '.gitignore',
-        name: '.gitignore',
-        size: 14,
-        encoding: 'utf-8',
-        content: 'node_modules/\n',
-        isTextEditable: true,
-        tooLarge: false,
-      });
+        assert.equal(response.status, 200);
+        assert.equal(body.kind, 'text');
+        assert.equal(body.truncated, false);
+      }
     });
   });
 });

@@ -136,12 +136,15 @@ export type { AppRestartAcceptedPayload } from './tools-restart-types.js';
 export type { WorkspaceThreadEntry, WorkspaceThreadsPayload } from './workspace-thread-types.js';
 
 export type {
-  WorkspaceEditableFileDetail,
+  WorkspaceBinaryFile,
+  WorkspaceContentKind,
   WorkspaceFile,
   WorkspaceFileDetail,
   WorkspaceFileEntry,
+  WorkspaceImageFile,
+  WorkspaceListedFileEntry,
   WorkspaceFileSaveAcceptedPayload,
   WorkspaceFilesPayload,
-  WorkspaceReadOnlyFileDetail,
-  WorkspaceTooLargeFileDetail,
+  WorkspaceTextFile,
+  WorkspaceDirectoryEntry,
 } from './workspace-file-types.js';

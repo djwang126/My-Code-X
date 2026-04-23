@@ -88,6 +88,7 @@ type ChatPageChromeProps = {
   onWorkspaceExplorerNavigate?: ChatPageProps['onWorkspaceExplorerNavigate'];
   onWorkspaceFileOpen?: ChatPageProps['onWorkspaceFileOpen'];
   onWorkspaceFileSave?: ChatPageProps['onWorkspaceFileSave'];
+  onWorkspaceTextEditStart?: ChatPageProps['onWorkspaceTextEditStart'];
 };
 
 export function ChatPageChrome(props: ChatPageChromeProps) {
@@ -192,6 +193,7 @@ export function ChatPageChrome(props: ChatPageChromeProps) {
         onDraftChange={props.onWorkspaceFileDraftChange}
         onNavigate={path => void props.onWorkspaceExplorerNavigate?.(path)}
         onOpenFile={path => void props.onWorkspaceFileOpen?.(path)}
+        onStartTextEdit={props.onWorkspaceTextEditStart}
         onSave={props.onWorkspaceFileSave}
         open={props.workspaceExplorerOpen}
         saving={props.workspaceFileSaving}

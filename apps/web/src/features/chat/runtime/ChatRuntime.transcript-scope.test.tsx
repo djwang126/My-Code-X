@@ -172,19 +172,20 @@ describe('ChatRuntime transcript error scope', () => {
               kind: 'file',
               size: 12,
               ext: '.md',
-              isTextEditable: true,
+              contentKind: 'text',
+              isLarge: false,
             },
           ],
         })),
       http.get('/api/v2/workspace/file', () =>
         HttpResponse.json({
+          kind: 'text',
           path: 'notes.md',
           name: 'notes.md',
           size: 12,
           encoding: 'utf-8',
           content: '# notes\n',
-          isTextEditable: true,
-          tooLarge: false,
+          truncated: false,
         })),
       http.post('/api/v2/workspace/file', () =>
         new HttpResponse('workspace save failed', {

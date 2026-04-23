@@ -133,6 +133,7 @@ export function ChatPageLayout(props: ChatPageProps) {
         onWorkspaceExplorerOpen={layoutState.handleWorkspaceExplorerOpenFromTools}
         onWorkspaceFileDraftChange={props.onWorkspaceFileDraftChange}
         onWorkspaceFileOpen={props.onWorkspaceFileOpen}
+        onWorkspaceTextEditStart={props.onWorkspaceTextEditStart}
         onWorkspaceFileSave={props.onWorkspaceFileSave}
         onWorkspaceLabelDraftChange={layoutState.setWorkspaceLabelDraft}
         onWorkspaceOpen={layoutState.handleWorkspaceOpenAndCloseManager}

@@ -67,7 +67,8 @@ const server = setupServer(
           kind: 'file',
           size: 12,
           ext: '.md',
-          isTextEditable: true,
+          contentKind: 'text',
+          isLarge: false,
         },
       ],
     });
@@ -75,13 +76,13 @@ const server = setupServer(
   http.get('/api/v2/workspace/file', ({ request }) => {
     const url = new URL(request.url);
     return HttpResponse.json({
+      kind: 'text',
       path: url.searchParams.get('path') || 'guide.md',
       name: 'guide.md',
       size: 12,
       encoding: 'utf-8',
       content: '# hello\n',
-      isTextEditable: true,
-      tooLarge: false,
+      truncated: false,
     });
   }),
 );
@@ -288,7 +289,8 @@ describe('fetchWorkspaceFiles', () => {
         kind: 'file',
         size: 12,
         ext: '.md',
-        isTextEditable: true,
+        contentKind: 'text',
+        isLarge: false,
       },
     ]);
   });
@@ -320,13 +322,13 @@ describe('fetchWorkspaceFile', () => {
     });
 
     expect(file).toEqual({
+      kind: 'text',
       path: 'docs/guide.md',
       name: 'guide.md',
       size: 12,
       encoding: 'utf-8',
       content: '# hello\n',
-      isTextEditable: true,
-      tooLarge: false,
+      truncated: false,
     });
   });
 });

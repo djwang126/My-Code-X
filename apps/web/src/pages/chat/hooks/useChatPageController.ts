@@ -193,6 +193,7 @@ export function useChatPageController() {
     handleWorkspaceFileLinkOpen: actionHandlers.handleWorkspaceFileLinkOpen,
     isWorkspaceFileLink: workspaceExplorer.isWorkspaceFileLink,
     handleWorkspaceFileOpen: actionHandlers.handleWorkspaceFileOpen,
+    handleWorkspaceTextEditStart: actionHandlers.handleWorkspaceTextEditStart,
     handleWorkspaceFileSave: actionHandlers.handleWorkspaceFileSave,
     handleWorkspaceOpen: (workspacePath: string) =>
       actionHandlers.runAction('workspaceSwitch', () => workspaceManager.handleWorkspaceOpen(workspacePath)),

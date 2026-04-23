@@ -1,4 +1,4 @@
-import type { WorkspaceFileDetail, WorkspaceFileEntry } from '..';
+import type { WorkspaceFileDetail, WorkspaceFileEntry, WorkspaceTextFile } from '..';
 
 export function getParentPath(path: string) {
   const normalized = String(path || '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
@@ -9,13 +9,11 @@ export function getParentPath(path: string) {
 }
 
 export function getFileDetailPath(fileDetail: WorkspaceFileDetail | null) {
-  if (!fileDetail) return '';
-  return 'file' in fileDetail ? fileDetail.file.path : fileDetail.path;
+  return fileDetail?.path ?? '';
 }
 
 export function getFileDetailName(fileDetail: WorkspaceFileDetail | null) {
-  if (!fileDetail) return 'File';
-  return 'file' in fileDetail ? fileDetail.file.name : fileDetail.name;
+  return fileDetail?.name ?? 'File';
 }
 
 export function formatFileSize(size: number) {
@@ -25,11 +23,17 @@ export function formatFileSize(size: number) {
   return `${size} B`;
 }
 
+function formatContentKind(entry: Extract<WorkspaceFileEntry, { kind: 'file' }>) {
+  if (entry.contentKind === 'text') return 'Text';
+  if (entry.contentKind === 'image') return 'Image';
+  return 'Binary';
+}
+
 export function formatEntryMeta(entry: WorkspaceFileEntry) {
   if (entry.kind === 'directory') return '';
-  const parts = [formatFileSize(entry.size)];
-  if (!entry.isTextEditable) {
-    parts.push('RO');
+  const parts = [formatFileSize(entry.size), formatContentKind(entry)];
+  if (entry.isLarge) {
+    parts.push('Large');
   }
   return parts.join(' · ');
 }
@@ -45,8 +49,22 @@ export function isMarkdownFile(path: string) {
   return /\.md$/i.test(String(path || '').trim());
 }
 
-export function getEditableBadges(fileDetail: Extract<WorkspaceFileDetail, { kind: 'editable' }>) {
-  return [formatFileSize(fileDetail.file.size), fileDetail.file.encoding, 'Editable'];
+export function getTextFileBadges(fileDetail: WorkspaceTextFile) {
+  const badges = [formatFileSize(fileDetail.size), fileDetail.encoding];
+  if (fileDetail.truncated) {
+    badges.push('Large');
+  }
+  return badges;
+}
+
+export function getBinaryFileBadges(fileDetail: WorkspaceFileDetail) {
+  if (fileDetail.kind === 'text') {
+    return getTextFileBadges(fileDetail);
+  }
+
+  const badges = [formatFileSize(fileDetail.size)];
+  badges.push(fileDetail.kind === 'image' ? 'Image' : 'Binary');
+  return badges;
 }
 
 export function confirmDiscardWorkspaceDraft() {

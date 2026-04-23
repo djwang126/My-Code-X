@@ -14,6 +14,7 @@ import { handleHealthRoute } from '../modules/health/index.js';
 import { createSessionService, handleSessionRoute } from '../modules/session/index.js';
 import {
   createWorkspaceFilesService,
+  handleWorkspaceFileContentRoute,
   handleWorkspaceFileReadRoute,
   handleWorkspaceFileSaveRoute,
   handleWorkspaceFilesRoute,
@@ -88,6 +89,11 @@ export function createApp({
 
     if (request.method === 'GET' && url.pathname === '/api/v2/workspace/file') {
       await handleWorkspaceFileReadRoute(request, response, { workspaceFilesService });
+      return;
+    }
+
+    if (request.method === 'GET' && url.pathname === '/api/v2/workspace/file/content') {
+      await handleWorkspaceFileContentRoute(request, response, { workspaceFilesService });
       return;
     }
 

@@ -1,5 +1,6 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 
+import { OverlayDialog } from '../../../../shared/components/overlay';
 import { FeedbackMessage } from '../../../../shared/components/feedback';
 import { IconClose, IconFile, IconFolder } from '../../../../shared/chat-ui/ChatIcons';
 import { MarkdownMessage } from '../../../../shared/components/markdown';
@@ -13,13 +14,18 @@ import {
   buildBreadcrumbs,
   confirmDiscardWorkspaceDraft,
   formatEntryMeta,
-  formatFileSize,
-  getEditableBadges,
+  getBinaryFileBadges,
   getFileDetailName,
   getFileDetailPath,
   getParentPath,
+  getTextFileBadges,
   isMarkdownFile,
 } from './workspace-file-explorer-view';
+
+const previewImageStyle: CSSProperties = {
+  maxWidth: 'min(24rem, 100%)',
+  borderRadius: '0.75rem',
+};
 
 type WorkspaceFileExplorerProps = {
   open: boolean;
@@ -36,6 +42,7 @@ type WorkspaceFileExplorerProps = {
   onNavigate?: (path: string) => void;
   onOpenFile?: (path: string) => void;
   onDraftChange?: (draft: string) => void;
+  onStartTextEdit?: () => boolean | Promise<boolean>;
   onSave?: () => boolean | Promise<boolean>;
 };
 
@@ -59,9 +66,11 @@ export function WorkspaceFileExplorer({
   onNavigate,
   onOpenFile,
   onDraftChange,
+  onStartTextEdit,
   onSave,
 }: WorkspaceFileExplorerProps) {
   const [screen, setScreen] = useState<ExplorerScreen>({ kind: 'list' });
+  const [previewImageOpen, setPreviewImageOpen] = useState(false);
   const previewRef = useRef<HTMLDivElement>(null);
   const editorRef = useRef<HTMLTextAreaElement>(null);
   const pendingScrollRestoreRef = useRef<WorkspaceExplorerScrollSnapshot | null>(null);
@@ -71,13 +80,11 @@ export function WorkspaceFileExplorer({
   const detailName = getFileDetailName(fileDetail);
   const isListScreen = screen.kind === 'list';
   const isEditScreen = screen.kind === 'edit' && screen.detailPath === detailPath;
-  const editableBadges = fileDetail?.kind === 'editable' ? getEditableBadges(fileDetail) : [];
-  const shouldRenderPreviewAsMarkdown = Boolean(fileDetail?.kind === 'editable' && isMarkdownFile(fileDetail.file.path));
+  const isTextDetail = fileDetail?.kind === 'text';
+  const shouldRenderPreviewAsMarkdown = Boolean(isTextDetail && isMarkdownFile(fileDetail.path));
 
   useEffect(() => {
-    if (!open) {
-      return;
-    }
+    if (!open) return;
 
     if (!detailPath) {
       setScreen({ kind: 'list' });
@@ -85,17 +92,12 @@ export function WorkspaceFileExplorer({
     }
 
     setScreen(currentScreen => {
-      if (currentScreen.kind === 'list') {
+      if (currentScreen.kind === 'list' || currentScreen.detailPath !== detailPath) {
         pendingScrollRestoreRef.current = null;
         return { kind: 'preview', detailPath };
       }
 
-      if (currentScreen.detailPath !== detailPath) {
-        pendingScrollRestoreRef.current = null;
-        return { kind: 'preview', detailPath };
-      }
-
-      if (fileDetail?.kind !== 'editable' && currentScreen.kind === 'edit') {
+      if (fileDetail?.kind !== 'text' && currentScreen.kind === 'edit') {
         return { kind: 'preview', detailPath };
       }
 
@@ -109,14 +111,10 @@ export function WorkspaceFileExplorer({
       return;
     }
 
-    if (screen.kind === 'preview') {
-      restoreWorkspaceExplorerScrollSnapshot(previewRef.current, pendingScrollRestoreRef.current);
-    }
-
-    if (screen.kind === 'edit') {
-      restoreWorkspaceExplorerScrollSnapshot(editorRef.current, pendingScrollRestoreRef.current);
-    }
-
+    restoreWorkspaceExplorerScrollSnapshot(
+      screen.kind === 'preview' ? previewRef.current : editorRef.current,
+      pendingScrollRestoreRef.current,
+    );
     pendingScrollRestoreRef.current = null;
   }, [screen]);
 
@@ -134,20 +132,22 @@ export function WorkspaceFileExplorer({
     pendingScrollRestoreRef.current = null;
   }
 
-  function handleEnterEdit() {
-    if (!detailPath) return;
+  async function handleEnterEdit() {
+    if (!detailPath || !isTextDetail) return;
+    const ready = (await onStartTextEdit?.()) ?? true;
+    if (!ready) return;
     captureCurrentDetailScroll();
     setScreen({ kind: 'edit', detailPath });
   }
 
   function handleReturnToPreview() {
-    if (!fileDetail || fileDetail.kind !== 'editable') return;
+    if (!isTextDetail) return;
     if (dirty && !confirmDiscardWorkspaceDraft()) return;
     if (dirty) {
-      onDraftChange?.(fileDetail.file.content);
+      onDraftChange?.(fileDetail.content);
     }
     captureCurrentDetailScroll();
-    setScreen({ kind: 'preview', detailPath: fileDetail.file.path });
+    setScreen({ kind: 'preview', detailPath: fileDetail.path });
   }
 
   function handleBack() {
@@ -155,32 +155,25 @@ export function WorkspaceFileExplorer({
       handleReturnToPreview();
       return;
     }
-
-    setScreen({ kind: 'list' });
-  }
-
-  function handleReturnToList() {
     setScreen({ kind: 'list' });
   }
 
   function handleDiscard() {
-    if (!fileDetail || fileDetail.kind !== 'editable') return;
+    if (!isTextDetail) return;
     if (dirty && !confirmDiscardWorkspaceDraft()) return;
-    onDraftChange?.(fileDetail.file.content);
+    onDraftChange?.(fileDetail.content);
     captureCurrentDetailScroll();
-    setScreen({ kind: 'preview', detailPath: fileDetail.file.path });
+    setScreen({ kind: 'preview', detailPath: fileDetail.path });
   }
 
   async function handleSave() {
     if (!detailPath || !onSave) return;
-
     captureCurrentDetailScroll();
     const saved = (await onSave()) ?? false;
     if (!saved) {
       pendingScrollRestoreRef.current = null;
       return;
     }
-
     setScreen({ kind: 'preview', detailPath });
   }
 
@@ -202,8 +195,9 @@ export function WorkspaceFileExplorer({
           <h2>{isListScreen ? 'File Explorer' : detailName}</h2>
           {!isListScreen && detailPath ? <p>{detailPath}</p> : null}
         </div>
-        <span className="workspace-explorer-header-spacer" aria-hidden="true" />
+        <span aria-hidden="true" className="workspace-explorer-header-spacer" />
       </div>
+
       {errorMessage ? <FeedbackMessage tone="error">{errorMessage}</FeedbackMessage> : null}
       {notice ? <FeedbackMessage tone="info">{notice}</FeedbackMessage> : null}
 
@@ -232,6 +226,7 @@ export function WorkspaceFileExplorer({
             <div className="workspace-explorer-entry-list">
               {entries.map(entry => {
                 const meta = formatEntryMeta(entry);
+
                 return (
                   <button
                     aria-label={entry.name}
@@ -260,66 +255,88 @@ export function WorkspaceFileExplorer({
             <div className="workspace-editor-state-card workspace-editor-empty">
               <p className="workspace-editor-state-title">Opening file…</p>
             </div>
-          ) : fileDetail.kind === 'tooLarge' ? (
-            <div className="workspace-editor-state-card workspace-editor-empty">
-              <p className="workspace-editor-state-title">File too large for inline preview.</p>
-              <p className="workspace-editor-state-copy">{formatFileSize(fileDetail.file.size)} · Large</p>
-              <p className="workspace-editor-state-copy">Limit: 256 KB</p>
-              <button className="workspace-action-btn" onClick={handleReturnToList} type="button">Back to files</button>
-            </div>
-          ) : fileDetail.kind === 'readOnly' ? (
-            <div className="workspace-editor-state-card workspace-editor-empty">
-              <p className="workspace-editor-state-title">This file is view-only.</p>
-              <p className="workspace-editor-state-copy">{formatFileSize(fileDetail.size)} · RO</p>
-              <button className="workspace-action-btn" onClick={handleReturnToList} type="button">Back to files</button>
-            </div>
-          ) : isEditScreen ? (
+          ) : fileDetail.kind === 'text' ? (
+            isEditScreen ? (
+              <div className="workspace-editor-stack">
+                <div className="workspace-explorer-detail-meta">
+                  <div className="workspace-explorer-detail-badges">
+                    {getTextFileBadges(fileDetail).map(badge => <span key={badge} className="workspace-explorer-detail-badge">{badge}</span>)}
+                  </div>
+                </div>
+                <label className="workspace-editor-label">
+                  <span className="workspace-editor-label-text">File content</span>
+                  <textarea aria-label="File content" className="workspace-editor-textarea" onChange={event => onDraftChange?.(event.target.value)} ref={editorRef} spellCheck={false} value={draft} />
+                </label>
+                <div className="workspace-editor-footer">
+                  <span className={`workspace-editor-status ${dirty ? 'dirty' : 'saved'}`}>{dirty ? 'Unsaved changes' : 'No changes'}</span>
+                  <div className="workspace-editor-actions">
+                    <button className="workspace-action-btn" onClick={handleDiscard} type="button">Discard</button>
+                    <button className="workspace-action-btn primary" disabled={!dirty || saving} onClick={() => void handleSave()} type="button">{saving ? 'Saving…' : 'Save'}</button>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="workspace-editor-stack">
+                <div className="workspace-explorer-detail-meta">
+                  <div className="workspace-explorer-detail-badges">
+                    {getTextFileBadges(fileDetail).map(badge => <span key={badge} className="workspace-explorer-detail-badge">{badge}</span>)}
+                  </div>
+                  {fileDetail.truncated ? <p className="workspace-editor-state-copy">Showing the preview first. Edit loads the full file.</p> : null}
+                </div>
+                <div className="workspace-editor-preview">
+                  {shouldRenderPreviewAsMarkdown ? (
+                    <div className="workspace-editor-preview-content workspace-editor-preview-markdown" ref={previewRef}>
+                      <MarkdownMessage text={draft} />
+                    </div>
+                  ) : (
+                    <div className="workspace-editor-preview-content" ref={previewRef}>
+                      <pre>{draft}</pre>
+                    </div>
+                  )}
+                </div>
+                <div className="workspace-editor-footer">
+                  <span className="workspace-editor-status saved">Preview</span>
+                  <div className="workspace-editor-actions">
+                    <button className="workspace-action-btn primary" onClick={() => void handleEnterEdit()} type="button">Edit</button>
+                  </div>
+                </div>
+              </div>
+            )
+          ) : fileDetail.kind === 'image' ? (
             <div className="workspace-editor-stack">
               <div className="workspace-explorer-detail-meta">
                 <div className="workspace-explorer-detail-badges">
-                  {editableBadges.map(badge => <span key={badge} className="workspace-explorer-detail-badge">{badge}</span>)}
+                  {getBinaryFileBadges(fileDetail).map(badge => <span key={badge} className="workspace-explorer-detail-badge">{badge}</span>)}
                 </div>
               </div>
-              <label className="workspace-editor-label">
-                <span className="workspace-editor-label-text">File content</span>
-                <textarea aria-label="File content" className="workspace-editor-textarea" onChange={event => onDraftChange?.(event.target.value)} ref={editorRef} spellCheck={false} value={draft} />
-              </label>
-              <div className="workspace-editor-footer">
-                <span className={`workspace-editor-status ${dirty ? 'dirty' : 'saved'}`}>{dirty ? 'Unsaved changes' : 'No changes'}</span>
-                <div className="workspace-editor-actions">
-                  <button className="workspace-action-btn" onClick={handleDiscard} type="button">Discard</button>
-                  <button className="workspace-action-btn primary" disabled={!dirty || saving} onClick={() => void handleSave()} type="button">{saving ? 'Saving…' : 'Save'}</button>
-                </div>
+              <button className="workspace-action-btn" onClick={() => setPreviewImageOpen(true)} type="button">Open image preview</button>
+              <div className="workspace-editor-preview-content" ref={previewRef}>
+                <button className="workspace-action-btn" onClick={() => setPreviewImageOpen(true)} type="button">
+                  <img alt={fileDetail.name} src={fileDetail.url} style={previewImageStyle} />
+                </button>
               </div>
             </div>
           ) : (
-            <div className="workspace-editor-stack">
-              <div className="workspace-explorer-detail-meta">
-                <div className="workspace-explorer-detail-badges">
-                  {editableBadges.map(badge => <span key={badge} className="workspace-explorer-detail-badge">{badge}</span>)}
-                </div>
-              </div>
-              <div className="workspace-editor-preview">
-                {shouldRenderPreviewAsMarkdown ? (
-                  <div className="workspace-editor-preview-content workspace-editor-preview-markdown" ref={previewRef}>
-                    <MarkdownMessage text={draft} />
-                  </div>
-                ) : (
-                  <div className="workspace-editor-preview-content" ref={previewRef}>
-                    <pre>{draft}</pre>
-                  </div>
-                )}
-              </div>
-              <div className="workspace-editor-footer">
-                <span className="workspace-editor-status saved">Preview</span>
-                <div className="workspace-editor-actions">
-                  <button className="workspace-action-btn primary" onClick={handleEnterEdit} type="button">Edit</button>
-                </div>
-              </div>
+            <div className="workspace-editor-state-card workspace-editor-empty">
+              <p className="workspace-editor-state-title">{fileDetail.name}</p>
+              <p className="workspace-editor-state-copy">{getBinaryFileBadges(fileDetail).join(' · ')}</p>
             </div>
           )}
         </div>
       )}
+
+      {fileDetail?.kind === 'image' ? (
+        <OverlayDialog
+          ariaLabel="Workspace image preview"
+          onClose={() => setPreviewImageOpen(false)}
+          open={previewImageOpen}
+          showCloseButton={false}
+          title={fileDetail.name}
+          width="min(28rem, 100%)"
+        >
+          <img alt="Workspace image preview content" src={fileDetail.url} style={previewImageStyle} />
+        </OverlayDialog>
+      ) : null}
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import type { Dispatch, SetStateAction } from 'react';
 
-import type { WorkspaceFileDetail, WorkspaceFileEntry } from '../public-types';
+import type { WorkspaceFileDetail, WorkspaceFileEntry, WorkspaceTextFile } from '../public-types';
 import { postWorkspaceFileSave } from '../api/workspace-file-api';
 
 type RunWorkspaceExplorerAction = (
@@ -17,7 +17,7 @@ type RunWorkspaceExplorerAction = (
 
 type SaveWorkspaceExplorerFileInput = {
   workspace: string;
-  activeFile: Extract<WorkspaceFileDetail, { kind: 'editable' }>['file'];
+  activeFile: WorkspaceTextFile;
   nextDraft: string;
   isCurrentAction: (actionId: number) => boolean;
   runWorkspaceExplorerAction: RunWorkspaceExplorerAction;
@@ -48,20 +48,18 @@ export function saveWorkspaceExplorerFile({
       }
 
       setWorkspaceFileDetail(current =>
-        current?.kind === 'editable' && current.file.path === activeFile.path
+        current?.kind === 'text' && current.path === activeFile.path
           ? {
-              kind: 'editable',
-              file: {
-                ...current.file,
-                content: nextDraft,
-                size: result.size,
-              },
+              ...current,
+              content: nextDraft,
+              size: result.size,
+              truncated: false,
             }
           : current,
       );
       setWorkspaceExplorerNotice(`Saved ${activeFile.name}`);
       setWorkspaceExplorerEntries(current =>
-        current.map(entry => (entry.path === activeFile.path ? { ...entry, size: result.size } : entry)),
+        current.map(entry => (entry.kind === 'file' && entry.path === activeFile.path ? { ...entry, size: result.size } : entry)),
       );
       return true;
     },

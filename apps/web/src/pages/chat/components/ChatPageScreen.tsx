@@ -47,6 +47,7 @@ export function ChatPageScreen() {
       onWorkspaceFileLinkOpen={controller.handleWorkspaceFileLinkOpen}
       isWorkspaceFileLink={controller.isWorkspaceFileLink}
       onWorkspaceFileOpen={controller.handleWorkspaceFileOpen}
+      onWorkspaceTextEditStart={controller.handleWorkspaceTextEditStart}
       onWorkspaceFileSave={controller.handleWorkspaceFileSave}
       onWorkspaceOpen={controller.handleWorkspaceOpen}
       onWorkspaceRemove={controller.handleWorkspaceRemove}

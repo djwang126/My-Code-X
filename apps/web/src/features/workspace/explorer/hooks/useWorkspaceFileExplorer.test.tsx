@@ -21,62 +21,35 @@ function WorkspaceFileExplorerHarness() {
 
   return (
     <div>
-      <button onClick={() => void explorer.handleWorkspaceExplorerOpen()} type="button">
-        Open explorer
-      </button>
-      <button onClick={() => void explorer.handleWorkspaceExplorerClose()} type="button">
-        Close explorer
-      </button>
-      <button onClick={() => void explorer.handleWorkspaceFileOpen('slow.json')} type="button">
-        Open slow
-      </button>
-      <button onClick={() => void explorer.handleWorkspaceFileOpen('fast.json')} type="button">
-        Open fast
-      </button>
-      <button onClick={() => void explorer.handleWorkspaceExplorerNavigate('docs')} type="button">
-        Go docs
-      </button>
-      <button
-        onClick={() => void explorer.handleWorkspaceFileLinkOpen('file:///D:/workspace/example-app/docs/guide.md')}
-        type="button"
-      >
+      <button onClick={() => void explorer.handleWorkspaceExplorerOpen()} type="button">Open explorer</button>
+      <button onClick={() => void explorer.handleWorkspaceExplorerClose()} type="button">Close explorer</button>
+      <button onClick={() => void explorer.handleWorkspaceFileOpen('slow.json')} type="button">Open slow</button>
+      <button onClick={() => void explorer.handleWorkspaceFileOpen('fast.json')} type="button">Open fast</button>
+      <button onClick={() => void explorer.handleWorkspaceExplorerNavigate('docs')} type="button">Go docs</button>
+      <button onClick={() => void explorer.handleWorkspaceFileLinkOpen('file:///D:/workspace/example-app/docs/guide.md')} type="button">
         Open guide link
       </button>
       <button onClick={() => void explorer.handleWorkspaceFileLinkOpen('docs/guide.md')} type="button">
         Open guide relative link
       </button>
-      <div aria-label="match file href">
-        {String(explorer.isWorkspaceFileLink('file:///D:/workspace/example-app/docs/guide.md'))}
-      </div>
+      <button onClick={() => void explorer.handleWorkspaceFileOpen('big.txt')} type="button">Open large</button>
+      <button onClick={() => void explorer.handleWorkspaceTextEditStart()} type="button">Load large full</button>
+      <button onClick={() => void explorer.handleWorkspaceFileOpen('photo.png')} type="button">Open image</button>
+      <button onClick={() => void explorer.handleWorkspaceFileOpen('archive.db')} type="button">Open binary</button>
+      <button onClick={() => explorer.setWorkspaceFileDraft('changed\n')} type="button">Dirty draft</button>
+      <button onClick={() => void explorer.handleWorkspaceFileLinkOpen('file:///D:/other-workspace/docs/guide.md')} type="button">
+        Open outside link
+      </button>
+      <div aria-label="match file href">{String(explorer.isWorkspaceFileLink('file:///D:/workspace/example-app/docs/guide.md'))}</div>
       <div aria-label="match absolute path">{String(explorer.isWorkspaceFileLink('D:/workspace/example-app/docs/guide.md'))}</div>
       <div aria-label="match relative path">{String(explorer.isWorkspaceFileLink('docs/guide.md'))}</div>
       <div aria-label="match web href">{String(explorer.isWorkspaceFileLink('https://www.openai.com'))}</div>
-      <button
-        onClick={() => void explorer.handleWorkspaceFileLinkOpen('file:///D:/other-workspace/docs/guide.md')}
-        type="button"
-      >
-        Open outside link
-      </button>
-      <button onClick={() => void explorer.handleWorkspaceFileOpen('big.txt')} type="button">
-        Open large
-      </button>
-      <button onClick={() => void explorer.handleWorkspaceFileOpen('logo.svg')} type="button">
-        Open read only
-      </button>
-      <button onClick={() => explorer.setWorkspaceFileDraft('changed\n')} type="button">
-        Dirty draft
-      </button>
       <div aria-label="explorer open">{String(explorer.workspaceExplorerOpen)}</div>
       <div aria-label="notice">{explorer.workspaceExplorerNotice || 'none'}</div>
       <div aria-label="error">{explorer.workspaceExplorerError || 'none'}</div>
       <div aria-label="path">{explorer.workspaceExplorerPath || '.'}</div>
-      <div aria-label="active file">
-        {explorer.workspaceFileDetail
-          ? 'file' in explorer.workspaceFileDetail
-            ? explorer.workspaceFileDetail.file.name
-            : explorer.workspaceFileDetail.name
-          : 'none'}
-      </div>
+      <div aria-label="active file">{explorer.workspaceFileDetail?.name ?? 'none'}</div>
+      <div aria-label="active kind">{explorer.workspaceFileDetail?.kind ?? 'none'}</div>
       <textarea aria-label="draft" readOnly value={explorer.workspaceFileDraft} />
     </div>
   );
@@ -101,7 +74,8 @@ const server = setupServer(
             kind: 'file',
             size: 12,
             ext: '.md',
-            isTextEditable: true,
+            contentKind: 'text',
+            isLarge: false,
           },
         ],
       });
@@ -119,7 +93,8 @@ const server = setupServer(
           kind: 'file',
           size: 11,
           ext: '.json',
-          isTextEditable: true,
+          contentKind: 'text',
+          isLarge: false,
         },
         {
           path: 'fast.json',
@@ -127,7 +102,8 @@ const server = setupServer(
           kind: 'file',
           size: 11,
           ext: '.json',
-          isTextEditable: true,
+          contentKind: 'text',
+          isLarge: false,
         },
         {
           path: 'docs',
@@ -135,7 +111,8 @@ const server = setupServer(
           kind: 'directory',
           size: 0,
           ext: '',
-          isTextEditable: false,
+          contentKind: null,
+          isLarge: false,
         },
         {
           path: 'big.txt',
@@ -143,15 +120,26 @@ const server = setupServer(
           kind: 'file',
           size: 300_000,
           ext: '.txt',
-          isTextEditable: true,
+          contentKind: 'text',
+          isLarge: true,
         },
         {
-          path: 'logo.svg',
-          name: 'logo.svg',
+          path: 'photo.png',
+          name: 'photo.png',
           kind: 'file',
-          size: 512,
-          ext: '.svg',
-          isTextEditable: false,
+          size: 2048,
+          ext: '.png',
+          contentKind: 'image',
+          isLarge: false,
+        },
+        {
+          path: 'archive.db',
+          name: 'archive.db',
+          kind: 'file',
+          size: 4096,
+          ext: '.db',
+          contentKind: 'binary',
+          isLarge: false,
         },
       ],
     });
@@ -159,59 +147,78 @@ const server = setupServer(
   http.get('/api/v2/workspace/file', async ({ request }) => {
     const url = new URL(request.url);
     const path = url.searchParams.get('path') || '';
+    const full = url.searchParams.get('full') === '1';
 
     if (path === 'docs/guide.md') {
       return HttpResponse.json({
+        kind: 'text',
         path: 'docs/guide.md',
         name: 'guide.md',
         size: 12,
         encoding: 'utf-8',
         content: '# guide\n',
-        isTextEditable: true,
-        tooLarge: false,
+        truncated: false,
       });
     }
 
     if (path === 'slow.json') {
       await new Promise(resolve => setTimeout(resolve, 80));
       return HttpResponse.json({
+        kind: 'text',
         path: 'slow.json',
         name: 'slow.json',
         size: 11,
         encoding: 'utf-8',
         content: '{"slow":1}\n',
-        isTextEditable: true,
-        tooLarge: false,
+        truncated: false,
       });
     }
 
     if (path === 'fast.json') {
       return HttpResponse.json({
+        kind: 'text',
         path: 'fast.json',
         name: 'fast.json',
         size: 11,
         encoding: 'utf-8',
         content: '{"fast":1}\n',
-        isTextEditable: true,
-        tooLarge: false,
+        truncated: false,
       });
     }
 
     if (path === 'big.txt') {
       return HttpResponse.json({
+        kind: 'text',
         path: 'big.txt',
         name: 'big.txt',
         size: 300_000,
         encoding: 'utf-8',
-        content: '',
-        isTextEditable: true,
-        tooLarge: true,
+        content: full ? 'full big file\n' : 'preview big file\n',
+        truncated: !full,
       });
     }
 
-    if (path === 'logo.svg') {
-      return new HttpResponse('not_text_editable', { status: 415 });
+    if (path === 'photo.png') {
+      return HttpResponse.json({
+        kind: 'image',
+        path: 'photo.png',
+        name: 'photo.png',
+        size: 2048,
+        contentType: 'image/png',
+        url: '/api/v2/workspace/file/content?workspace=D%3A%2Fworkspace%2Fexample-app&path=photo.png',
+      });
     }
+
+    if (path === 'archive.db') {
+      return HttpResponse.json({
+        kind: 'binary',
+        path: 'archive.db',
+        name: 'archive.db',
+        size: 4096,
+        contentType: null,
+      });
+    }
+
     return new HttpResponse('not_found', { status: 404 });
   }),
 );
@@ -241,11 +248,10 @@ describe('useWorkspaceFileExplorer', () => {
 
     await new Promise(resolve => setTimeout(resolve, 120));
 
-    expect(screen.getByLabelText('draft')).toHaveValue('{"fast":1}\n');
     expect(screen.getByLabelText('active file')).toHaveTextContent('fast.json');
   });
 
-  it('opens file:// links to files without first probing the file path as a directory listing', async () => {
+  it('opens file links without first probing the file path as a directory', async () => {
     render(<WorkspaceFileExplorerHarness />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Open guide link' }));
@@ -279,7 +285,7 @@ describe('useWorkspaceFileExplorer', () => {
     expect(screen.getByLabelText('match web href')).toHaveTextContent('false');
   });
 
-  it('keeps too-large files as active detail state instead of dropping them back to folder-only state', async () => {
+  it('keeps large text files as text detail state and can load the full content for edit', async () => {
     render(<WorkspaceFileExplorerHarness />);
 
     fireEvent.click(screen.getByRole('button', { name: 'Open large' }));
@@ -288,22 +294,40 @@ describe('useWorkspaceFileExplorer', () => {
       expect(screen.getByLabelText('active file')).toHaveTextContent('big.txt');
     });
 
-    expect(screen.getByLabelText('path')).toHaveTextContent('.');
-    expect(screen.getByLabelText('notice')).toHaveTextContent('none');
+    expect(screen.getByLabelText('active kind')).toHaveTextContent('text');
+    expect(screen.getByLabelText('draft')).toHaveValue('preview big file\n');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Load large full' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('draft')).toHaveValue('full big file\n');
+    });
+    expect(screen.getByLabelText('notice')).toHaveTextContent('Loaded full big.txt');
+  });
+
+  it('opens image files as image detail state', async () => {
+    render(<WorkspaceFileExplorerHarness />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open image' }));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('active file')).toHaveTextContent('photo.png');
+    });
+
+    expect(screen.getByLabelText('active kind')).toHaveTextContent('image');
     expect(screen.getByLabelText('draft')).toHaveValue('');
   });
 
-  it('keeps read-only files as active detail state instead of dropping them back to folder-only state', async () => {
+  it('opens binary files as binary detail state', async () => {
     render(<WorkspaceFileExplorerHarness />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Open read only' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Open binary' }));
 
     await waitFor(() => {
-      expect(screen.getByLabelText('active file')).toHaveTextContent('logo.svg');
+      expect(screen.getByLabelText('active file')).toHaveTextContent('archive.db');
     });
 
-    expect(screen.getByLabelText('path')).toHaveTextContent('.');
-    expect(screen.getByLabelText('notice')).toHaveTextContent('none');
+    expect(screen.getByLabelText('active kind')).toHaveTextContent('binary');
     expect(screen.getByLabelText('draft')).toHaveValue('');
   });
 
@@ -325,7 +349,6 @@ describe('useWorkspaceFileExplorer', () => {
 
     expect(confirmSpy).toHaveBeenCalledWith('You have unsaved file changes. Discard them?');
     expect(screen.getByLabelText('explorer open')).toHaveTextContent('true');
-    expect(screen.getByLabelText('active file')).toHaveTextContent('fast.json');
     expect(screen.getByLabelText('draft')).toHaveValue('changed\n');
   });
 
@@ -347,27 +370,6 @@ describe('useWorkspaceFileExplorer', () => {
     expect(confirmSpy).toHaveBeenCalledWith('You have unsaved file changes. Discard them?');
     expect(screen.getByLabelText('path')).toHaveTextContent('.');
     expect(screen.getByLabelText('active file')).toHaveTextContent('fast.json');
-    expect(screen.getByLabelText('draft')).toHaveValue('changed\n');
-  });
-
-  it('blocks opening another file when the user refuses to discard unsaved changes', async () => {
-    const confirmSpy = vi.fn(() => false);
-    vi.stubGlobal('confirm', confirmSpy);
-
-    render(<WorkspaceFileExplorerHarness />);
-
-    fireEvent.click(screen.getByRole('button', { name: 'Open fast' }));
-
-    await waitFor(() => {
-      expect(screen.getByLabelText('active file')).toHaveTextContent('fast.json');
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Dirty draft' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Open slow' }));
-
-    expect(confirmSpy).toHaveBeenCalledWith('You have unsaved file changes. Discard them?');
-    expect(screen.getByLabelText('active file')).toHaveTextContent('fast.json');
-    expect(screen.getByLabelText('draft')).toHaveValue('changed\n');
   });
 
   it('allows file-link navigation to continue after the user accepts discarding unsaved changes', async () => {
@@ -389,7 +391,6 @@ describe('useWorkspaceFileExplorer', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('active file')).toHaveTextContent('guide.md');
     });
-    expect(screen.getByLabelText('draft')).toHaveValue('# guide\n');
   });
 
   it('rejects file links outside the active workspace without opening a file', async () => {

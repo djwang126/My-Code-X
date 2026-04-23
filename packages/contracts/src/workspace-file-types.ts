@@ -1,47 +1,61 @@
-export type WorkspaceFileEntry = {
+export type WorkspaceContentKind = 'text' | 'image' | 'binary';
+
+export type WorkspaceDirectoryEntry = {
   path: string;
   name: string;
-  kind: 'directory' | 'file';
+  kind: 'directory';
+  size: 0;
+  ext: '';
+  contentKind: null;
+  isLarge: false;
+};
+
+export type WorkspaceListedFileEntry = {
+  path: string;
+  name: string;
+  kind: 'file';
   size: number;
   ext: string;
-  isTextEditable: boolean;
+  contentKind: WorkspaceContentKind;
+  isLarge: boolean;
 };
+
+export type WorkspaceFileEntry = WorkspaceDirectoryEntry | WorkspaceListedFileEntry;
 
 export type WorkspaceFilesPayload = {
   data: WorkspaceFileEntry[];
 };
 
-export type WorkspaceFile = {
+export type WorkspaceTextFile = {
+  kind: 'text';
   path: string;
   name: string;
   size: number;
-  encoding: string;
+  encoding: 'utf-8';
   content: string;
-  isTextEditable: boolean;
-  tooLarge: boolean;
+  truncated: boolean;
 };
 
-export type WorkspaceEditableFileDetail = {
-  kind: 'editable';
-  file: WorkspaceFile & { isTextEditable: true; tooLarge: false };
-};
-
-export type WorkspaceTooLargeFileDetail = {
-  kind: 'tooLarge';
-  file: WorkspaceFile & { isTextEditable: true; tooLarge: true };
-};
-
-export type WorkspaceReadOnlyFileDetail = {
-  kind: 'readOnly';
+export type WorkspaceImageFile = {
+  kind: 'image';
   path: string;
   name: string;
   size: number;
+  contentType: string;
+  url: string;
 };
 
-export type WorkspaceFileDetail =
-  | WorkspaceEditableFileDetail
-  | WorkspaceTooLargeFileDetail
-  | WorkspaceReadOnlyFileDetail;
+export type WorkspaceBinaryFile = {
+  kind: 'binary';
+  path: string;
+  name: string;
+  size: number;
+  contentType: string | null;
+};
+
+export type WorkspaceFile = WorkspaceTextFile | WorkspaceImageFile | WorkspaceBinaryFile;
+
+export type WorkspaceFileDetail = WorkspaceFile;
 
 export type WorkspaceFileSaveAcceptedPayload = {
   ok: boolean;

@@ -1,19 +1,15 @@
 import { fetchWorkspaceFiles } from '../api/workspace-file-api';
-import {
-  WorkspaceFileNotTextEditableError,
-  WorkspaceOutsideCurrentWorkspaceError,
-  WorkspacePathNotFoundError,
-} from '../errors/workspace-explorer-errors';
+import { WorkspaceOutsideCurrentWorkspaceError, WorkspacePathNotFoundError } from '../errors/workspace-explorer-errors';
 import {
   applyDirectoryState,
-  createReadOnlyDetailFromEntry,
-  isEditableDetail,
+  isTextDetail,
+  loadFullWorkspaceTextFile,
   openWorkspaceDirectory,
+  openWorkspaceFile,
   openWorkspaceFileWithEntries,
 } from '../lib/workspace-file-explorer-helpers';
 import { getParentRelativePath, resolveWorkspaceRelativePathFromFileHref } from '../lib/workspace-file-paths';
 import { createWorkspaceExplorerActionRunner } from './createWorkspaceExplorerActionRunner';
-import { openWorkspaceFileWithReadOnlyFallback } from './openWorkspaceFileWithReadOnlyFallback';
 import { saveWorkspaceExplorerFile } from './saveWorkspaceExplorerFile';
 import { useWorkspaceExplorerState, type WorkspaceExplorerErrorKind } from './useWorkspaceExplorerState';
 import {
@@ -52,12 +48,14 @@ export function useWorkspaceFileExplorer({ workspace, onError }: UseWorkspaceFil
     openExplorer?: boolean;
     preserveEditor?: boolean;
   }) {
-    if (!requireWorkspaceSelection({
-      workspace,
-      errorKind: 'workspace-file-open',
-      errorMessage: 'Select a workspace before browsing files.',
-      onError,
-    })) {
+    if (
+      !requireWorkspaceSelection({
+        workspace,
+        errorKind: 'workspace-file-open',
+        errorMessage: 'Select a workspace before browsing files.',
+        onError,
+      })
+    ) {
       return false;
     }
 
@@ -78,12 +76,14 @@ export function useWorkspaceFileExplorer({ workspace, onError }: UseWorkspaceFil
   }
 
   async function handleWorkspaceExplorerOpen() {
-    if (!requireWorkspaceSelection({
-      workspace,
-      errorKind: 'workspace-file-open',
-      errorMessage: 'Select a workspace before browsing files.',
-      onError,
-    })) {
+    if (
+      !requireWorkspaceSelection({
+        workspace,
+        errorKind: 'workspace-file-open',
+        errorMessage: 'Select a workspace before browsing files.',
+        onError,
+      })
+    ) {
       return false;
     }
 
@@ -131,38 +131,68 @@ export function useWorkspaceFileExplorer({ workspace, onError }: UseWorkspaceFil
       return false;
     }
 
-    if (!requireWorkspaceSelection({
-      workspace,
-      errorKind: 'workspace-file-open',
-      errorMessage: 'Select a workspace before opening files.',
-      onError,
-    })) {
+    if (
+      !requireWorkspaceSelection({
+        workspace,
+        errorKind: 'workspace-file-open',
+        errorMessage: 'Select a workspace before opening files.',
+        onError,
+      })
+    ) {
       return false;
     }
 
-    return openWorkspaceFileWithReadOnlyFallback({
-      workspace,
-      path,
-      isCurrentAction: actionGuard.isCurrentAction,
-      mutators,
-      runWorkspaceExplorerAction,
-      setWorkspaceExplorerEntries: explorerState.setWorkspaceExplorerEntries,
-      setWorkspaceExplorerPath: explorerState.setWorkspaceExplorerPath,
-      setWorkspaceExplorerOpen: explorerState.setWorkspaceExplorerOpen,
-      setWorkspaceExplorerNotice: explorerState.setWorkspaceExplorerNotice,
-      setWorkspaceFileDetail: explorerState.setWorkspaceFileDetail,
-      setWorkspaceFileDraft: explorerState.setWorkspaceFileDraft,
-    });
+    return runWorkspaceExplorerAction(
+      actionId =>
+        openWorkspaceFile({
+          workspace,
+          path,
+          actionId,
+          isCurrentAction: actionGuard.isCurrentAction,
+          mutators,
+        }),
+      { errorKind: 'workspace-file-open' },
+    );
+  }
+
+  async function handleWorkspaceTextEditStart() {
+    if (!isTextDetail(explorerState.workspaceFileDetail)) {
+      return false;
+    }
+
+    const activeFile = explorerState.workspaceFileDetail;
+    if (!activeFile.truncated) {
+      return true;
+    }
+
+    return runWorkspaceExplorerAction(
+      async actionId => {
+        const detail = await loadFullWorkspaceTextFile({
+          workspace,
+          path: activeFile.path,
+        });
+        if (!detail || !actionGuard.isCurrentAction(actionId)) {
+          return false;
+        }
+
+        explorerState.setWorkspaceFileDetail(detail);
+        explorerState.setWorkspaceFileDraft(detail.content);
+        explorerState.setWorkspaceExplorerNotice(`Loaded full ${detail.name}`);
+        return true;
+      },
+      { errorKind: 'workspace-file-open' },
+    );
   }
 
   async function handleWorkspaceFileSave() {
-    if (!isEditableDetail(explorerState.workspaceFileDetail)) {
+    if (!isTextDetail(explorerState.workspaceFileDetail)) {
       return false;
     }
 
+    const activeFile = explorerState.workspaceFileDetail;
     return saveWorkspaceExplorerFile({
       workspace,
-      activeFile: explorerState.workspaceFileDetail.file,
+      activeFile,
       nextDraft: explorerState.workspaceFileDraft,
       isCurrentAction: actionGuard.isCurrentAction,
       runWorkspaceExplorerAction,
@@ -173,12 +203,14 @@ export function useWorkspaceFileExplorer({ workspace, onError }: UseWorkspaceFil
   }
 
   async function handleWorkspaceFileLinkOpen(href: string) {
-    if (!requireWorkspaceSelection({
-      workspace,
-      errorKind: 'workspace-file-open',
-      errorMessage: 'Select a workspace before opening files.',
-      onError,
-    })) {
+    if (
+      !requireWorkspaceSelection({
+        workspace,
+        errorKind: 'workspace-file-open',
+        errorMessage: 'Select a workspace before opening files.',
+        onError,
+      })
+    ) {
       return false;
     }
 
@@ -223,36 +255,27 @@ export function useWorkspaceFileExplorer({ workspace, onError }: UseWorkspaceFil
         });
       }
 
-      try {
-        return await openWorkspaceFileWithEntries({
-          workspace,
-          actionId,
-          path: relativePath,
-          entries: parentEntries,
-          isCurrentAction: actionGuard.isCurrentAction,
-          mutators,
-        });
-      } catch (error) {
-        if (!(error instanceof WorkspaceFileNotTextEditableError)) {
-          throw error;
-        }
-
-        if (!applyDirectoryState({
+      if (
+        !applyDirectoryState({
           actionId,
           entries: parentEntries,
           path: parentPath,
           preserveEditor: true,
           isCurrentAction: actionGuard.isCurrentAction,
           mutators,
-        })) {
-          return false;
-        }
-
-        explorerState.setWorkspaceFileDetail(createReadOnlyDetailFromEntry(relativePath, targetEntry));
-        explorerState.setWorkspaceFileDraft('');
-        explorerState.setWorkspaceExplorerNotice('');
-        return true;
+        })
+      ) {
+        return false;
       }
+
+      return openWorkspaceFileWithEntries({
+        workspace,
+        actionId,
+        path: relativePath,
+        entries: parentEntries,
+        isCurrentAction: actionGuard.isCurrentAction,
+        mutators,
+      });
     }, { openExplorer: true, errorKind: 'workspace-file-open' });
   }
 
@@ -276,6 +299,7 @@ export function useWorkspaceFileExplorer({ workspace, onError }: UseWorkspaceFil
     handleWorkspaceExplorerClose,
     handleWorkspaceExplorerNavigate,
     handleWorkspaceFileOpen,
+    handleWorkspaceTextEditStart,
     handleWorkspaceFileSave,
     handleWorkspaceFileLinkOpen,
     isWorkspaceFileLink,

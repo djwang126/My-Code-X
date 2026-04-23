@@ -2,7 +2,7 @@ import type { AppRequest, AppResponse } from '../../common/http/http-types.js';
 import { getTrimmedBodyString, getRequestUrl, readJsonBodyOrSendError, sendJson, sendRouteError } from '../../common/http/route-helpers.js';
 
 interface WorkspaceFilesServiceLike {
-  readFile(input: { workspace: string; path: string }): Promise<unknown>;
+  readFile(input: { workspace: string; path: string; full?: boolean }): Promise<unknown>;
   saveFile(input: { workspace: string; path: string; content: string }): Promise<unknown>;
 }
 
@@ -14,9 +14,10 @@ export async function handleWorkspaceFileReadRoute(
   const url = getRequestUrl(request);
   const workspace = String(url.searchParams.get('workspace') || '').trim();
   const path = String(url.searchParams.get('path') || '').trim();
+  const full = url.searchParams.get('full') === '1';
 
   try {
-    const file = await workspaceFilesService.readFile({ workspace, path });
+    const file = await workspaceFilesService.readFile({ workspace, path, full });
     sendJson(response, 200, file);
   } catch (error) {
     sendRouteError(response, error);
