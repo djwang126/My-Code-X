@@ -1,5 +1,6 @@
-import { createInitializeParams, mapCodexCollaborationModePresets, mapCodexConfigToRuntimePreferences, mapCodexRuntimeOptions, } from '../codex-gateway-protocol.js';
+import { createInitializeParams, mapCodexCollaborationModePresets, mapCodexConfigToRuntimePreferences, mapCodexRuntimeOptions, mergeRuntimePreferencesWithEnvDefaults, } from '../codex-gateway-protocol.js';
 import type { CodexJsonlTransport, LooseRecord, RuntimeOption } from '../codex-types.js';
+type ProcessEnv = typeof process.env;
 function logOptionalBootstrapRequestFailure(method: any, error: any) {
     process.stderr.write(`[my-code-x] optional Codex bootstrap request failed for ${method}: ${error instanceof Error ? error.message : String(error)}\n`);
 }
@@ -12,9 +13,10 @@ async function readOptionalBootstrapRequest(transport: CodexJsonlTransport, meth
         return null;
     }
 }
-export async function bootstrapCodexGateway({ transport, promptOverrideOptions, }: {
+export async function bootstrapCodexGateway({ transport, promptOverrideOptions, env = process.env, }: {
     transport: CodexJsonlTransport;
     promptOverrideOptions?: RuntimeOption[];
+    env?: ProcessEnv;
 }) {
     await transport.sendRequest('initialize', createInitializeParams());
     await transport.sendNotification('initialized');
@@ -24,7 +26,10 @@ export async function bootstrapCodexGateway({ transport, promptOverrideOptions, 
         readOptionalBootstrapRequest(transport, 'configRequirements/read', {}),
         readOptionalBootstrapRequest(transport, 'collaborationMode/list', {}),
     ]);
-    const runtimePreferences = mapCodexConfigToRuntimePreferences(configReadResponse);
+    const runtimePreferences = mergeRuntimePreferencesWithEnvDefaults({
+        runtimePreferences: mapCodexConfigToRuntimePreferences(configReadResponse),
+        env,
+    });
     const collaborationModePresets = mapCodexCollaborationModePresets(collaborationModeListResponse);
     const runtimeOptions = mapCodexRuntimeOptions({
         modelListResponse,

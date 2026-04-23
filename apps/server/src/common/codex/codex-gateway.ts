@@ -43,7 +43,7 @@ export async function startCodexGateway({ command = 'codex', args = ['app-server
         workspacePathDebugEnabled: isWorkspacePathDebugEnabled(env),
     });
     try {
-        state.setBootstrapData(await bootstrapCodexGateway({ transport, promptOverrideOptions }) as GatewayBootstrapData);
+        state.setBootstrapData(await bootstrapCodexGateway({ transport, promptOverrideOptions, env }) as GatewayBootstrapData);
         return gateway;
     }
     catch (error) {

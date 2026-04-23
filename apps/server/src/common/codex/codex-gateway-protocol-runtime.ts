@@ -1,6 +1,8 @@
 export {
   createDefaultRuntimePreferences,
+  mergeRuntimePreferencesWithEnvDefaults,
   mapCodexConfigToRuntimePreferences,
+  readRuntimePreferencesEnvDefaults,
 } from './codex-gateway-protocol-runtime/preferences.js';
 
 export {
