@@ -1,8 +1,8 @@
 import type { WorkspaceExplorerActionGuard, WorkspaceExplorerErrorKind } from './useWorkspaceExplorerState';
 
-type WorkspaceExplorerAction = (actionId: number) => Promise<boolean>;
+export type WorkspaceExplorerAction = (actionId: number) => Promise<boolean>;
 
-type RunWorkspaceExplorerActionOptions = {
+export type RunWorkspaceExplorerActionOptions = {
   loading?: boolean;
   clearError?: boolean;
   notice?: string;
@@ -81,3 +81,5 @@ export function createWorkspaceExplorerActionRunner({
     }
   };
 }
+
+export type RunWorkspaceExplorerAction = ReturnType<typeof createWorkspaceExplorerActionRunner>;

@@ -1,28 +1,28 @@
 import { resolveWorkspaceRelativePathFromFileHref } from '../lib/workspace-file-paths';
 import type { WorkspaceExplorerErrorKind } from './useWorkspaceExplorerState';
 
-type RequireWorkspaceInput = {
+interface RequireWorkspaceSelectionInput {
   workspace: string;
   errorKind: WorkspaceExplorerErrorKind;
   errorMessage: string;
   onError: (message: string, kind?: WorkspaceExplorerErrorKind) => boolean;
-};
+}
 
-type ConfirmDiscardWorkspaceChangesInput = {
+interface ConfirmDiscardWorkspaceChangesInput {
   workspaceFileDirty: boolean;
-};
+}
 
-type IsWorkspaceFileLinkInput = {
+interface IsWorkspaceFileLinkInput {
   workspace: string;
   href: string;
-};
+}
 
 export function requireWorkspaceSelection({
   workspace,
   errorKind,
   errorMessage,
   onError,
-}: RequireWorkspaceInput) {
+}: RequireWorkspaceSelectionInput) {
   return workspace.trim() ? true : onError(errorMessage, errorKind);
 }
 
@@ -32,7 +32,10 @@ export function confirmDiscardWorkspaceChanges({
   return !workspaceFileDirty || window.confirm('You have unsaved file changes. Discard them?');
 }
 
-export function isWorkspaceFileLinkForWorkspace({ workspace, href }: IsWorkspaceFileLinkInput) {
+export function isWorkspaceFileLinkForWorkspace({
+  workspace,
+  href,
+}: IsWorkspaceFileLinkInput) {
   if (!workspace.trim()) {
     return false;
   }
