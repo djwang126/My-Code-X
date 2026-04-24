@@ -129,6 +129,7 @@ test('forkThread restores a stale idle runtime before forking the thread', async
     { method: 'startTurn', threadId: 'thread-1', text: 'hello codex' },
     { method: 'resumeThread', threadId: 'thread-1' },
     { method: 'forkThread', threadId: 'thread-1', workspace: 'D:/workspaces/My-Code-X' },
+    { method: 'resumeThread', threadId: 'thread-forked' },
   ]);
 });
 

@@ -1,5 +1,5 @@
 import { createChatSessionRecovery } from './chat-session-recovery.js';
-import { createEnsureLoadedThreadRuntime, createHydrateSession } from './chat-session-runtime-loader.js';
+import { createHydrateSession } from './chat-session-runtime-loader.js';
 import { createGetOrCreateRuntimeForSend } from './chat-session-send-runtime-resolver.js';
 import { createStartThreadForRuntime } from './chat-session-thread-starter.js';
 export function createChatSessionService({ codexGateway, promptOverrideResolver, now, registry, attachmentService, logger }: any) {
@@ -18,10 +18,6 @@ export function createChatSessionService({ codexGateway, promptOverrideResolver,
         registry,
         sessionRecovery,
     });
-    const ensureLoadedThreadRuntime = createEnsureLoadedThreadRuntime({
-        registry,
-        sessionRecovery,
-    });
     const getOrCreateRuntimeForSend = createGetOrCreateRuntimeForSend({
         promptOverrideResolver,
         registry,
@@ -34,9 +30,12 @@ export function createChatSessionService({ codexGateway, promptOverrideResolver,
         sessionRecovery,
     });
     return {
-        ensureLoadedThreadRuntime,
         getOrCreateRuntimeForSend,
         hydrateSession,
+        startThreadForRuntime,
+        getRuntimeAttachment: sessionRecovery.getRuntimeAttachment,
+        logRuntimeRecovery: sessionRecovery.logRuntimeRecovery,
         restoreRuntime: sessionRecovery.restoreRuntime,
+        storeRuntimeFromResult: sessionRecovery.storeRuntimeFromResult,
     };
 }

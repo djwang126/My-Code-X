@@ -1,4 +1,4 @@
-import { createDefaultRuntimePreferences, createForkThreadParams, createResumeThreadParams, createStartThreadParams, createStartTurnParams, normalizeResumeThreadResult, } from '../codex-gateway-protocol.js';
+import { createDefaultRuntimePreferences, createForkThreadParams, createResumeThreadParams, createStartThreadParams, createStartTurnParams, normalizeResumeThreadResult, normalizeThreadResult, } from '../codex-gateway-protocol.js';
 import { buildCodexWorkspacePathStrategy } from '../codex-workspace-path.js';
 import { listThreadsWithWorkspaceFallback } from './thread-list.js';
 import type { CodexJsonlTransport, GatewayState, LooseRecord, RuntimeSettings, } from '../codex-types.js';
@@ -41,6 +41,7 @@ export function createGatewayClient({ cwd, dynamicToolSpecs, state, transport, w
                 baseInstructions,
             }));
             return {
+                ...normalizeThreadResult(result, 'thread_fork'),
                 threadId: result.thread.id,
             };
         },
@@ -89,17 +90,16 @@ export function createGatewayClient({ cwd, dynamicToolSpecs, state, transport, w
             }));
             return normalizeResumeThreadResult(result);
         },
-        async rollbackThread({ threadId, workspace, numTurns }: {
+        async rollbackThread({ threadId, numTurns }: {
             threadId?: string;
-            workspace?: string;
             numTurns?: number;
         } = {}) {
             const result = await transport.sendRequest('thread/rollback', {
                 threadId,
-                cwd: resolveWorkspaceCwd(workspace),
                 numTurns,
             });
             return {
+                ...normalizeThreadResult(result, 'thread_rollback'),
                 ok: true,
                 threadId: result.thread?.id || threadId,
             };

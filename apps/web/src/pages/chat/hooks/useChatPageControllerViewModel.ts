@@ -3,8 +3,9 @@ import { useMemo } from 'react';
 import type { ChatPageRuntimeState } from '../types';
 import { buildChatPageViewModel } from '../state/view-model';
 import type { ChatPageError, ChatPageOperationState, ChatPageSessionSnapshot } from '../state/page-state-types';
+import type { ThreadActionState } from '../../../features/chat/thread-actions';
 
-export function useChatPageSessionSnapshot(state: ChatPageRuntimeState) {
+export function useChatPageSessionSnapshot(state: ChatPageRuntimeState, threadAction?: ThreadActionState) {
   const baseSessionSnapshot = useMemo<ChatPageSessionSnapshot>(
     () => ({
       phase: state.phase,
@@ -12,8 +13,9 @@ export function useChatPageSessionSnapshot(state: ChatPageRuntimeState) {
       threadId: state.threadId,
       latestTurn: state.latestTurn,
       pendingRequests: state.pendingRequests,
+      ...(threadAction ? { threadAction } : {}),
     }),
-    [state.latestTurn, state.pendingRequests, state.phase, state.threadId, state.workspace],
+    [state.latestTurn, state.pendingRequests, state.phase, state.threadId, state.workspace, threadAction],
   );
 
   const baseInteractionState = useMemo(

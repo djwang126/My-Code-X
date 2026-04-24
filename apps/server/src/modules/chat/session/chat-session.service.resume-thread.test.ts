@@ -40,7 +40,7 @@ test('sendMessage resumes the provided thread when the slot has no in-memory run
 
   assert.deepEqual(result, {
     threadId: 'thread-9',
-    latestTurn: {
+    turn: {
         id: 'turn-1',
         status: 'inProgress',
         error: null,
@@ -253,7 +253,7 @@ test('hydrateSession fails explicitly when resumeThread omits latestTurn?.status
         return {
           threadId,
           latestTurn: {
-            turnId: null,
+            id: 'turn-missing-status',
           },
           messages: [],
         };
@@ -275,6 +275,6 @@ test('hydrateSession fails explicitly when resumeThread omits latestTurn?.status
     error =>
       error instanceof Error &&
       error.message ===
-        'resumeResult.latestTurn?.status must be one of idle, running, interrupting, completed, interrupted, or failed.',
+        'createSessionState.latestTurn.status must be one of inProgress, completed, interrupted, or failed.',
   );
 });

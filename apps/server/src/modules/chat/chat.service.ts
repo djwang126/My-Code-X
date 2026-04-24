@@ -71,6 +71,12 @@ export function createUnconfiguredChatService({ now = () => new Date().toISOStri
         async compactThread() {
             throw new Error('chat service compactThread is not configured');
         },
+        async startThread() {
+            throw new Error('chat service startThread is not configured');
+        },
+        async resumeThread() {
+            throw new Error('chat service resumeThread is not configured');
+        },
         async rollbackThread() {
             throw new Error('chat service rollbackThread is not configured');
         },
@@ -196,6 +202,8 @@ export function createChatService({ codexGateway: codexGatewayOverrides = create
         getAttachmentContent: attachmentService.getAttachmentContent!,
         interruptTurn: threadActionsService.interruptTurn,
         compactThread: threadActionsService.compactThread,
+        startThread: threadActionsService.startThread,
+        resumeThread: threadActionsService.resumeThread,
         rollbackThread: threadActionsService.rollbackThread,
         forkThread: threadActionsService.forkThread,
         startReview: threadActionsService.startReview,

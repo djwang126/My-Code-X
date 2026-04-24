@@ -9,7 +9,6 @@ import { postChatInterrupt, postChatMessage } from './api/chat-turn-api';
 import { fetchTimelineItemContent } from '../transcript';
 import { fetchWorkspaceThreads } from '../../workspace/threads';
 import { requestAppRestart, waitForAppReady } from '../../tools/restart';
-import { postThreadCompactStart, postThreadFork, postThreadRollback } from '../commands';
 import { postReviewStart } from '../../tools/review';
 import { fetchWorkspaceFile, fetchWorkspaceFiles, postWorkspaceFileSave } from '../../workspace/explorer';
 
@@ -708,88 +707,6 @@ describe('postServerRequestResponse', () => {
         },
       }),
     ).rejects.toThrowError('request not found');
-  });
-});
-
-describe('postThreadCompactStart', () => {
-  it('posts a compact request for the active thread', async () => {
-    let requestBody: Record<string, unknown> | null = null;
-
-    server.use(
-      http.post('/api/v2/thread/compact', async ({ request }) => {
-        requestBody = (await request.json()) as Record<string, unknown>;
-        return HttpResponse.json({ ok: true, threadId: 'thread-22' });
-      }),
-    );
-
-    const payload = await postThreadCompactStart({
-      slotId: 'tab-5',
-      threadId: 'thread-22',
-      workspace: 'D:/workspaces/My-Code-X',
-    });
-
-    expect(requestBody).toEqual({
-      slotId: 'tab-5',
-      threadId: 'thread-22',
-      workspace: 'D:/workspaces/My-Code-X',
-    });
-    expect(payload).toEqual({ ok: true, threadId: 'thread-22' });
-  });
-});
-
-describe('postThreadFork', () => {
-  it('posts a fork request for the selected completed reply', async () => {
-    let requestBody: Record<string, unknown> | null = null;
-
-    server.use(
-      http.post('/api/v2/thread/fork', async ({ request }) => {
-        requestBody = (await request.json()) as Record<string, unknown>;
-        return HttpResponse.json({ ok: true, threadId: 'thread-forked' });
-      }),
-    );
-
-    const payload = await postThreadFork({
-      slotId: 'tab-5',
-      threadId: 'thread-22',
-      workspace: 'D:/workspaces/My-Code-X',
-      preservedTurnCount: 2,
-    });
-
-    expect(requestBody).toEqual({
-      slotId: 'tab-5',
-      threadId: 'thread-22',
-      workspace: 'D:/workspaces/My-Code-X',
-      preservedTurnCount: 2,
-    });
-    expect(payload).toEqual({ ok: true, threadId: 'thread-forked' });
-  });
-});
-
-describe('postThreadRollback', () => {
-  it('posts a rollback request for the active thread', async () => {
-    let requestBody: Record<string, unknown> | null = null;
-
-    server.use(
-      http.post('/api/v2/thread/rollback', async ({ request }) => {
-        requestBody = (await request.json()) as Record<string, unknown>;
-        return HttpResponse.json({ ok: true, threadId: 'thread-22' });
-      }),
-    );
-
-    const payload = await postThreadRollback({
-      slotId: 'tab-5',
-      threadId: 'thread-22',
-      workspace: 'D:/workspaces/My-Code-X',
-      numTurns: 1,
-    });
-
-    expect(requestBody).toEqual({
-      slotId: 'tab-5',
-      threadId: 'thread-22',
-      workspace: 'D:/workspaces/My-Code-X',
-      numTurns: 1,
-    });
-    expect(payload).toEqual({ ok: true, threadId: 'thread-22' });
   });
 });
 

@@ -292,7 +292,7 @@ function createNormalizedTimelineItemsFromTurns(threadId: any, turns: any = []) 
     }
     return timelineItems;
 }
-export function normalizeResumeThreadResult(result: any) {
+export function normalizeThreadResult(result: any, source = 'thread_resume') {
     const thread = result?.thread;
     const turns = thread?.turns || [];
     const latestTurn = turns.at(-1) || null;
@@ -300,7 +300,7 @@ export function normalizeResumeThreadResult(result: any) {
         ? normalizeCodexTurn({
             turn: latestTurn,
             threadId: thread?.id,
-            source: 'thread_resume',
+            source,
         })
         : null;
     return {
@@ -319,9 +319,12 @@ export function normalizeResumeThreadResult(result: any) {
             threadId: thread?.id,
             turnId: latestTurn?.id,
             presentationScope: 'conversation',
-            source: 'thread_resume',
+            source,
         }),
     };
+}
+export function normalizeResumeThreadResult(result: any) {
+    return normalizeThreadResult(result, 'thread_resume');
 }
 export function normalizeThreadHistoryEntry(thread: any) {
     return {
