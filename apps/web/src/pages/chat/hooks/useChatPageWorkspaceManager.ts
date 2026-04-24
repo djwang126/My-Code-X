@@ -10,16 +10,26 @@ type ResumeThreadInput = {
   threadId: string;
 };
 
+type StartThreadInput = {
+  workspace: string;
+};
+
 type WorkspaceSwitchErrorInput = {
   kind: 'workspace-switch';
   message: string;
 };
 
+type RunWorkspaceActionInput = {
+  action: () => Promise<boolean>;
+  fallbackMessage: string;
+};
+
 type SessionBootstrapControls = {
   startFresh: () => void;
+  startThread: (input: StartThreadInput) => Promise<boolean> | boolean;
   openWorkspace: (workspacePath: string) => void;
   resumeWorkspace: (workspacePath: string) => void;
-  resumeThread: (input: ResumeThreadInput) => void;
+  resumeThread: (input: ResumeThreadInput) => Promise<boolean> | boolean;
 };
 
 type UseChatPageWorkspaceManagerInput = {
@@ -32,6 +42,7 @@ export function useChatPageWorkspaceManager({
   state,
   workspaceSwitchReason,
   startFresh,
+  startThread,
   openWorkspace,
   resumeWorkspace,
   resumeThread,
@@ -99,6 +110,20 @@ export function useChatPageWorkspaceManager({
     return reportError({ kind: 'workspace-switch', message: workspaceSwitchReason });
   }
 
+  async function runWorkspaceAction(input: RunWorkspaceActionInput) {
+    try {
+      return await input.action();
+    } catch (error) {
+      return reportError(
+        normalizeChatPageError({
+          kind: 'workspace-switch',
+          error,
+          fallbackMessage: input.fallbackMessage,
+        }),
+      );
+    }
+  }
+
   async function handleWorkspaceSave(nextWorkspace: WorkspaceDraft) {
     saveWorkspace(nextWorkspace);
     refreshSavedWorkspaces();
@@ -123,7 +148,13 @@ export function useChatPageWorkspaceManager({
     const savedWorkspace = listSavedWorkspaces().find(workspace => workspace.path === workspacePath) ?? null;
 
     if (savedWorkspace?.lastThreadId) {
-      resumeThread({ workspace: workspacePath, threadId: savedWorkspace.lastThreadId });
+      const resumed =
+        (await runWorkspaceAction({
+          action: () => Promise.resolve(resumeThread({ workspace: workspacePath, threadId: savedWorkspace.lastThreadId })),
+          fallbackMessage: 'Failed to resume the saved workspace thread.',
+        })) !== false;
+      refreshSavedWorkspaces();
+      return resumed;
     } else {
       resumeWorkspace(workspacePath);
     }
@@ -148,8 +179,10 @@ export function useChatPageWorkspaceManager({
       return false;
     }
 
-    startFresh();
-    return true;
+    return runWorkspaceAction({
+      action: () => Promise.resolve(startThread({ workspace: state.workspace })),
+      fallbackMessage: 'Failed to start a new thread.',
+    });
   }
 
   async function handleWorkspaceThreadOpen(threadId: string) {
@@ -161,8 +194,12 @@ export function useChatPageWorkspaceManager({
       return false;
     }
 
-    resumeThread({ workspace: state.workspace, threadId });
-    return true;
+    return (
+      await runWorkspaceAction({
+        action: () => Promise.resolve(resumeThread({ workspace: state.workspace, threadId })),
+        fallbackMessage: 'Failed to open the selected thread.',
+      })
+    ) !== false;
   }
 
   return {
