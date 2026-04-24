@@ -30,6 +30,7 @@ describe('useChatPageWorkspaceManager', () => {
         } as never,
         workspaceSwitchReason: '',
         startFresh: vi.fn(),
+        startThread: vi.fn(),
         openWorkspace: vi.fn(),
         resumeWorkspace: vi.fn(),
         resumeThread: vi.fn(),
@@ -42,5 +43,75 @@ describe('useChatPageWorkspaceManager', () => {
     });
 
     expect(reportError).not.toHaveBeenCalled();
+  });
+
+  it('routes new thread failures into workspace-switch page feedback', async () => {
+    const reportError = vi.fn().mockReturnValue(false);
+    const startThread = vi.fn().mockRejectedValue(
+      new SessionApiError({
+        message: 'thread start unavailable',
+        code: 'service_unavailable',
+        status: 503,
+      }),
+    );
+
+    fetchWorkspaceThreads.mockResolvedValueOnce([]);
+
+    const { result } = renderHook(() =>
+      useChatPageWorkspaceManager({
+        state: {
+          workspace: 'D:/workspace/example-app',
+          threadId: 'thread-1',
+        } as never,
+        workspaceSwitchReason: '',
+        startFresh: vi.fn(),
+        startThread,
+        openWorkspace: vi.fn(),
+        resumeWorkspace: vi.fn(),
+        resumeThread: vi.fn(),
+        reportError,
+      }),
+    );
+
+    await expect(result.current.handleNewThread()).resolves.toBe(false);
+    expect(reportError).toHaveBeenCalledWith({
+      kind: 'workspace-switch',
+      message: 'thread start unavailable',
+    });
+  });
+
+  it('routes workspace thread open failures into workspace-switch page feedback', async () => {
+    const reportError = vi.fn().mockReturnValue(false);
+    const resumeThread = vi.fn().mockRejectedValue(
+      new SessionApiError({
+        message: 'thread resume unavailable',
+        code: 'service_unavailable',
+        status: 503,
+      }),
+    );
+
+    fetchWorkspaceThreads.mockResolvedValueOnce([]);
+
+    const { result } = renderHook(() =>
+      useChatPageWorkspaceManager({
+        state: {
+          workspace: 'D:/workspace/example-app',
+          threadId: 'thread-1',
+        } as never,
+        workspaceSwitchReason: '',
+        startFresh: vi.fn(),
+        startThread: vi.fn(),
+        openWorkspace: vi.fn(),
+        resumeWorkspace: vi.fn(),
+        resumeThread,
+        reportError,
+      }),
+    );
+
+    await expect(result.current.handleWorkspaceThreadOpen('thread-9')).resolves.toBe(false);
+    expect(reportError).toHaveBeenCalledWith({
+      kind: 'workspace-switch',
+      message: 'thread resume unavailable',
+    });
   });
 });
