@@ -34,6 +34,37 @@ function cloneOptions(options: any) {
         promptOverrides: Array.isArray(options.promptOverrides) ? options.promptOverrides.map((option: any) => ({ ...option })) : [],
     };
 }
+function readOptionValue(option: any) {
+    return typeof option?.value === 'string' && option.value ? option.value : null;
+}
+function mergeWithCachedModelOptions(previousOptions: RuntimeOptions, nextOptions: RuntimeOptions) {
+    const previousModels = Array.isArray(previousOptions.models) ? previousOptions.models : [];
+    const nextModels = Array.isArray(nextOptions.models) ? nextOptions.models : [];
+    if (!previousModels.length) {
+        return nextOptions;
+    }
+    if (!nextModels.length) {
+        return {
+            ...nextOptions,
+            models: previousModels.map((option: any) => ({ ...option })),
+        };
+    }
+    const nextModelValues = new Set(nextModels.map(readOptionValue).filter(Boolean));
+    const preservedModels = previousModels.filter((option: any) => {
+        const value = readOptionValue(option);
+        return value !== null && !nextModelValues.has(value);
+    });
+    if (!preservedModels.length) {
+        return nextOptions;
+    }
+    return {
+        ...nextOptions,
+        models: [
+            ...nextModels,
+            ...preservedModels.map((option: any) => ({ ...option })),
+        ],
+    };
+}
 function createNoopIdleConfig() {
     return {
         kind: 'disabled',
@@ -64,7 +95,8 @@ export function createCodexGatewayManager({ createGateway = async () => ({ close
     function syncCachedMetadata(gateway: CodexGatewayLike) {
         cachedPreferences =
             typeof gateway?.getPreferences === 'function' ? clonePreferences(gateway.getPreferences()) : clonePreferences(cachedPreferences);
-        cachedOptions = typeof gateway?.getOptions === 'function' ? cloneOptions(gateway.getOptions()) : cloneOptions(cachedOptions);
+        const nextOptions = typeof gateway?.getOptions === 'function' ? cloneOptions(gateway.getOptions()) : cloneOptions(cachedOptions);
+        cachedOptions = mergeWithCachedModelOptions(cachedOptions, nextOptions);
     }
     function clearIdleTimer() {
         if (idleTimerId === null) {

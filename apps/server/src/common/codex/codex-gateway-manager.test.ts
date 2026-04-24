@@ -56,7 +56,7 @@ function createDeferred<T>() {
   };
 }
 
-function createFakeGateway(name) {
+function createFakeGateway(name, options = { models: [] }) {
   const calls = [];
   let notificationHandler: (event: unknown) => void = () => {};
 
@@ -123,7 +123,7 @@ function createFakeGateway(name) {
       return { gateway: name };
     },
     getOptions() {
-      return { models: [] };
+      return options;
     },
   };
 }
@@ -214,6 +214,53 @@ test('createCodexGatewayManager closes an idle gateway after the timeout and sta
       },
     },
   ]);
+});
+
+test('createCodexGatewayManager preserves discovered model options after an idle restart returns a smaller model list', async () => {
+  const clock = createFakeClock();
+  const gateways = [
+    createFakeGateway('gateway-1', {
+      models: [
+        { value: 'gpt-5.4', label: 'GPT-5.4', description: '' },
+        { value: 'gpt-5.5', label: 'GPT-5.5', description: '' },
+      ],
+    }),
+    createFakeGateway('gateway-2', {
+      models: [{ value: 'gpt-5.4', label: 'GPT-5.4', description: '' }],
+    }),
+  ];
+  let nextGatewayIndex = 0;
+
+  const manager = createCodexGatewayManager({
+    createGateway: async () => gateways[nextGatewayIndex++],
+    idleShutdownConfig: {
+      kind: 'enabled',
+      idleTimeoutMs: 100,
+    },
+    isSafeToShutdown: () => true,
+    now: clock.now,
+    setTimeoutImpl: clock.setTimeoutImpl,
+    clearTimeoutImpl: clock.clearTimeoutImpl,
+  });
+
+  await manager.initialize();
+  assert.deepEqual(
+    manager.getOptions().models.map(option => option.value),
+    ['gpt-5.4', 'gpt-5.5'],
+  );
+
+  clock.advanceBy(100);
+
+  await manager.startTurn({
+    threadId: 'thr-resume',
+    workspace: 'D:/workspaces/My-Code-X',
+    text: 'continue after idle restart',
+  });
+
+  assert.deepEqual(
+    manager.getOptions().models.map(option => option.value),
+    ['gpt-5.4', 'gpt-5.5'],
+  );
 });
 
 test('createCodexGatewayManager defers idle shutdown while the runtime is not safe to close', async () => {
