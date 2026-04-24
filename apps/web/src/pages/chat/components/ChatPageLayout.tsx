@@ -38,7 +38,7 @@ export function ChatPageLayout(props: ChatPageProps) {
   const workspaceFileDraft = props.workspaceFileDraft ?? '';
   const workspaceFileSaving = props.workspaceFileSaving ?? false;
   const workspaceSwitchReason = props.workspaceSwitchReason ?? '';
-  const { fallbackViewModel, partitionedPendingRequests, activeTodoList, chatToasts, proposedPlanActionTurnId, showProposedPlanAction } =
+  const { fallbackViewModel, partitionedPendingRequests, activeTodoList, chatToasts, proposedPlanActionsByItemId } =
     useChatPageLayoutViewModel(props);
   const actionBlocked = props.actionBlocked ?? fallbackViewModel.actionBlocked;
   const inputDisabled = props.inputDisabled ?? fallbackViewModel.inputDisabled;
@@ -217,9 +217,8 @@ export function ChatPageLayout(props: ChatPageProps) {
         onToggleTodoListCollapsed={toggleCollapsed}
         onWorkspaceFileLinkOpen={props.onWorkspaceFileLinkOpen}
         isWorkspaceFileLink={props.isWorkspaceFileLink}
-        proposedPlanActionTurnId={proposedPlanActionTurnId}
+        proposedPlanActionsByItemId={proposedPlanActionsByItemId}
         sendButtonDisabled={resolvedSendButtonDisabled}
-        showProposedPlanAction={showProposedPlanAction}
         threadId={props.threadId}
         latestTurn={props.latestTurn}
         todoListCollapsed={todoCollapsed}

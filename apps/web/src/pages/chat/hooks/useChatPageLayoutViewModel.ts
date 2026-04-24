@@ -1,8 +1,10 @@
 import { useMemo, useRef } from 'react';
 
 import { selectChatToastItems } from '../../../features/chat/runtime';
-import { isProposedPlanActionDismissed } from '../../../features/chat/commands';
-import { findProposedPlanActionCandidate } from '../../../features/chat/commands';
+import {
+  buildProposedPlanActionsByItemId,
+  readProposedPlanActionDecision,
+} from '../../../features/chat/commands';
 import { selectChatTodoState } from '../../../features/chat/todo';
 import { partitionPendingRequests } from '../lib/pending-request-anchors';
 import { buildChatPageViewModel } from '../state/view-model';
@@ -67,29 +69,32 @@ export function useChatPageLayoutViewModel(input: ChatPageProps) {
     () => selectChatToastItems(todoPresentation.visibleNotices),
     [todoPresentation.visibleNotices],
   );
-  const proposedPlanActionTurnId = useMemo(() => {
-    const turnId =
-      findProposedPlanActionCandidate({
+  const proposedPlanActionsByItemId = useMemo(
+    () =>
+      buildProposedPlanActionsByItemId({
         messages: input.messages,
-        collaborationModeKind: input.runtimeSettings?.collaborationModeKind ?? 'default',
         latestTurn,
-      })?.turnId ?? null;
-
-    if (!input.threadId || !turnId || isProposedPlanActionDismissed(input.threadId, turnId)) {
-      return null;
-    }
-
-    return turnId;
-  }, [input.messages, input.runtimeSettings?.collaborationModeKind, input.threadId, latestTurn]);
+        threadId: input.threadId,
+        canCreateAvailableAction: Boolean(
+          input.onConfirmProposedPlanAction || input.onDismissProposedPlanAction,
+        ),
+        readDecision: readProposedPlanActionDecision,
+      }),
+    [
+      input.messages,
+      input.threadId,
+      input.onConfirmProposedPlanAction,
+      input.onDismissProposedPlanAction,
+      input.proposedPlanActionRevision,
+      latestTurn,
+    ],
+  );
 
   return {
     fallbackViewModel,
     partitionedPendingRequests,
     activeTodoList: todoPresentation.activeTodo,
     chatToasts,
-    proposedPlanActionTurnId,
-    showProposedPlanAction: Boolean(
-      proposedPlanActionTurnId && (input.onConfirmProposedPlanAction || input.onDismissProposedPlanAction),
-    ),
+    proposedPlanActionsByItemId,
   };
 }

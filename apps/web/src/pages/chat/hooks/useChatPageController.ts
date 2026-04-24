@@ -7,6 +7,7 @@ import {
   useChatRuntimeDispatch,
   useChatRuntimeState,
   useChatSend,
+  useProposedPlanActionController,
   useTranscriptCache,
 } from '../../../features/chat/runtime';
 import { uploadImageAttachment } from '../../../features/chat/attachments';
@@ -141,9 +142,15 @@ export function useChatPageController() {
     canCycleCollaborationMode,
     collaborationModeLabel,
     handleCycleCollaborationMode,
+  } = useCollaborationModeController({
+    state: chatState,
+    onRuntimeSettingsChange: handleRuntimeSettingsChange,
+  });
+  const {
     handleConfirmProposedPlanAction,
     handleDismissProposedPlanAction,
-  } = useCollaborationModeController({
+    proposedPlanActionRevision,
+  } = useProposedPlanActionController({
     state: chatState,
     sendMessage: actionHandlers.sendMessage,
     onRuntimeSettingsChange: handleRuntimeSettingsChange,
@@ -185,6 +192,7 @@ export function useChatPageController() {
     handleConfirmProposedPlanAction,
     handleCycleCollaborationMode,
     handleDismissProposedPlanAction,
+    proposedPlanActionRevision,
     handleMessageFork: sessionActions.handleMessageFork,
     handleNewThread: () => actionHandlers.runAction('workspaceSwitch', workspaceManager.handleNewThread),
     handleRestart: () => actionHandlers.runAction('restart', sessionActions.handleRestart),

@@ -37,8 +37,12 @@ function createPlanSessionPayload({
       workspace: 'D:/workspace/example-app',
       threadId,
       latestTurn: {
-        turnId: turnId,
+        id: turnId,
         status,
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       collaborationModeKind: 'plan',
       lastUpdatedAt: '2026-04-03T12:34:56.000Z',
@@ -96,14 +100,14 @@ function emitCompletedPlan(threadId: string, turnId: string, planId = 'plan-1') 
   });
   MockEventSource.instances.at(-1)?.emit('turn_completed', {
     threadId,
-    latestTurn: {
-        id: turnId,
-        status: 'completed',
-        error: null,
-        startedAt: null,
-        completedAt: null,
-        durationMs: null,
-      },
+    turn: {
+      id: turnId,
+      status: 'completed',
+      error: null,
+      startedAt: null,
+      completedAt: null,
+      durationMs: null,
+    },
   });
 }
 
@@ -124,9 +128,13 @@ describe('ChatRuntime plan actions', () => {
         sendBodies.push((await request.json()) as Record<string, unknown>);
         return HttpResponse.json({
           threadId: 'thread-plan',
-          latestTurn: {
-            turnId: `turn-${sendBodies.length}`,
+          turn: {
+            id: `turn-${sendBodies.length}`,
             status: 'inProgress',
+            error: null,
+            startedAt: null,
+            completedAt: null,
+            durationMs: null,
           },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-plan&threadId=thread-plan',
@@ -163,6 +171,7 @@ describe('ChatRuntime plan actions', () => {
         collaborationModeKind: 'default',
       },
     });
+    await waitFor(() => expect(screen.getByText('Plan implementation requested')).toBeInTheDocument());
     expect(screen.queryByRole('button', { name: 'Implement plan' })).not.toBeInTheDocument();
   });
 
@@ -203,6 +212,35 @@ describe('ChatRuntime plan actions', () => {
     ).toMatchObject({
       collaborationModeKind: 'plan',
     });
+  });
+
+  it('keeps a resolved inline action card when the user stays in Plan mode', async () => {
+    server.use(
+      http.get('/api/v2/session', ({ request }) =>
+        createPlanSessionPayload({
+          viewerId: new URL(request.url).searchParams.get('viewerId'),
+          slotId: new URL(request.url).searchParams.get('slotId'),
+          threadId: 'thread-plan-stay',
+          turnId: 'turn-stay',
+          status: 'inProgress',
+        })),
+    );
+
+    window.sessionStorage.setItem('my-code-x-viewer-id', 'viewer-plan-stay');
+    window.history.replaceState({}, '', `/?slot=${'tab-plan-stay'}`);
+    window.localStorage.setItem(`my-code-x-slot:${new URL(window.location.href).searchParams.get('slot')}:thread-id`, 'thread-plan-stay');
+
+    const user = userEvent.setup();
+    render();
+
+    await waitFor(() => expect(MockEventSource.instances).toHaveLength(1));
+    emitCompletedPlan('thread-plan-stay', 'turn-stay', 'plan-stay-1');
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Stay in Plan mode' })).toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: 'Stay in Plan mode' }));
+
+    await waitFor(() => expect(screen.getByText('Stayed in Plan mode')).toBeInTheDocument());
+    expect(screen.queryByRole('button', { name: 'Stay in Plan mode' })).not.toBeInTheDocument();
   });
 
   it('re-renders the inline proposed-plan action after visibility re-bootstrap replaces local state', async () => {

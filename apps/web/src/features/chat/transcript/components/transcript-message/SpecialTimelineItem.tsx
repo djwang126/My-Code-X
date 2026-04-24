@@ -22,10 +22,6 @@ type SpecialTimelineItemProps = {
   onFileHrefOpen?: (href: string) => void;
   isWorkspaceFileLink?: (href: string) => boolean;
   onTimelineItemContentLoad?: TranscriptTimelineItemContentHandler;
-  proposedPlanActionTurnId?: string | null;
-  showProposedPlanAction?: boolean;
-  onConfirmProposedPlanAction?: () => boolean | Promise<boolean>;
-  onDismissProposedPlanAction?: () => boolean | Promise<boolean>;
 };
 
 function renderLiteralField(
@@ -135,43 +131,11 @@ function renderSpecialText(
   return <LiteralMessage className="literal-content-compact" text={message.text} />;
 }
 
-function renderPlanActions({
-  onConfirmProposedPlanAction,
-  onDismissProposedPlanAction,
-}: Pick<SpecialTimelineItemProps, 'onConfirmProposedPlanAction' | 'onDismissProposedPlanAction'>) {
-  if (!onConfirmProposedPlanAction && !onDismissProposedPlanAction) {
-    return null;
-  }
-
-  return (
-    <div className="pending-request-actions">
-      {onConfirmProposedPlanAction ? (
-        <button
-          className="pending-request-action pending-request-action-primary"
-          onClick={() => void onConfirmProposedPlanAction?.()}
-          type="button"
-        >
-          Implement plan
-        </button>
-      ) : null}
-      {onDismissProposedPlanAction ? (
-        <button className="pending-request-action" onClick={() => void onDismissProposedPlanAction?.()} type="button">
-          Stay in Plan mode
-        </button>
-      ) : null}
-    </div>
-  );
-}
-
 export function SpecialTimelineItem({
   message,
   onFileHrefOpen,
   isWorkspaceFileLink,
   onTimelineItemContentLoad,
-  proposedPlanActionTurnId = null,
-  showProposedPlanAction = false,
-  onConfirmProposedPlanAction,
-  onDismissProposedPlanAction,
 }: SpecialTimelineItemProps) {
   const shouldStartExpanded = !(
     message.kind !== 'fallback' &&
@@ -184,16 +148,8 @@ export function SpecialTimelineItem({
   const largeItemBody = message.kind !== 'fallback' && isLargeTranscriptItem(message)
     ? <LargeTranscriptItemBody message={message} onTimelineItemContentLoad={onTimelineItemContentLoad} />
     : null;
-  const hasPlanAction = Boolean(
-    message.kind !== 'fallback' &&
-      message.itemType === 'plan' &&
-      typeof message.turnId === 'string' &&
-      message.turnId === proposedPlanActionTurnId &&
-      showProposedPlanAction &&
-      (onConfirmProposedPlanAction || onDismissProposedPlanAction),
-  );
   const hasBody = Boolean(
-    message.text || metadata || largeItemBody || hasPlanAction || shouldShowReasoningPlaceholder(message),
+    message.text || metadata || largeItemBody || shouldShowReasoningPlaceholder(message),
   );
 
   useEffect(() => {
@@ -212,12 +168,6 @@ export function SpecialTimelineItem({
             {renderSpecialText(message, onFileHrefOpen, isWorkspaceFileLink)}
             {largeItemBody}
             {metadata}
-            {hasPlanAction
-              ? renderPlanActions({
-                  onConfirmProposedPlanAction,
-                  onDismissProposedPlanAction,
-                })
-              : null}
           </div>
         ) : null}
       </details>

@@ -28,6 +28,7 @@ export function ChatPageScreen() {
       onConfirmProposedPlanAction={controller.handleConfirmProposedPlanAction}
       onCycleCollaborationMode={controller.handleCycleCollaborationMode}
       onDismissProposedPlanAction={controller.handleDismissProposedPlanAction}
+      proposedPlanActionRevision={controller.proposedPlanActionRevision}
       onInterrupt={controller.interruptTurn}
       onMessageFork={controller.handleMessageFork}
       onNewThread={controller.handleNewThread}

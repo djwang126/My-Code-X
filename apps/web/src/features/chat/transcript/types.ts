@@ -6,6 +6,7 @@ import type {
   SessionTimelineItem,
   TimelineItemContentPayload,
 } from '../runtime/public-types';
+import type { ProposedPlanTranscriptAction } from '../commands';
 
 export type TranscriptRequestResponseHandler = (
   requestId: string,
@@ -19,6 +20,9 @@ export type TranscriptImagePreview = {
 };
 
 export type TranscriptImagePreviewOpenHandler = (image: TranscriptImagePreview) => void;
+export type ProposedPlanActionHandler = (
+  action: ProposedPlanTranscriptAction,
+) => boolean | Promise<boolean>;
 
 export type PendingRequestCardProps = {
   request: SessionPendingRequest;
@@ -30,10 +34,9 @@ export type PendingRequestCardProps = {
 export type ChatTranscriptProps = {
   fallbackPendingRequests: SessionPendingRequest[];
   inlineRequestsByMessageId: Map<string, SessionPendingRequest[]>;
+  proposedPlanActionsByItemId?: Map<string, ProposedPlanTranscriptAction>;
   latestTurn?: ChatTurn | null;
   currentThreadId?: string;
-  proposedPlanActionTurnId?: string | null;
-  showProposedPlanAction?: boolean;
   hasWorkspace: boolean;
   messages: SessionTimelineItem[];
   chatEndRef: RefObject<HTMLDivElement | null>;
@@ -44,6 +47,6 @@ export type ChatTranscriptProps = {
   onRequestResponse?: TranscriptRequestResponseHandler;
   onWorkspaceFileLinkOpen?: (href: string) => boolean | Promise<boolean>;
   isWorkspaceFileLink?: (href: string) => boolean;
-  onConfirmProposedPlanAction?: () => boolean | Promise<boolean>;
-  onDismissProposedPlanAction?: () => boolean | Promise<boolean>;
+  onConfirmProposedPlanAction?: ProposedPlanActionHandler;
+  onDismissProposedPlanAction?: ProposedPlanActionHandler;
 };

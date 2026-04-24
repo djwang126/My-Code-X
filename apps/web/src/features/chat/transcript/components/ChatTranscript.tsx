@@ -6,6 +6,7 @@ import type { ChatTranscriptProps, TranscriptImagePreview } from '../types';
 import { PendingRequestCard } from './PendingRequestCard';
 import { IconChat } from './ChatIcons';
 import { TranscriptMessage } from './TranscriptMessage';
+import { ProposedPlanActionCard } from './proposed-plan-action/ProposedPlanActionCard';
 
 const previewImageStyle: CSSProperties = {
   maxWidth: 'min(24rem, 100%)',
@@ -15,10 +16,9 @@ const previewImageStyle: CSSProperties = {
 export function ChatTranscript({
   fallbackPendingRequests,
   inlineRequestsByMessageId,
+  proposedPlanActionsByItemId = new Map(),
   latestTurn,
   currentThreadId = '',
-  proposedPlanActionTurnId = null,
-  showProposedPlanAction = false,
   hasWorkspace,
   messages,
   chatEndRef,
@@ -33,7 +33,46 @@ export function ChatTranscript({
   onDismissProposedPlanAction,
 }: ChatTranscriptProps) {
   const [previewImage, setPreviewImage] = useState<TranscriptImagePreview | null>(null);
-  const showMessageLevelProposedPlanAction = Boolean(showProposedPlanAction && proposedPlanActionTurnId);
+
+  function renderPendingRequestsForMessage(messageId: string) {
+    const requests = inlineRequestsByMessageId.get(messageId) ?? [];
+
+    if (!requests.length) {
+      return null;
+    }
+
+    return (
+      <section aria-label={`pending requests for ${messageId}`}>
+        {requests.map(request => (
+          <PendingRequestCard
+            currentThreadId={currentThreadId}
+            key={request.id}
+            onRequestResponse={onRequestResponse}
+            request={request}
+            latestTurn={latestTurn}
+          />
+        ))}
+      </section>
+    );
+  }
+
+  function renderProposedPlanActionForItem(itemId: string) {
+    const action = proposedPlanActionsByItemId.get(itemId);
+
+    if (!action) {
+      return null;
+    }
+
+    return (
+      <section aria-label={`proposed plan action for ${itemId}`}>
+        <ProposedPlanActionCard
+          action={action}
+          onConfirmProposedPlanAction={onConfirmProposedPlanAction}
+          onDismissProposedPlanAction={onDismissProposedPlanAction}
+        />
+      </section>
+    );
+  }
 
   return (
     <section
@@ -66,28 +105,13 @@ export function ChatTranscript({
               <Fragment key={message.id}>
                 <TranscriptMessage
                   message={message}
-                  onConfirmProposedPlanAction={onConfirmProposedPlanAction}
-                  onDismissProposedPlanAction={onDismissProposedPlanAction}
                   onFileHrefOpen={href => void onWorkspaceFileLinkOpen?.(href)}
                   onImagePreviewOpen={setPreviewImage}
                   isWorkspaceFileLink={isWorkspaceFileLink}
                   onTimelineItemContentLoad={onTimelineItemContentLoad}
-                  proposedPlanActionTurnId={proposedPlanActionTurnId}
-                  showProposedPlanAction={showMessageLevelProposedPlanAction}
                 />
-                {inlineRequestsByMessageId.get(message.id)?.length ? (
-                  <section aria-label={`pending requests for ${message.id}`}>
-                    {inlineRequestsByMessageId.get(message.id)?.map(request => (
-                      <PendingRequestCard
-                        currentThreadId={currentThreadId}
-                        key={request.id}
-                        onRequestResponse={onRequestResponse}
-                        request={request}
-                        latestTurn={latestTurn}
-                      />
-                    ))}
-                  </section>
-                ) : null}
+                {renderPendingRequestsForMessage(message.id)}
+                {renderProposedPlanActionForItem(message.id)}
               </Fragment>
             );
           }
@@ -103,14 +127,10 @@ export function ChatTranscript({
                       <div className="message-bubble">
                         <TranscriptMessage
                           message={message}
-                          onConfirmProposedPlanAction={onConfirmProposedPlanAction}
-                          onDismissProposedPlanAction={onDismissProposedPlanAction}
                           onFileHrefOpen={href => void onWorkspaceFileLinkOpen?.(href)}
                           onImagePreviewOpen={setPreviewImage}
                           isWorkspaceFileLink={isWorkspaceFileLink}
                           onTimelineItemContentLoad={onTimelineItemContentLoad}
-                          proposedPlanActionTurnId={proposedPlanActionTurnId}
-                          showProposedPlanAction={showMessageLevelProposedPlanAction}
                         />
                       </div>
                     </div>
@@ -123,33 +143,18 @@ export function ChatTranscript({
                     <div className="message-bubble">
                       <TranscriptMessage
                         message={message}
-                        onConfirmProposedPlanAction={onConfirmProposedPlanAction}
-                        onDismissProposedPlanAction={onDismissProposedPlanAction}
                         onFileHrefOpen={href => void onWorkspaceFileLinkOpen?.(href)}
                         onImagePreviewOpen={setPreviewImage}
                         isWorkspaceFileLink={isWorkspaceFileLink}
                         onTimelineItemContentLoad={onTimelineItemContentLoad}
-                        proposedPlanActionTurnId={proposedPlanActionTurnId}
-                        showProposedPlanAction={showMessageLevelProposedPlanAction}
                       />
                     </div>
                   </div>
                 )}
               </div>
 
-              {inlineRequestsByMessageId.get(message.id)?.length ? (
-                <section aria-label={`pending requests for ${message.id}`}>
-                  {inlineRequestsByMessageId.get(message.id)?.map(request => (
-                    <PendingRequestCard
-                      currentThreadId={currentThreadId}
-                      key={request.id}
-                      onRequestResponse={onRequestResponse}
-                      request={request}
-                      latestTurn={latestTurn}
-                    />
-                  ))}
-                </section>
-              ) : null}
+              {renderPendingRequestsForMessage(message.id)}
+              {renderProposedPlanActionForItem(message.id)}
             </Fragment>
           );
         })}

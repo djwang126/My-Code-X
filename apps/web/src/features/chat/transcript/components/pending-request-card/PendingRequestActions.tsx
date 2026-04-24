@@ -1,3 +1,4 @@
+import { InlineActionButton, InlineActionLink } from '../inline-action-card/InlineActionButton';
 import type { AnchorHTMLAttributes, ButtonHTMLAttributes, ReactNode } from 'react';
 
 function joinClassNames(...parts: Array<string | false | null | undefined>) {
@@ -16,12 +17,13 @@ export function PendingRequestActionButton({
   ...props
 }: PendingRequestActionButtonProps) {
   return (
-    <button
+    <InlineActionButton
       {...props}
       className={joinClassNames('pending-request-action', primary && 'pending-request-action-primary', className)}
+      primary={primary}
     >
       {children}
-    </button>
+    </InlineActionButton>
   );
 }
 
@@ -37,11 +39,12 @@ export function PendingRequestActionLink({
   ...props
 }: PendingRequestActionLinkProps) {
   return (
-    <a
+    <InlineActionLink
       {...props}
       className={joinClassNames('pending-request-action', primary && 'pending-request-action-primary', className)}
+      primary={primary}
     >
       {children}
-    </a>
+    </InlineActionLink>
   );
 }

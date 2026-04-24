@@ -7,7 +7,11 @@ import {
   type ChatToastItem,
   type SessionTimelineMessageItem,
 } from '../../../features/chat/runtime';
-import { ForkReplyButton, getForkableMessageIds } from '../../../features/chat/commands';
+import {
+  ForkReplyButton,
+  getForkableMessageIds,
+  type ProposedPlanTranscriptAction,
+} from '../../../features/chat/commands';
 import { ChatTodoPanel, type ActiveChatTodo } from '../../../features/chat/todo';
 import { ChatTranscript } from '../../../features/chat/transcript';
 import type { ChatPageProps } from '../types';
@@ -37,8 +41,7 @@ type ChatPageConversationProps = {
   onTimelineItemContentLoad?: ChatPageProps['onTimelineItemContentLoad'];
   onWorkspaceFileLinkOpen?: ChatPageProps['onWorkspaceFileLinkOpen'];
   isWorkspaceFileLink?: ChatPageProps['isWorkspaceFileLink'];
-  proposedPlanActionTurnId?: string | null;
-  showProposedPlanAction: boolean;
+  proposedPlanActionsByItemId: Map<string, ProposedPlanTranscriptAction>;
   visibleTodoList: ActiveChatTodo | null;
   todoListCollapsed: boolean;
   onToggleTodoListCollapsed: () => void;
@@ -99,9 +102,8 @@ export function ChatPageConversation(props: ChatPageConversationProps) {
         onTimelineItemContentLoad={props.onTimelineItemContentLoad}
         onWorkspaceFileLinkOpen={props.onWorkspaceFileLinkOpen}
         isWorkspaceFileLink={props.isWorkspaceFileLink}
-        proposedPlanActionTurnId={props.proposedPlanActionTurnId}
+        proposedPlanActionsByItemId={props.proposedPlanActionsByItemId}
         renderMessageAction={renderMessageAction}
-        showProposedPlanAction={props.showProposedPlanAction}
         transcriptSectionRef={props.transcriptSectionRef}
         latestTurn={props.latestTurn}
       />

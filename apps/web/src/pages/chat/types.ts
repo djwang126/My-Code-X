@@ -14,6 +14,7 @@ import type { WorkspaceThreadEntry } from '../../features/workspace/threads';
 import type { SavedWorkspace, WorkspaceDraft } from '../../features/workspace/bookmarks';
 import type { WorkspaceFileDetail, WorkspaceFileEntry } from '../../features/workspace/explorer';
 import type { ChatPageFeedback } from './state/page-state-types';
+import type { ProposedPlanTranscriptAction } from '../../features/chat/commands';
 
 export type ChatReviewStartInput = {
   delivery: 'inline' | 'detached';
@@ -53,6 +54,9 @@ export type ChatPageRequestResponseHandler = (
 export type ChatPageWorkspaceHandler = (workspacePath: string) => boolean | Promise<boolean>;
 export type ChatPageWorkspaceSaveHandler = (workspace: WorkspaceDraft) => boolean | Promise<boolean>;
 export type ChatPageActionHandler = () => boolean | Promise<boolean>;
+export type ChatPageProposedPlanActionHandler = (
+  action: ProposedPlanTranscriptAction,
+) => boolean | Promise<boolean>;
 export type ChatPageWorkspaceThreadHandler = (threadId: string) => boolean | Promise<boolean>;
 export type ChatPageMessageForkHandler = (messageId: string) => boolean | Promise<boolean>;
 export type ChatPageTimelineItemContentHandler = (itemId: string) => TimelineItemContentPayload | Promise<TimelineItemContentPayload>;
@@ -107,8 +111,9 @@ export type ChatPageProps = {
   canCycleCollaborationMode?: boolean;
   collaborationModeLabel?: string;
   onCycleCollaborationMode?: ChatPageActionHandler;
-  onConfirmProposedPlanAction?: ChatPageActionHandler;
-  onDismissProposedPlanAction?: ChatPageActionHandler;
+  onConfirmProposedPlanAction?: ChatPageProposedPlanActionHandler;
+  onDismissProposedPlanAction?: ChatPageProposedPlanActionHandler;
+  proposedPlanActionRevision?: number;
   workspaceSwitchReason?: string;
   workspaceExplorerOpen?: boolean;
   workspaceExplorerLoading?: boolean;

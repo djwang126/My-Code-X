@@ -62,14 +62,40 @@ describe('ChatTranscript plan actions integration', () => {
       ],
     });
 
-    const latestPlanCard = screen.getByText('Latest plan').closest('.special-item');
+    const latestPlanAction = screen.getByLabelText('proposed plan action for plan-turn-2');
     const olderPlanCard = screen.getByText('Older plan').closest('.special-item');
 
     expect(screen.getAllByRole('button', { name: 'Implement plan' })).toHaveLength(1);
     expect(screen.getAllByRole('button', { name: 'Stay in Plan mode' })).toHaveLength(1);
-    expect(latestPlanCard?.textContent).toContain('Implement plan');
-    expect(latestPlanCard?.textContent).toContain('Stay in Plan mode');
+    expect(latestPlanAction.textContent).toContain('Implement plan');
+    expect(latestPlanAction.textContent).toContain('Stay in Plan mode');
     expect(olderPlanCard?.textContent).not.toContain('Implement plan');
   });
 
+  it('keeps a resolved proposed-plan action card after the user chooses to stay in Plan mode', () => {
+    window.sessionStorage.setItem(
+      'my-code-x-proposed-plan-action:thread-1:plan-turn-1',
+      JSON.stringify({ decision: 'stayInPlan' }),
+    );
+
+    renderChatPage({
+      messages: [
+        {
+          id: 'plan-turn-1',
+          kind: 'special',
+          itemType: 'plan',
+          text: 'Plan to keep',
+          state: 'complete',
+          threadId: 'thread-1',
+          turnId: 'turn-1',
+          raw: { type: 'plan', id: 'plan-turn-1', text: 'Plan to keep' },
+        },
+      ],
+    });
+
+    const resolvedAction = screen.getByLabelText('proposed plan action for plan-turn-1');
+    expect(resolvedAction.textContent).toContain('Stayed in Plan mode');
+    expect(resolvedAction.textContent).toContain('Kept');
+    expect(screen.queryByRole('button', { name: 'Implement plan' })).toBeNull();
+  });
 });

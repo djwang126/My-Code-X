@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { SessionPendingRequest } from '../../../runtime/public-types';
-import { MarkdownMessage } from '../../lib/message-markdown';
+import { InlineActionFrame } from '../inline-action-card/InlineActionFrame';
 
 interface PendingRequestFrameProps {
   request: SessionPendingRequest;
@@ -11,22 +11,14 @@ interface PendingRequestFrameProps {
 
 export function PendingRequestFrame({ request, stale = false, children }: PendingRequestFrameProps) {
   return (
-    <article
-      aria-label={`${request.kind} request`}
-      className={`timeline-card-panel pending-request pending-request--${request.kind} ${stale ? 'is-stale' : ''}`}
+    <InlineActionFrame
+      ariaLabel={`${request.kind} request`}
+      badge={stale ? 'Expired' : undefined}
+      className={`pending-request pending-request--${request.kind} ${stale ? 'is-stale' : ''}`}
+      prompt={request.prompt}
+      title={request.title}
     >
-      <div className="timeline-card-header pending-request-header">
-        <div className="pending-request-title-row">
-          <div className="pending-request-title" role="heading" aria-level={3}>
-            <MarkdownMessage className="markdown-content-compact" text={request.title} />
-          </div>
-          {stale ? <span className="pending-request-state-badge">Expired</span> : null}
-        </div>
-      </div>
-      <div className="timeline-card-content pending-request-content">
-        {request.prompt ? <MarkdownMessage className="markdown-content-compact pending-request-copy" text={request.prompt} /> : null}
-        {children}
-      </div>
-    </article>
+      {children}
+    </InlineActionFrame>
   );
 }

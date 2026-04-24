@@ -581,7 +581,8 @@
   word-break: break-word;
 }
 
-/* Pending request cards */
+/* Inline action cards */
+.inline-action-card,
 .pending-request {
   margin: var(--sp-2) 0;
   background:
@@ -591,16 +592,19 @@
   overflow: hidden;
 }
 
+.inline-action-card-header,
 .pending-request-header {
   padding: var(--sp-4) var(--sp-4) 0;
 }
 
+.inline-action-card-title,
 .pending-request-title {
   font-size: 15px;
   font-weight: 600;
   color: var(--text-primary);
 }
 
+.inline-action-card-title-row,
 .pending-request-title-row {
   display: flex;
   align-items: center;
@@ -608,6 +612,7 @@
   gap: var(--sp-2);
 }
 
+.inline-action-card-badge,
 .pending-request-state-badge {
   display: inline-flex;
   align-items: center;
@@ -621,14 +626,17 @@
   text-transform: uppercase;
 }
 
+.inline-action-card-content,
 .pending-request-content {
   padding: var(--sp-2) var(--sp-4) var(--sp-4);
 }
 
+.inline-action-card-copy,
 .pending-request-copy {
   color: var(--text-secondary);
 }
 
+.inline-action-card-actions,
 .pending-request-actions {
   display: flex;
   flex-wrap: wrap;
@@ -636,6 +644,8 @@
   margin-top: var(--sp-3);
 }
 
+.inline-action-card-actions a,
+.inline-action-card-actions button,
 .pending-request-actions a,
 .pending-request-actions button {
   padding: var(--sp-1) var(--sp-3);
@@ -651,6 +661,8 @@
   text-decoration: none;
 }
 
+.inline-action-card-actions a:hover,
+.inline-action-card-actions button:hover,
 .pending-request-actions a:hover,
 .pending-request-actions button:hover {
   border-color: var(--fs-blue-400);
@@ -658,22 +670,26 @@
   text-decoration: none;
 }
 
+.inline-action-card-actions .inline-action-card-action-primary,
 .pending-request-actions .pending-request-action-primary {
   background: var(--fs-blue-400);
   border-color: var(--fs-blue-400);
   color: var(--text-inverse);
 }
 
+.inline-action-card-actions .inline-action-card-action-primary:hover,
 .pending-request-actions .pending-request-action-primary:hover {
   background: var(--fs-blue-500);
   color: var(--text-inverse);
 }
 
+.inline-action-card-actions button:disabled,
 .pending-request-actions button:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
+.inline-action-card-actions a,
 .pending-request-actions a {
   display: inline-flex;
   align-items: center;
@@ -688,6 +704,7 @@
   font-weight: 600;
 }
 
+.inline-action-card-actions a:hover,
 .pending-request-actions a:hover {
   background: rgba(39, 122, 255, 0.11);
 }

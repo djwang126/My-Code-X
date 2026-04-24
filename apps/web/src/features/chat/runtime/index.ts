@@ -2,6 +2,7 @@ export { ChatRuntimeProvider, useChatRuntimeDispatch, useChatRuntimeState } from
 export { fetchSessionPayload } from './bootstrap';
 export { ChatToastRegion } from './components/ChatToastRegion';
 export { useCollaborationModeController } from './hooks/useCollaborationModeController';
+export { useProposedPlanActionController } from './hooks/useProposedPlanActionController';
 export { useChatEventStream } from './hooks/useChatEventStream';
 export { useChatRequests } from './hooks/useChatRequests';
 export { useChatSend } from './hooks/useChatSend';
