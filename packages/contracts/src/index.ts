@@ -34,6 +34,17 @@ export {
 } from './session-user-message-id.js';
 
 export type {
+  SessionNoticePayload,
+  SessionPendingRequestPayload,
+  SessionSnapshotPayload,
+  SessionTimelineItemPayload,
+  ThreadActionAcceptedPayload,
+  ThreadActionNoticePayload,
+  ThreadActionPendingRequestPayload,
+  ThreadActionSnapshotPayload,
+  ThreadActionTimelineItemPayload,
+  ThreadResumeAcceptedPayload,
+  ThreadStartAcceptedPayload,
   ThreadCompactAcceptedPayload,
   ThreadForkAcceptedPayload,
   ThreadRollbackAcceptedPayload,

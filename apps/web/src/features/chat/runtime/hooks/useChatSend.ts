@@ -1,7 +1,6 @@
 import { useCallback, useRef } from 'react';
 
 import { postChatInterrupt, postChatMessage } from '../api/chat-turn-api';
-import { postThreadFork } from '../../commands';
 import { normalizeCollaborationModeKind } from '../../../../shared/lib/collaboration-mode';
 import {
   SLOT_DISPLACED_MESSAGE,
@@ -20,6 +19,7 @@ import type { ChatRuntimeState } from '../state/chat-runtime-state';
 import type { SessionSendInput } from '../session-types';
 import type { SessionState as SessionShellState } from '../../../session/public-types';
 import { canInterruptForRuntimeOperation, canSendForRuntimeOperation } from '../state/chat-turn-state';
+import type { ThreadActionState } from '../../thread-actions';
 
 function isClientSendDebugEnabled() {
   if (typeof window === 'undefined') {
@@ -49,13 +49,16 @@ function logClientSendDebug(stage: string, details: Record<string, unknown> = {}
   });
 }
 
-export function useChatSend(state: ChatRuntimeState, sessionState: SessionShellState) {
+export function useChatSend(
+  state: ChatRuntimeState,
+  sessionState: SessionShellState,
+  { threadAction = { status: 'idle' } }: { threadAction?: ThreadActionState } = {},
+) {
   const dispatch = useChatRuntimeDispatch();
   const sessionDispatch = useSessionShellDispatch();
   const { selectThread } = useSessionSelection();
   const submitInFlightRef = useRef(false);
   const interruptInFlightRef = useRef(false);
-  const forkInFlightRef = useRef(false);
 
   const displaceIfSlotTakenOver = useCallback(() => {
     if (isCurrentPageSlotOwner(sessionState.slotId)) {
@@ -79,6 +82,7 @@ export function useChatSend(state: ChatRuntimeState, sessionState: SessionShellS
 
       if (sessionState.phase !== 'ready') return false;
       if (!sessionState.workspace) return false;
+      if (threadAction.status !== 'idle') return false;
       if (!canSendForRuntimeOperation({ latestTurn: state.latestTurn, operations: state.operations })) return false;
       if (!text && !hasContent) return false;
       if (submitInFlightRef.current) return false;
@@ -167,6 +171,7 @@ export function useChatSend(state: ChatRuntimeState, sessionState: SessionShellS
       state.preferences,
       state.threadId,
       state.latestTurn,
+      threadAction.status,
     ],
   );
 
@@ -209,69 +214,7 @@ export function useChatSend(state: ChatRuntimeState, sessionState: SessionShellS
     state.threadId,
   ]);
 
-  const forkFromMessage = useCallback(
-    async (messageId: string) => {
-      if (sessionState.phase !== 'ready') return '';
-      if (!sessionState.workspace || !state.threadId) return '';
-      if (!canSendForRuntimeOperation({ latestTurn: state.latestTurn, operations: state.operations })) return '';
-      if (forkInFlightRef.current) return '';
-      if (displaceIfSlotTakenOver()) return '';
-
-      const targetIndex = state.messages.findIndex(message => message.id === messageId);
-      if (targetIndex < 0) return '';
-
-      const targetMessage = state.messages[targetIndex];
-      if (targetMessage.kind !== 'message' || targetMessage.role !== 'assistant' || targetMessage.state !== 'complete') {
-        return '';
-      }
-
-      const preservedTurnCount = new Set(
-        state.messages
-          .slice(0, targetIndex + 1)
-          .flatMap(message =>
-            message.kind === 'message' && message.role === 'user' && message.turnId ? [message.turnId] : [],
-          ),
-      ).size;
-
-      if (!preservedTurnCount) return '';
-
-      forkInFlightRef.current = true;
-
-      try {
-        const payload = await postThreadFork({
-          slotId: sessionState.slotId,
-          threadId: state.threadId,
-          workspace: sessionState.workspace,
-          preservedTurnCount,
-        });
-        selectThread({ workspace: sessionState.workspace, threadId: payload.threadId });
-        return payload.threadId;
-      } catch (error) {
-        dispatch({
-          type: 'send/failed',
-          errorMessage: error instanceof Error ? error.message : String(error),
-        });
-        return '';
-      } finally {
-        forkInFlightRef.current = false;
-      }
-    },
-    [
-      dispatch,
-      displaceIfSlotTakenOver,
-      selectThread,
-      sessionState.phase,
-      sessionState.slotId,
-      sessionState.workspace,
-      state.latestTurn,
-      state.operations,
-      state.messages,
-      state.threadId,
-    ],
-  );
-
   return {
-    forkFromMessage,
     interruptTurn,
     sendMessage,
   };

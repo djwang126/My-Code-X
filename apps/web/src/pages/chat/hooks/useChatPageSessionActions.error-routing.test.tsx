@@ -8,7 +8,7 @@ import { useChatPageSessionActions } from './useChatPageSessionActions';
 describe('useChatPageSessionActions error routing', () => {
   it('keeps message fork failures typed as message-fork errors', async () => {
     const forkFromMessage = vi.fn().mockRejectedValue(new Error('fork request failed'));
-    const resumeThread = vi.fn();
+    const resumeExistingThread = vi.fn();
 
     const { result } = renderHook(() => {
       const controllerState = useChatPageControllerState({
@@ -46,8 +46,12 @@ describe('useChatPageSessionActions error routing', () => {
           preferences: {},
           options: {},
         },
-        resumeThread,
-        forkFromMessage,
+        threadActions: {
+          resumeExistingThread,
+          compactThread: vi.fn(),
+          forkFromMessage,
+          rollbackThread: vi.fn(),
+        },
         blockWorkspaceSwitchIfNeeded: () => false,
         reportError: controllerState.recordError,
       });
@@ -64,7 +68,7 @@ describe('useChatPageSessionActions error routing', () => {
     });
 
     expect(forkFromMessage).toHaveBeenCalledWith('message-1');
-    expect(resumeThread).not.toHaveBeenCalled();
+    expect(resumeExistingThread).not.toHaveBeenCalled();
     expect(result.current.currentError).toEqual({
       kind: 'message-fork',
       message: 'fork request failed',
@@ -108,14 +112,18 @@ describe('useChatPageSessionActions error routing', () => {
           preferences: {},
           options: {},
         },
-        resumeThread: vi.fn(),
-        forkFromMessage: vi.fn().mockRejectedValue(
-          new SessionApiError({
-            message: 'fork service unavailable',
-            code: 'service_unavailable',
-            status: 503,
-          }),
-        ),
+        threadActions: {
+          resumeExistingThread: vi.fn(),
+          compactThread: vi.fn(),
+          forkFromMessage: vi.fn().mockRejectedValue(
+            new SessionApiError({
+              message: 'fork service unavailable',
+              code: 'service_unavailable',
+              status: 503,
+            }),
+          ),
+          rollbackThread: vi.fn(),
+        },
         blockWorkspaceSwitchIfNeeded: () => false,
         reportError: controllerState.recordError,
       });

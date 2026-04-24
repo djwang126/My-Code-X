@@ -5,6 +5,10 @@ import type {
 } from '@my-code-x/contracts';
 
 export type {
+  SessionNoticePayload,
+  SessionPendingRequestPayload,
+  SessionSnapshotPayload,
+  SessionTimelineItemPayload,
   AppRestartAcceptedPayload,
   ChatTurn,
   ChatTurnStatus,
@@ -13,7 +17,14 @@ export type {
   SessionCodexErrorInfo,
   SessionError,
   SessionThreadStatus,
+  ThreadActionAcceptedPayload,
+  ThreadActionNoticePayload,
+  ThreadActionPendingRequestPayload,
+  ThreadResumeAcceptedPayload,
+  ThreadStartAcceptedPayload,
   ThreadCompactAcceptedPayload,
+  ThreadActionSnapshotPayload,
+  ThreadActionTimelineItemPayload,
   ThreadForkAcceptedPayload,
   ThreadRollbackAcceptedPayload,
 } from '@my-code-x/contracts';

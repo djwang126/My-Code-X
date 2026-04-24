@@ -38,8 +38,20 @@ describe('ChatRuntime thread actions', () => {
       http.post('/api/v2/thread/fork', async ({ request }) => {
         forkBodies.push((await request.json()) as Record<string, unknown>);
         return HttpResponse.json({
-          ok: true,
+          kind: 'threadForked',
+          sourceThreadId: 'thread-ready',
           threadId: 'thread-forked',
+          snapshot: {
+            threadId: 'thread-forked',
+            latestTurn: null,
+            messages: [
+              createUserMessage('user:turn-1', 'first prompt', 'thread-forked', 'turn-1'),
+              createAssistantMessage('assistant:turn-1', 'first answer', 'thread-forked', 'turn-1'),
+            ],
+            notices: [],
+            pendingRequests: [],
+            lastError: null,
+          },
         });
       }),
     );
@@ -93,8 +105,20 @@ describe('ChatRuntime thread actions', () => {
       http.post('/api/v2/thread/fork', async ({ request }) => {
         forkBodies.push((await request.json()) as Record<string, unknown>);
         return HttpResponse.json({
-          ok: true,
+          kind: 'threadForked',
+          sourceThreadId: 'thread-ready',
           threadId: 'thread-forked-multi-assistant',
+          snapshot: {
+            threadId: 'thread-forked-multi-assistant',
+            latestTurn: null,
+            messages: [
+              createUserMessage('user:turn-1', 'first prompt', 'thread-forked-multi-assistant', 'turn-1'),
+              createAssistantMessage('assistant:turn-1:b', 'first final answer', 'thread-forked-multi-assistant', 'turn-1'),
+            ],
+            notices: [],
+            pendingRequests: [],
+            lastError: null,
+          },
         });
       }),
     );
@@ -154,8 +178,19 @@ describe('ChatRuntime thread actions', () => {
       http.post('/api/v2/thread/rollback', async ({ request }) => {
         rollbackBodies.push((await request.json()) as Record<string, unknown>);
         return HttpResponse.json({
-          ok: true,
+          kind: 'threadRolledBack',
           threadId: 'thread-ready',
+          snapshot: {
+            threadId: 'thread-ready',
+            latestTurn: null,
+            messages: [
+              createUserMessage('user:turn-1', 'first prompt', 'thread-ready', 'turn-1'),
+              createAssistantMessage('assistant:turn-1', 'first answer', 'thread-ready', 'turn-1'),
+            ],
+            notices: [],
+            pendingRequests: [],
+            lastError: null,
+          },
         });
       }),
     );
@@ -182,8 +217,8 @@ describe('ChatRuntime thread actions', () => {
         }),
       ]),
     );
+    await waitFor(() => expect(screen.queryByText('second answer')).toBeNull());
     expect(sessionRequests).toContain('thread-ready');
-    expect(screen.queryByText('second answer')).toBeNull();
     expect(screen.getByText('first answer')).toBeInTheDocument();
   });
 

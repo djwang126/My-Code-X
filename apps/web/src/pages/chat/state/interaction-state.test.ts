@@ -158,6 +158,19 @@ describe('deriveChatInteractionState', () => {
     expect(deriveChatInteractionState(state)).toBe('interrupting');
   });
 
+  it('treats pending thread actions as their own interaction state', () => {
+    const state = buildState({
+      session: {
+        threadAction: {
+          status: 'resuming-thread',
+          threadId: 'thread-1',
+        },
+      },
+    });
+
+    expect(deriveChatInteractionState(state)).toBe('thread-action-pending');
+  });
+
   it('treats send-in-flight as running even before stream metadata catches up', () => {
     const state = buildState({
       session: { turnStatus: 'inProgress' },

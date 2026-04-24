@@ -16,6 +16,7 @@ export {
 export {
   normalizeCodexThreadItem,
   normalizeThreadListResult,
+  normalizeThreadResult,
   normalizeResumeThreadResult,
 } from './codex-gateway-protocol-normalize.js';
 

@@ -1,7 +1,14 @@
 import { serializeChatTurn } from '@my-code-x/contracts';
 import { createHttpError } from '../../../common/errors/http-error.js';
+import { createChatEventsSnapshotPayload } from '../contracts/chat.contract.js';
 import { createThreadBootstrapState } from './thread-bootstrap-policy.js';
-import { canRuntimeInterrupt } from '../shared/chat-turn-state.js';
+import { resolveSessionWorkspace } from '../shared/chat-session-state.js';
+import {
+    createEnsureAttachedThreadActionRuntime,
+    restoreThreadActionRuntime,
+} from './thread-action-runtime.js';
+import { countDistinctUserTurns } from './thread-turn-count.js';
+import { canRuntimeInterrupt, isRuntimeTurnActive } from '../shared/chat-turn-state.js';
 import type { ChatSessionRegistry, ChatSessionState } from '../shared/chat-types.js';
 import type { CodexGatewayLike, PromptOverrideResolver, RuntimeSettings } from '../../../common/codex/codex-types.js';
 interface ThreadActionsServiceDependencies {
@@ -9,17 +16,48 @@ interface ThreadActionsServiceDependencies {
     registry: ChatSessionRegistry;
     promptOverrideResolver?: PromptOverrideResolver | null;
     sessionService: {
-        ensureLoadedThreadRuntime(input: {
+        getRuntimeAttachment(runtime: ChatSessionState | null | undefined): {
+            attached: boolean;
+            reason: string;
+            runtimeGatewayGeneration: number | null;
+            currentGatewayGeneration: number | null;
+        };
+        logRuntimeRecovery(input: {
+            trigger: 'thread_action';
+            runtime: ChatSessionState;
             slotId: string;
             threadId: string;
-            workspace?: string;
-        }): Promise<ChatSessionState>;
+            workspace: string;
+            attachment: {
+                attached: boolean;
+                reason: string;
+                runtimeGatewayGeneration: number | null;
+                currentGatewayGeneration: number | null;
+            };
+        }): void;
         restoreRuntime(input: {
             viewerId: string;
             slotId: string;
             workspace?: string;
             threadId: string;
             runtimeSettings?: ChatSessionState['appliedThreadRuntimeOverrides'];
+            recoveryContext?: {
+                trigger: 'thread_action';
+            };
+        }): Promise<ChatSessionState>;
+        startThreadForRuntime(input: {
+            viewerId: string;
+            slotId: string;
+            workspace?: string;
+            runtimeSettings?: ChatSessionState['appliedThreadRuntimeOverrides'];
+        }): Promise<ChatSessionState>;
+        storeRuntimeFromResult(input: {
+            viewerId: string;
+            slotId: string;
+            workspace?: string;
+            threadId: string;
+            runtimeSettings?: ChatSessionState['appliedThreadRuntimeOverrides'];
+            threadResult: any;
         }): Promise<ChatSessionState>;
     };
 }
@@ -38,6 +76,94 @@ async function createForkThreadBootstrapState({ runtimeSettings, promptOverrideR
 }
 
 export function createThreadActionsService({ codexGateway, registry, promptOverrideResolver = null, sessionService }: ThreadActionsServiceDependencies) {
+    const ensureAttachedThreadActionRuntime = createEnsureAttachedThreadActionRuntime({
+        registry,
+        sessionRecovery: sessionService,
+    });
+    async function startThread({ viewerId, slotId, workspace = '', runtimeSettings, }: {
+        viewerId: string;
+        slotId: string;
+        workspace?: string;
+        runtimeSettings?: RuntimeSettings | null;
+    }) {
+        const slotRuntime = registry.getRuntimeBySlotId(slotId);
+        if (slotRuntime && isRuntimeTurnActive(slotRuntime)) {
+            throw createHttpError('turn already in progress', 409);
+        }
+        const resolvedWorkspace = resolveSessionWorkspace(slotRuntime, workspace);
+        if (!resolvedWorkspace) {
+            throw createHttpError('workspace is required', 400);
+        }
+        const startedRuntime = await sessionService.startThreadForRuntime({
+            viewerId,
+            slotId,
+            workspace: resolvedWorkspace,
+            runtimeSettings: runtimeSettings ?? undefined,
+        });
+        return {
+            kind: 'threadStarted',
+            threadId: startedRuntime.threadId,
+            snapshot: createChatEventsSnapshotPayload(startedRuntime),
+        };
+    }
+    async function resumeThread({ viewerId, slotId, threadId, workspace = '', runtimeSettings, }: {
+        viewerId: string;
+        slotId: string;
+        threadId: string;
+        workspace?: string;
+        runtimeSettings?: RuntimeSettings | null;
+    }) {
+        const runtime = registry.getRuntimeForSelection({ slotId, threadId });
+        if (runtime) {
+            const attachment = sessionService.getRuntimeAttachment(runtime);
+            if (attachment.attached) {
+                return {
+                    kind: 'threadResumed',
+                    threadId: runtime.threadId,
+                    snapshot: createChatEventsSnapshotPayload(runtime),
+                };
+            }
+            const resolvedWorkspace = resolveSessionWorkspace(runtime, workspace);
+            sessionService.logRuntimeRecovery({
+                trigger: 'thread_action',
+                runtime,
+                slotId: runtime.slotId,
+                threadId: runtime.threadId,
+                workspace: resolvedWorkspace,
+                attachment,
+            });
+            const restoredRuntime = await sessionService.restoreRuntime({
+                viewerId,
+                slotId,
+                workspace: resolvedWorkspace,
+                threadId: runtime.threadId,
+                runtimeSettings: runtimeSettings ?? runtime.appliedThreadRuntimeOverrides ?? undefined,
+                recoveryContext: {
+                    trigger: 'thread_action',
+                },
+            });
+            return {
+                kind: 'threadResumed',
+                threadId: restoredRuntime.threadId,
+                snapshot: createChatEventsSnapshotPayload(restoredRuntime),
+            };
+        }
+        const restoredRuntime = await sessionService.restoreRuntime({
+            viewerId,
+            slotId,
+            workspace,
+            threadId,
+            runtimeSettings: runtimeSettings ?? undefined,
+            recoveryContext: {
+                trigger: 'thread_action',
+            },
+        });
+        return {
+            kind: 'threadResumed',
+            threadId: restoredRuntime.threadId,
+            snapshot: createChatEventsSnapshotPayload(restoredRuntime),
+        };
+    }
     async function interruptTurn({ slotId, threadId }: {
         slotId: string;
         threadId: string;
@@ -69,13 +195,13 @@ export function createThreadActionsService({ codexGateway, registry, promptOverr
         threadId: string;
         workspace?: string;
     }) {
-        const runtime = await sessionService.ensureLoadedThreadRuntime({ slotId, threadId, workspace });
+        const runtime = await ensureAttachedThreadActionRuntime({ slotId, threadId, workspace });
         await codexGateway.compactThread!({
             threadId: runtime.threadId,
             workspace: workspace || runtime.workspace,
         });
         return {
-            ok: true,
+            kind: 'threadCompactStarted',
             threadId: runtime.threadId,
         };
     }
@@ -85,25 +211,27 @@ export function createThreadActionsService({ codexGateway, registry, promptOverr
         workspace?: string;
         numTurns: number;
     }) {
-        const runtime = await sessionService.ensureLoadedThreadRuntime({ slotId, threadId, workspace });
+        const runtime = await ensureAttachedThreadActionRuntime({ slotId, threadId, workspace });
         if (!Number.isInteger(numTurns) || numTurns < 1) {
             throw createHttpError('numTurns must be a positive integer', 400);
         }
-        await codexGateway.rollbackThread!({
+        const rollbackResult = await codexGateway.rollbackThread!({
             threadId: runtime.threadId,
             workspace: workspace || runtime.workspace,
             numTurns,
         });
-        await sessionService.restoreRuntime({
-            viewerId: runtime.viewerId,
-            slotId: runtime.slotId,
+        const restoredRuntime = await restoreThreadActionRuntime({
+            runtime,
             workspace: workspace || runtime.workspace,
             threadId: runtime.threadId,
             runtimeSettings: runtime.appliedThreadRuntimeOverrides ?? undefined,
+            result: rollbackResult,
+            sessionRecovery: sessionService,
         });
         return {
-            ok: true,
+            kind: 'threadRolledBack',
             threadId: runtime.threadId,
+            snapshot: createChatEventsSnapshotPayload(restoredRuntime),
         };
     }
     async function forkThread({ slotId, threadId, workspace = '', preservedTurnCount, }: {
@@ -112,12 +240,12 @@ export function createThreadActionsService({ codexGateway, registry, promptOverr
         workspace?: string;
         preservedTurnCount: number;
     }) {
-        const runtime = await sessionService.ensureLoadedThreadRuntime({ slotId, threadId, workspace });
+        const runtime = await ensureAttachedThreadActionRuntime({ slotId, threadId, workspace });
         const bootstrapState = await createForkThreadBootstrapState({
             runtimeSettings: runtime.appliedThreadRuntimeOverrides,
             promptOverrideResolver,
         });
-        const totalTurnCount = runtime.messages.filter(message => message.kind === 'message' && message.role === 'user' && message.threadId === runtime.threadId).length;
+        const totalTurnCount = countDistinctUserTurns(runtime.messages, runtime.threadId);
         if (!Number.isInteger(preservedTurnCount) || preservedTurnCount < 1) {
             throw createHttpError('preservedTurnCount must be a positive integer', 400);
         }
@@ -133,16 +261,27 @@ export function createThreadActionsService({ codexGateway, registry, promptOverr
             runtimeSettings: bootstrapState.normalizedRuntimeSettings,
             baseInstructions: bootstrapState.baseInstructions,
         });
+        let threadResult = forkedThread;
         const rollbackTurns = totalTurnCount - preservedTurnCount;
         if (rollbackTurns > 0) {
-            await codexGateway.rollbackThread!({
+            threadResult = await codexGateway.rollbackThread!({
                 threadId: forkedThread.threadId,
                 numTurns: rollbackTurns,
             });
         }
-        return {
-            ok: true,
+        const restoredRuntime = await restoreThreadActionRuntime({
+            runtime,
+            workspace: workspace || runtime.workspace,
             threadId: forkedThread.threadId,
+            runtimeSettings: bootstrapState.normalizedRuntimeSettings,
+            result: threadResult,
+            sessionRecovery: sessionService,
+        });
+        return {
+            kind: 'threadForked',
+            sourceThreadId: runtime.threadId,
+            threadId: forkedThread.threadId,
+            snapshot: createChatEventsSnapshotPayload(restoredRuntime),
         };
     }
     async function startReview({ slotId, threadId, workspace = '', delivery = 'inline', target, }: {
@@ -152,7 +291,7 @@ export function createThreadActionsService({ codexGateway, registry, promptOverr
         delivery?: string;
         target?: string;
     }) {
-        const runtime = await sessionService.ensureLoadedThreadRuntime({ slotId, threadId, workspace });
+        const runtime = await ensureAttachedThreadActionRuntime({ slotId, threadId, workspace });
         const result = await codexGateway.startReview!({
             threadId: runtime.threadId,
             workspace: workspace || runtime.workspace,
@@ -193,6 +332,8 @@ export function createThreadActionsService({ codexGateway, registry, promptOverr
             .slice(0, Math.max(1, limit));
     }
     return {
+        startThread,
+        resumeThread,
         interruptTurn,
         compactThread,
         rollbackThread,

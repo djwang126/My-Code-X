@@ -1,43 +1,11 @@
 import type { RuntimeSettings } from '../../../common/codex/codex-types.js';
 import { assertSessionContextMatches, cloneSessionState, createSessionState, resolveSessionWorkspace, } from '../shared/chat-session-state.js';
-interface EnsureLoadedThreadRuntimeInput {
-    slotId: string;
-    threadId: string;
-    workspace?: string;
-}
 interface HydrateSessionInput {
     viewerId: string;
     slotId: string;
     workspace?: string;
     threadId?: string;
     runtimeSettings?: RuntimeSettings | null;
-}
-export function createEnsureLoadedThreadRuntime({ registry, sessionRecovery }: any) {
-    return async function ensureLoadedThreadRuntime({ slotId, threadId, workspace = '' }: EnsureLoadedThreadRuntimeInput) {
-        const runtime = registry.getIdleRuntimeForThreadAction({ slotId, threadId });
-        const attachment = sessionRecovery.getRuntimeAttachment(runtime);
-        if (attachment.attached) {
-            return runtime;
-        }
-        sessionRecovery.logRuntimeRecovery({
-            trigger: 'thread_action',
-            runtime,
-            slotId: runtime.slotId,
-            threadId: runtime.threadId,
-            workspace: resolveSessionWorkspace(runtime, workspace),
-            attachment,
-        });
-        return sessionRecovery.restoreRuntime({
-            viewerId: runtime.viewerId,
-            slotId: runtime.slotId,
-            workspace: resolveSessionWorkspace(runtime, workspace),
-            threadId: runtime.threadId,
-            runtimeSettings: runtime.appliedThreadRuntimeOverrides ?? undefined,
-            recoveryContext: {
-                trigger: 'thread_action',
-            },
-        });
-    };
 }
 export function createHydrateSession({ now, registry, sessionRecovery }: any) {
     return async function hydrateSession({ viewerId, slotId, workspace = '', threadId = '', runtimeSettings, }: HydrateSessionInput) {

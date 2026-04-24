@@ -41,7 +41,7 @@ test('interruptTurn interrupts the active turn tracked by the runtime', async ()
   assert.deepEqual(result, {
     ok: true,
     threadId: 'thread-1',
-    latestTurn: {
+    turn: {
         id: 'turn-1',
         status: 'inProgress',
         error: null,
@@ -50,6 +50,123 @@ test('interruptTurn interrupts the active turn tracked by the runtime', async ()
         durationMs: null,
       },
   });
+});
+
+test('startThread creates a clean thread snapshot for explicit new thread actions', async () => {
+  const calls = [];
+  const service = createChatService({
+    promptOverrideResolver: createPromptOverrideResolver(),
+    codexGateway: {
+      async startThread({ workspace, runtimeSettings, baseInstructions }) {
+        calls.push({ method: 'startThread', workspace, runtimeSettings, baseInstructions });
+        return { threadId: 'thread-new' };
+      },
+      async resumeThread() {
+        throw new Error('resumeThread should not be called');
+      },
+      async startTurn() {
+        throw new Error('startTurn should not be called');
+      },
+    },
+    now: () => '2026-04-03T10:00:00.000Z',
+  });
+
+  const result = await service.startThread({
+    viewerId: 'viewer-1',
+    slotId: 'tab-1',
+    workspace: 'D:/workspaces/My-Code-X',
+    runtimeSettings: {
+      promptOverride: 'cat',
+      modelContextWindow: 200_000,
+      modelAutoCompactTokenLimit: 150_000,
+    },
+  });
+
+  assert.deepEqual(result, {
+    kind: 'threadStarted',
+    threadId: 'thread-new',
+    snapshot: {
+      threadId: 'thread-new',
+      latestTurn: null,
+      collaborationModeKind: null,
+      promptOverride: 'cat',
+      threadName: '',
+      threadStatus: null,
+      threadStatusText: '',
+      tokenUsageText: '',
+      messages: [],
+      notices: [],
+      pendingRequests: [],
+      lastError: null,
+      lastUpdatedAt: '2026-04-03T10:00:00.000Z',
+    },
+  });
+  assert.deepEqual(calls, [
+    {
+      method: 'startThread',
+      workspace: 'D:/workspaces/My-Code-X',
+      runtimeSettings: {
+        promptOverride: 'cat',
+        modelContextWindow: 200_000,
+        modelAutoCompactTokenLimit: 150_000,
+      },
+      baseInstructions: CAT_PROMPT_OVERRIDE_INSTRUCTIONS,
+    },
+  ]);
+});
+
+test('resumeThread returns the attached runtime snapshot without re-resuming upstream', async () => {
+  const calls = [];
+  const service = createChatService({
+    codexGateway: {
+      async startThread() {
+        calls.push({ method: 'startThread' });
+        return { threadId: 'thread-1' };
+      },
+      async resumeThread({ threadId }) {
+        calls.push({ method: 'resumeThread', threadId });
+        return { threadId, latestTurn: null, messages: [] };
+      },
+      async startTurn() {
+        throw new Error('startTurn should not be called');
+      },
+    },
+    now: () => '2026-04-03T10:00:00.000Z',
+  });
+
+  await service.startThread({
+    viewerId: 'viewer-1',
+    slotId: 'tab-1',
+    workspace: 'D:/workspaces/My-Code-X',
+  });
+
+  const result = await service.resumeThread({
+    viewerId: 'viewer-1',
+    slotId: 'tab-1',
+    threadId: 'thread-1',
+    workspace: 'D:/workspaces/My-Code-X',
+  });
+
+  assert.deepEqual(result, {
+    kind: 'threadResumed',
+    threadId: 'thread-1',
+    snapshot: {
+      threadId: 'thread-1',
+      latestTurn: null,
+      collaborationModeKind: null,
+      promptOverride: null,
+      threadName: '',
+      threadStatus: null,
+      threadStatusText: '',
+      tokenUsageText: '',
+      messages: [],
+      notices: [],
+      pendingRequests: [],
+      lastError: null,
+      lastUpdatedAt: '2026-04-03T10:00:00.000Z',
+    },
+  });
+  assert.deepEqual(calls, [{ method: 'startThread' }]);
 });
 
 test('forkThread creates a new thread and rolls it back to the preserved completed turn count', async () => {
@@ -73,7 +190,21 @@ test('forkThread creates a new thread and rolls it back to the preserved complet
       },
       async rollbackThread({ threadId, numTurns }) {
         calls.push({ method: 'rollbackThread', threadId, numTurns });
-        return { ok: true, threadId };
+        return {
+          threadId,
+          latestTurn: {
+            id: 'turn-1',
+            status: 'completed',
+            error: null,
+            startedAt: null,
+            completedAt: null,
+            durationMs: null,
+          },
+          messages: [
+            createUserTimelineMessage({ threadId, turnId: 'turn-1', text: 'first message' }),
+            createAssistantTimelineMessage({ threadId, turnId: 'turn-1', text: 'first answer', state: 'complete' }),
+          ],
+        };
       },
     },
     now: () => '2026-04-03T10:00:00.000Z',
@@ -137,8 +268,34 @@ test('forkThread creates a new thread and rolls it back to the preserved complet
   });
 
   assert.deepEqual(result, {
-    ok: true,
+    kind: 'threadForked',
+    sourceThreadId: 'thread-1',
     threadId: 'thread-forked',
+    snapshot: {
+      threadId: 'thread-forked',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
+      collaborationModeKind: null,
+      promptOverride: 'cat',
+      threadName: '',
+      threadStatus: null,
+      threadStatusText: '',
+      tokenUsageText: '',
+      messages: [
+        createUserTimelineMessage({ threadId: 'thread-forked', turnId: 'turn-1', text: 'first message' }),
+        createAssistantTimelineMessage({ threadId: 'thread-forked', turnId: 'turn-1', text: 'first answer', state: 'complete' }),
+      ],
+      notices: [],
+      pendingRequests: [],
+      lastError: null,
+      lastUpdatedAt: '2026-04-03T10:00:00.000Z',
+    },
   });
   assert.deepEqual(calls, [
     { method: 'startTurn', threadId: 'thread-1', text: 'first message' },
@@ -243,8 +400,33 @@ test('rollbackThread refreshes the same-thread runtime so the next hydrate sees 
   });
 
   assert.deepEqual(rollbackResult, {
-    ok: true,
+    kind: 'threadRolledBack',
     threadId: 'thread-1',
+    snapshot: {
+      threadId: 'thread-1',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
+      collaborationModeKind: null,
+      promptOverride: null,
+      threadName: '',
+      threadStatus: null,
+      threadStatusText: '',
+      tokenUsageText: '',
+      messages: [
+        createUserTimelineMessage({ threadId: 'thread-1', turnId: 'turn-1', text: 'first message' }),
+        createAssistantTimelineMessage({ threadId: 'thread-1', turnId: 'turn-1', text: 'first answer', state: 'complete' }),
+      ],
+      notices: [],
+      pendingRequests: [],
+      lastError: null,
+      lastUpdatedAt: '2026-04-03T10:00:00.000Z',
+    },
   });
 
   const hydrated = await service.hydrateSession({

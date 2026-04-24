@@ -1,4 +1,5 @@
 import type { ChatTurn, SessionPendingRequest } from '../../../features/chat/runtime';
+import type { ThreadActionState } from '../../../features/chat/thread-actions';
 
 export type SessionPhase = 'idle' | 'loading' | 'ready' | 'auth-required' | 'error';
 
@@ -14,6 +15,7 @@ export type OperationStatus = 'idle' | 'pending';
 
 export type ChatInteractionState =
   | 'bootstrapping'
+  | 'thread-action-pending'
   | 'ready-idle'
   | 'running'
   | 'interrupting'
@@ -75,6 +77,7 @@ export type ChatPageSessionSnapshot = {
   threadId: string;
   latestTurn: ChatTurn | null;
   pendingRequests: SessionPendingRequest[];
+  threadAction?: ThreadActionState;
 };
 
 export type ChatPageStateSnapshot = {

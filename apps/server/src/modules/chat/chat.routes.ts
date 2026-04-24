@@ -5,7 +5,15 @@ import { handleChatInterruptRoute } from './interrupt/index.js';
 import { handleChatItemContentRoute } from './item-content/index.js';
 import { handleChatMessageRoute } from './message/index.js';
 import { handleServerRequestResponseRoute } from './pending-request/index.js';
-import { handleReviewStartRoute, handleThreadCompactRoute, handleThreadForkRoute, handleThreadHistoryRoute, handleThreadRollbackRoute, } from './thread/index.js';
+import {
+    handleReviewStartRoute,
+    handleThreadCompactRoute,
+    handleThreadForkRoute,
+    handleThreadHistoryRoute,
+    handleThreadResumeRoute,
+    handleThreadRollbackRoute,
+    handleThreadStartRoute,
+} from './thread/index.js';
 function readAttachmentContentId(pathname: any) {
     const match = pathname.match(/^\/api\/v2\/chat\/attachments\/([^/]+)\/content$/);
     return match ? decodeURIComponent(match[1]) : '';
@@ -34,6 +42,14 @@ export async function tryHandleChatRoutes(request: any, response: any, { url, ch
     }
     if (request.method === 'POST' && url.pathname === '/api/v2/thread/compact') {
         await handleThreadCompactRoute(request, response, { chatService });
+        return true;
+    }
+    if (request.method === 'POST' && url.pathname === '/api/v2/thread/start') {
+        await handleThreadStartRoute(request, response, { chatService });
+        return true;
+    }
+    if (request.method === 'POST' && url.pathname === '/api/v2/thread/resume') {
+        await handleThreadResumeRoute(request, response, { chatService });
         return true;
     }
     if (request.method === 'POST' && url.pathname === '/api/v2/thread/rollback') {

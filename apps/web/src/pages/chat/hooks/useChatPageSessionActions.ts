@@ -3,7 +3,6 @@ import type { ChatPageRuntimeState, ChatReviewStartInput } from '../types';
 import { requestAppRestart, waitForAppReady } from '../../../features/tools/restart';
 import { fetchTimelineItemContent } from '../../../features/chat/transcript';
 import { postReviewStart } from '../../../features/tools/review';
-import { postThreadCompactStart, postThreadRollback } from '../../../features/chat/commands';
 import { isCurrentPageSlotOwner, SLOT_DISPLACED_MESSAGE } from '../../../features/session';
 import { reloadWindow } from '../../../features/tools/restart';
 import {
@@ -12,11 +11,6 @@ import {
 } from '../state/error-normalize';
 import type { ChatPageErrorKind } from '../state/page-state-types';
 import type { Dispatch } from 'react';
-
-type ResumeThreadInput = {
-  workspace: string;
-  threadId: string;
-};
 
 type SessionActionErrorInput = {
   kind: SessionActionErrorKind;
@@ -27,8 +21,12 @@ type UseChatPageSessionActionsInput = {
   sessionDispatch: Dispatch<SessionAction>;
   sessionState: SessionShellState;
   state: ChatPageRuntimeState;
-  resumeThread: (input: ResumeThreadInput) => void;
-  forkFromMessage: (messageId: string) => Promise<string>;
+  threadActions: {
+    resumeExistingThread: (input: { workspace: string; threadId: string }) => Promise<boolean>;
+    compactThread: () => Promise<boolean>;
+    forkFromMessage: (messageId: string) => Promise<string>;
+    rollbackThread: () => Promise<boolean>;
+  };
   blockWorkspaceSwitchIfNeeded: () => boolean;
   reportError: (input: SessionActionErrorInput) => boolean;
 };
@@ -48,8 +46,7 @@ export function useChatPageSessionActions({
   sessionDispatch,
   sessionState,
   state,
-  resumeThread,
-  forkFromMessage,
+  threadActions,
   blockWorkspaceSwitchIfNeeded,
   reportError,
 }: UseChatPageSessionActionsInput) {
@@ -132,12 +129,7 @@ export function useChatPageSessionActions({
         assertSlotOwnership();
         assertThread({ kind: 'compact', message: 'No active thread to compact.' });
 
-        await postThreadCompactStart({
-          slotId: sessionState.slotId,
-          threadId: state.threadId,
-          workspace: state.workspace,
-        });
-        return true;
+        return threadActions.compactThread();
       },
     });
   }
@@ -159,7 +151,10 @@ export function useChatPageSessionActions({
         });
 
         if (delivery === 'detached' && result.reviewThreadId) {
-          resumeThread({ workspace: state.workspace, threadId: result.reviewThreadId });
+          return threadActions.resumeExistingThread({
+            workspace: state.workspace,
+            threadId: result.reviewThreadId,
+          });
         }
 
         return true;
@@ -179,14 +174,7 @@ export function useChatPageSessionActions({
         assertSlotOwnership();
         assertThread({ kind: 'message-fork', message: 'No active thread to fork.' });
 
-        const forkedThreadId = await forkFromMessage(messageId);
-
-        if (!forkedThreadId) {
-          return false;
-        }
-
-        resumeThread({ workspace: state.workspace, threadId: forkedThreadId });
-        return true;
+        return Boolean(await threadActions.forkFromMessage(messageId));
       },
     });
   }
@@ -213,14 +201,7 @@ export function useChatPageSessionActions({
         assertSlotOwnership();
         assertThread({ kind: 'rollback', message: 'No active thread to rollback.' });
 
-        await postThreadRollback({
-          slotId: sessionState.slotId,
-          threadId: state.threadId,
-          workspace: state.workspace,
-          numTurns: 1,
-        });
-        resumeThread({ workspace: state.workspace, threadId: state.threadId });
-        return true;
+        return threadActions.rollbackThread();
       },
     });
   }

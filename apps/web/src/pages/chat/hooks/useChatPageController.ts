@@ -10,6 +10,7 @@ import {
   useProposedPlanActionController,
   useTranscriptCache,
 } from '../../../features/chat/runtime';
+import { useThreadActions } from '../../../features/chat/thread-actions';
 import { uploadImageAttachment } from '../../../features/chat/attachments';
 import { useWorkspaceFileExplorer } from '../../../features/workspace/explorer';
 import {
@@ -29,12 +30,15 @@ import type { ChatPageRuntimeState, ChatReviewStartInput } from '../types';
 import type { ChatPageErrorKind } from '../state/page-state-types';
 
 export function useChatPageController() {
-  const { startFresh, retryBootstrap, openWorkspace, resumeWorkspace, resumeThread } = useChatSessionBootstrap({ autoStart: false });
+  const { startFresh, retryBootstrap, openWorkspace, resumeWorkspace } = useChatSessionBootstrap({ autoStart: false });
   const sessionState = useSessionState();
   const sessionDispatch = useSessionDispatch();
   const chatState = useChatRuntimeState();
   const chatDispatch = useChatRuntimeDispatch();
-  const { sendMessage: sendSessionMessage, interruptTurn: interruptChatTurn, forkFromMessage } = useChatSend(chatState, sessionState);
+  const threadActions = useThreadActions({ state: chatState, sessionState });
+  const { sendMessage: sendSessionMessage, interruptTurn: interruptChatTurn } = useChatSend(chatState, sessionState, {
+    threadAction: threadActions.threadAction,
+  });
   const { submitRequestResponse: submitSessionRequestResponse } = useChatRequests(chatState, sessionState);
 
   useChatEventStream(chatState, sessionState);
@@ -71,7 +75,7 @@ export function useChatPageController() {
     chatDispatch,
     sessionDispatch,
   });
-  const { baseSessionSnapshot, baseInteractionState } = useChatPageSessionSnapshot(state);
+  const { baseSessionSnapshot, baseInteractionState } = useChatPageSessionSnapshot(state, threadActions.threadAction);
   const controllerState = useChatPageControllerState({
     interactionState: baseInteractionState,
     sessionErrorMessage: state.errorMessage,
@@ -103,17 +107,17 @@ export function useChatPageController() {
     state,
     workspaceSwitchReason: controllerViewModel.workspaceSwitchReason,
     startFresh,
+    startThread: threadActions.startThread,
     openWorkspace,
     resumeWorkspace,
-    resumeThread,
+    resumeThread: threadActions.resumeExistingThread,
     reportError,
   });
   const sessionActions = useChatPageSessionActions({
     sessionDispatch,
     sessionState,
     state,
-    resumeThread,
-    forkFromMessage,
+    threadActions,
     blockWorkspaceSwitchIfNeeded: workspaceManager.blockWorkspaceSwitchIfNeeded,
     reportError,
   });
@@ -188,20 +192,19 @@ export function useChatPageController() {
     setWorkspaceFileDraft: workspaceExplorer.setWorkspaceFileDraft,
     interruptTurn: actionHandlers.interruptTurn,
     submitRequestResponse: actionHandlers.submitRequestResponse,
-    handleCompact: () => actionHandlers.runAction('compact', sessionActions.handleCompact),
+    handleCompact: sessionActions.handleCompact,
     handleConfirmProposedPlanAction,
     handleCycleCollaborationMode,
     handleDismissProposedPlanAction,
     proposedPlanActionRevision,
     handleMessageFork: sessionActions.handleMessageFork,
-    handleNewThread: () => actionHandlers.runAction('workspaceSwitch', workspaceManager.handleNewThread),
+    handleNewThread: workspaceManager.handleNewThread,
     handleRestart: () => actionHandlers.runAction('restart', sessionActions.handleRestart),
     handleReviewStart: (payload: ChatReviewStartInput) =>
       actionHandlers.runAction('reviewStart', () => sessionActions.handleReviewStart(payload)),
-    handleRollback: () => actionHandlers.runAction('rollback', sessionActions.handleRollback),
+    handleRollback: sessionActions.handleRollback,
     handleRuntimeSettingsChange,
-    handleWorkspaceThreadOpen: (threadId: string) =>
-      actionHandlers.runAction('workspaceSwitch', () => workspaceManager.handleWorkspaceThreadOpen(threadId)),
+    handleWorkspaceThreadOpen: (threadId: string) => workspaceManager.handleWorkspaceThreadOpen(threadId),
     handleTimelineItemContentLoad: sessionActions.handleTimelineItemContentLoad,
     handleWorkspaceExplorerClose: workspaceExplorer.handleWorkspaceExplorerClose,
     handleWorkspaceExplorerNavigate: actionHandlers.handleWorkspaceExplorerNavigate,

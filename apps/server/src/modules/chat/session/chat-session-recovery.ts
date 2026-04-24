@@ -99,12 +99,13 @@ export function createChatSessionRecovery({ attachmentService, codexGateway, log
     function logRuntimeRestored({ trigger, runtime, workspace }: any) {
         sessionLogger.info(`[chat-session-service] restored runtime (${trigger}) for slot=${runtime.slotId} thread=${runtime.threadId} workspace=${workspace || ''} gatewayGeneration=${runtime.gatewayGeneration ?? 'none'}`);
     }
-    async function restoreRuntime({ viewerId, slotId, workspace, threadId, runtimeSettings, recoveryContext = null, }: {
+    async function storeRuntimeFromResult({ viewerId, slotId, workspace, threadId, runtimeSettings, threadResult, recoveryContext = null, }: {
         viewerId: string;
         slotId: string;
         workspace?: string;
         threadId: string;
         runtimeSettings?: RuntimeSettings | null;
+        threadResult: any;
         recoveryContext?: {
             trigger: string;
         } | null;
@@ -115,31 +116,26 @@ export function createChatSessionRecovery({ attachmentService, codexGateway, log
             promptOverrideResolver,
             includeBaseInstructions: true,
         });
-        const resumeResult = await codexGateway.resumeThread!({
-            threadId,
-            workspace,
-            runtimeSettings: bootstrapState.normalizedRuntimeSettings,
-            baseInstructions: bootstrapState.baseInstructions,
-        });
+        const restoredThreadId = threadResult.threadId || threadId;
         const restoredMessages = typeof attachmentService?.hydrateTimelineItems === 'function'
-            ? await attachmentService.hydrateTimelineItems(resumeResult.messages || [], { slotId, threadId })
-            : (resumeResult.messages || []);
+            ? await attachmentService.hydrateTimelineItems(threadResult.messages || [], { slotId, threadId: restoredThreadId })
+            : (threadResult.messages || []);
         const runtime = createSessionState({
             viewerId,
             slotId,
             workspace,
-            threadId,
-            latestTurn: resumeResult.latestTurn ?? null,
-            collaborationModeKind: resumeResult.collaborationModeKind,
-            appliedThreadRuntimeOverrides: conflictingRuntime?.appliedThreadRuntimeOverrides,
-            threadName: resumeResult.threadName ?? '',
-            threadStatus: resumeResult.threadStatus ?? null,
-            threadStatusText: resumeResult.threadStatusText ?? '',
-            tokenUsageText: resumeResult.tokenUsageText ?? '',
+            threadId: restoredThreadId,
+            latestTurn: threadResult.latestTurn ?? null,
+            collaborationModeKind: threadResult.collaborationModeKind,
+            appliedThreadRuntimeOverrides: conflictingRuntime?.appliedThreadRuntimeOverrides ?? bootstrapState.appliedThreadRuntimeOverrides,
+            threadName: threadResult.threadName ?? '',
+            threadStatus: threadResult.threadStatus ?? null,
+            threadStatusText: threadResult.threadStatusText ?? '',
+            tokenUsageText: threadResult.tokenUsageText ?? '',
             messages: restoredMessages,
-            notices: resumeResult.notices || [],
-            pendingRequests: resumeResult.pendingRequests || [],
-            lastError: resumeResult.lastError || null,
+            notices: threadResult.notices || [],
+            pendingRequests: threadResult.pendingRequests || [],
+            lastError: threadResult.lastError || null,
             now,
         });
         registry.rebindThreadlessPendingRequests(conflictingRuntime, runtime);
@@ -156,11 +152,43 @@ export function createChatSessionRecovery({ attachmentService, codexGateway, log
         }
         return runtime;
     }
+    async function restoreRuntime({ viewerId, slotId, workspace, threadId, runtimeSettings, recoveryContext = null, }: {
+        viewerId: string;
+        slotId: string;
+        workspace?: string;
+        threadId: string;
+        runtimeSettings?: RuntimeSettings | null;
+        recoveryContext?: {
+            trigger: string;
+        } | null;
+    }) {
+        const bootstrapState = await createThreadBootstrapState({
+            runtimeSettings,
+            promptOverrideResolver,
+            includeBaseInstructions: true,
+        });
+        const resumeResult = await codexGateway.resumeThread!({
+            threadId,
+            workspace,
+            runtimeSettings: bootstrapState.normalizedRuntimeSettings,
+            baseInstructions: bootstrapState.baseInstructions,
+        });
+        return storeRuntimeFromResult({
+            viewerId,
+            slotId,
+            workspace,
+            threadId,
+            runtimeSettings: bootstrapState.normalizedRuntimeSettings,
+            threadResult: resumeResult,
+            recoveryContext,
+        });
+    }
     return {
         getRuntimeAttachment,
         logRuntimeRecovery,
         rememberAppliedThreadRuntimeOverrides,
         rememberGatewayAttachment,
         restoreRuntime,
+        storeRuntimeFromResult,
     };
 }

@@ -22,6 +22,8 @@ export function createChatEventsSnapshotPayload(runtime: any) {
     return {
         threadId: runtime.threadId,
         latestTurn,
+        collaborationModeKind: runtime.collaborationModeKind ?? null,
+        promptOverride: runtime.appliedThreadRuntimeOverrides?.promptOverride ?? null,
         threadName: runtime.threadName,
         threadStatus: runtime.threadStatus,
         threadStatusText: runtime.threadStatusText,

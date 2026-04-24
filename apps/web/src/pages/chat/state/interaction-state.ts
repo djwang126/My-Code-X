@@ -29,6 +29,10 @@ export function deriveChatInteractionState(
     return 'bootstrapping';
   }
 
+  if (state.session.threadAction && state.session.threadAction.status !== 'idle') {
+    return 'thread-action-pending';
+  }
+
   if (interruptOperation === 'pending' && isChatTurnStateActive(state.session.latestTurn)) {
     return 'interrupting';
   }

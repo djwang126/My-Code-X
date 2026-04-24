@@ -37,6 +37,7 @@ const BOOTSTRAPPING_WORKSPACE_SWITCH_REASON = 'Wait for the session to finish lo
 const AUTH_REQUIRED_WORKSPACE_SWITCH_REASON = 'Refresh authentication before switching workspaces.';
 const LOAD_ERROR_WORKSPACE_SWITCH_REASON = 'Recover the session before switching workspaces.';
 const WORKSPACE_SWITCH_PENDING_REASON = 'Wait for the current workspace switch to finish.';
+const THREAD_ACTION_PENDING_WORKSPACE_SWITCH_REASON = 'Wait for the current thread action to finish.';
 
 function hasWorkspace(session: ChatPageSessionSnapshot) {
   return Boolean(session.workspace?.trim());
@@ -84,6 +85,10 @@ function getWorkspaceSwitchReason(interactionState: ChatInteractionState) {
 
   if (interactionState === 'restarting') {
     return RESTARTING_WORKSPACE_SWITCH_REASON;
+  }
+
+  if (interactionState === 'thread-action-pending') {
+    return THREAD_ACTION_PENDING_WORKSPACE_SWITCH_REASON;
   }
 
   return null;

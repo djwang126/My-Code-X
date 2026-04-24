@@ -38,7 +38,8 @@ export function buildChatPageViewModel(input: ChatPageViewModelInput) {
   const workspacePresent = hasWorkspace(input.session);
   const threadPresent = Boolean(input.session.threadId.trim());
   const composerEditable = isReadyIdle && workspacePresent;
-  const sendButtonDisabled = isInterrupting || (!isRunning && !composerEditable);
+  const sendButtonDisabled = isInterrupting || (!isRunning && (!composerEditable || !guards.canSend));
+  const actionBlocked = !isReadyIdle;
 
   return {
     interactionState,
@@ -52,7 +53,7 @@ export function buildChatPageViewModel(input: ChatPageViewModelInput) {
     isInterrupting,
     isRestarting,
     isBootstrapping,
-    actionBlocked: !isReadyIdle,
+    actionBlocked,
     inputDisabled: !composerEditable,
     sendButtonDisabled,
   };

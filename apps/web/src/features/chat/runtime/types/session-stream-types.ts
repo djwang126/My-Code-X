@@ -1,4 +1,9 @@
-import type { ChatTurn, SessionError, SessionThreadStatus } from '@my-code-x/contracts';
+import type {
+  ChatTurn,
+  SessionError,
+  SessionSnapshotPayload,
+  SessionThreadStatus,
+} from '@my-code-x/contracts';
 
 import type {
   ChatTurnInProgress,
@@ -8,16 +13,10 @@ import type {
 import type { SessionPendingRequest } from './session-request-types';
 import type { AssistantTimelineMessageItem, SessionTimelineItem } from './session-timeline-types';
 
-export type SessionStreamSnapshot = {
-  threadId: string;
+export type SessionStreamSnapshot = SessionSnapshotPayload & {
   latestTurn: ChatTurn | null;
-  collaborationModeKind?: string | null;
-  promptOverride?: string | null;
   messages: SessionTimelineItem[];
-  threadName?: string;
   threadStatus?: SessionThreadStatus | null;
-  threadStatusText?: string;
-  tokenUsageText?: string;
   notices?: SessionNotice[];
   pendingRequests?: SessionPendingRequest[];
   lastError?: SessionError | null;
