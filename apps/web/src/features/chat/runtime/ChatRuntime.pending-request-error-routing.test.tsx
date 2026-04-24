@@ -6,7 +6,7 @@ import {
   MockEventSource,
   createAssistantMessage,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -15,7 +15,7 @@ import {
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime pending request error routing', () => {
   it('surfaces pending-request submission failures outside the transcript while keeping the request card retryable', async () => {
@@ -28,10 +28,14 @@ describe('ChatRuntime pending request error routing', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-auth-refresh',
-            turnExecution: {
-              activeTurnId: 'turn-auth-refresh',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-auth-refresh',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -113,10 +117,14 @@ describe('ChatRuntime pending request error routing', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-user-input',
-            turnExecution: {
-              activeTurnId: 'turn-user-input',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-user-input',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {

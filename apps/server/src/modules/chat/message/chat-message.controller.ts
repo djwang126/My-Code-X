@@ -79,7 +79,7 @@ export async function handleChatMessageRoute(request: any, response: any, { chat
             slotId,
             workspace,
             threadId: result.threadId,
-            turnId: result.turnExecution.activeTurnId,
+            turnId: result.turn.id,
             durationMs: Date.now() - startedAt,
         });
         sendJson(response, 200, createChatMessageAcceptedPayload({ slotId, result }));

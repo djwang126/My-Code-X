@@ -1,4 +1,3 @@
-import { createIdleSessionTurnExecution } from '@my-code-x/contracts';
 import { createSessionState } from '../shared/chat-session-state.js';
 import { createThreadBootstrapState } from '../thread/thread-bootstrap-policy.js';
 import type { CodexGatewayLike, PromptOverrideResolver, RuntimeSettings } from '../../../common/codex/codex-types.js';
@@ -46,7 +45,7 @@ export function createStartThreadForRuntime({
       slotId,
       workspace,
       threadId: startedThread.threadId,
-      turnExecution: runtime?.turnExecution ?? createIdleSessionTurnExecution(),
+      latestTurn: runtime?.latestTurn ?? null,
       collaborationModeKind: collaborationModeKind ?? runtime?.collaborationModeKind,
       appliedThreadRuntimeOverrides: runtime?.appliedThreadRuntimeOverrides,
       threadName: runtime?.threadName ?? '',

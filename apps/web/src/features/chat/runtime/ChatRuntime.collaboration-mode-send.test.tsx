@@ -5,7 +5,7 @@ import {
   createSessionResponse,
   http,
   openRuntimeSettings,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -14,7 +14,7 @@ import {
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime collaboration mode send', () => {
   it('sends the selected collaboration mode with the next user message', async () => {
@@ -35,7 +35,7 @@ describe('ChatRuntime collaboration mode send', () => {
         return HttpResponse.json({
           threadId: 'thread-mode',
           turnId: 'turn-mode',
-          turnLifecycle: 'running',
+          status: 'inProgress',
           stream: {
             url: '/api/v2/chat/events?slotId=tab-mode&threadId=thread-mode',
           },
@@ -83,7 +83,7 @@ describe('ChatRuntime collaboration mode send', () => {
         return HttpResponse.json({
           threadId: 'thread-none',
           turnId: 'turn-none',
-          turnLifecycle: 'running',
+          status: 'inProgress',
           stream: {
             url: '/api/v2/chat/events?slotId=tab-none&threadId=thread-none',
           },

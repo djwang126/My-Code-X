@@ -24,7 +24,11 @@ import {
   readSessionThreadStatus,
 } from './shared';
 import { readSessionTimelineItem, readSessionTimelineItems } from './timeline';
-import { parseStreamingTurnExecution, parseTerminalTurnExecution, parseTurnExecution } from './turn-execution';
+import {
+  parsePayloadChatTurnInProgress,
+  parsePayloadChatTurnTerminal,
+  parsePayloadNullableChatTurn,
+} from './chat-turn';
 
 type SessionStreamDeltaField = NonNullable<SessionStreamTimelineItemDelta['deltaField']>;
 
@@ -54,11 +58,11 @@ function readOptionalDeltaField(value: unknown, fieldName: string): SessionStrea
 
 export function parseSessionStreamSnapshot(value: unknown): SessionStreamSnapshot {
   const record = readRequiredRecord(value, 'session stream snapshot');
-  const turnExecution = parseTurnExecution(record.turnExecution, 'session stream snapshot.turnExecution');
+  const latestTurn = parsePayloadNullableChatTurn(record.latestTurn, 'session stream snapshot.latestTurn');
 
   return {
     threadId: readRequiredString(record.threadId, 'session stream snapshot.threadId'),
-    turnExecution,
+    latestTurn,
     collaborationModeKind:
       record.collaborationModeKind === undefined || record.collaborationModeKind === null
         ? record.collaborationModeKind
@@ -104,10 +108,7 @@ export function parseSessionStreamTurnStarted(value: unknown): SessionStreamTurn
 
   return {
     threadId: readRequiredString(record.threadId, 'session stream turn started.threadId'),
-    turnExecution: parseStreamingTurnExecution(
-      record.turnExecution,
-      'session stream turn started.turnExecution',
-    ),
+    turn: parsePayloadChatTurnInProgress(record.turn, 'session stream turn started.turn'),
   };
 }
 
@@ -210,10 +211,7 @@ export function parseSessionStreamTurnCompleted(value: unknown): SessionStreamTu
 
   return {
     threadId: readRequiredString(record.threadId, 'session stream turn completed.threadId'),
-    turnExecution: parseTerminalTurnExecution(
-      record.turnExecution,
-      'session stream turn completed.turnExecution',
-    ),
+    turn: parsePayloadChatTurnTerminal(record.turn, 'session stream turn completed.turn'),
     error: readSessionError(record.error, 'session stream turn completed.error') ?? null,
   };
 }

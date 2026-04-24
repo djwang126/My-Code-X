@@ -5,14 +5,14 @@ import {
   MockEventSource,
   createUserMessage,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime large transcript items', () => {
   it('keeps live command execution rows title-only in the main transcript', async () => {
@@ -25,10 +25,14 @@ describe('ChatRuntime large transcript items', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-large-live',
-            turnExecution: {
-              activeTurnId: 'turn-large-live',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-large-live',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -87,10 +91,14 @@ describe('ChatRuntime large transcript items', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-large-file-live',
-            turnExecution: {
-              activeTurnId: 'turn-large-file-live',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-large-file-live',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {

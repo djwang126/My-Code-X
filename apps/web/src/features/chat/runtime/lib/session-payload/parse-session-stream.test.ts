@@ -18,18 +18,26 @@ describe('session stream payload parsing', () => {
   it('parses snapshots with canonical interrupting execution state', () => {
     const payload = parseSessionStreamSnapshot({
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'interrupting',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       messages: [],
     });
 
     expect(payload).toEqual({
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'interrupting',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       collaborationModeKind: undefined,
       promptOverride: undefined,
@@ -44,7 +52,7 @@ describe('session stream payload parsing', () => {
     });
   });
 
-  it('parses assistant, timeline, and turn execution stream payloads through the canonical contract', () => {
+  it('parses assistant, timeline, and chat turn stream payloads through the canonical contract', () => {
     expect(
       parseSessionStreamAssistantDelta({
         threadId: 'thread-1',
@@ -108,33 +116,49 @@ describe('session stream payload parsing', () => {
     expect(
       parseSessionStreamTurnStarted({
         threadId: 'thread-1',
-        turnExecution: {
-          activeTurnId: 'turn-1',
-          turnLifecycle: 'running',
-        },
+        turn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
       }),
     ).toEqual({
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      turn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     });
 
     expect(
       parseSessionStreamTurnCompleted({
         threadId: 'thread-1',
-        turnExecution: {
-          activeTurnId: 'turn-1',
-          turnLifecycle: 'interrupted',
-        },
+        turn: {
+        id: 'turn-1',
+        status: 'interrupted',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         error: null,
       }),
     ).toEqual({
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'interrupted',
+      turn: {
+        id: 'turn-1',
+        status: 'interrupted',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       error: null,
     });
@@ -272,14 +296,18 @@ describe('session stream payload parsing', () => {
     );
   });
 
-  it('fails explicitly when snapshots only send legacy activeTurnId and turnLifecycle fields', () => {
-    expect(() =>
+  it('ignores legacy top-level turnId and status fields in snapshots', () => {
+    expect(
       parseSessionStreamSnapshot({
         threadId: 'thread-1',
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+        turnId: 'turn-1',
+        status: 'inProgress',
         messages: [],
       }),
-    ).toThrowError('session stream snapshot.turnExecution must be an object.');
+    ).toMatchObject({
+      threadId: 'thread-1',
+      latestTurn: null,
+      messages: [],
+    });
   });
 });

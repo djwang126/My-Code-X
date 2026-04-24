@@ -208,9 +208,13 @@ describe('ChatPageLayout transcript scroll follow', () => {
     });
 
     const view = renderChatPage({
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       messages: [
         {
@@ -238,10 +242,14 @@ describe('ChatPageLayout transcript scroll follow', () => {
     view.rerender(
       <ChatPageLayout
         {...buildChatPageProps({
-          turnExecution: {
-            activeTurnId: 'turn-1',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [
             {
               id: 'assistant-live',
@@ -269,9 +277,13 @@ describe('ChatPageLayout transcript scroll follow', () => {
     });
 
     const view = renderChatPage({
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       messages: [
         {
@@ -299,10 +311,14 @@ describe('ChatPageLayout transcript scroll follow', () => {
     view.rerender(
       <ChatPageLayout
         {...buildChatPageProps({
-          turnExecution: {
-            activeTurnId: 'turn-1',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [
             {
               id: 'assistant-live',

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 
 import { createChatService } from '../index.js';
 
-test('interruptTurn marks the active runtime as interrupting before turn completion arrives', async () => {
+test('interruptTurn sends the stop request while the Codex turn remains in progress', async () => {
   const service = createChatService({
     codexGateway: {
       async startThread() {
@@ -37,15 +37,19 @@ test('interruptTurn marks the active runtime as interrupting before turn complet
   assert.deepEqual(result, {
     ok: true,
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'interrupting',
-    },
+    turn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
   });
-  assert.equal(service.getSessionState({ slotId: 'tab-1', threadId: 'thread-1' })?.turnExecution.turnLifecycle, 'interrupting');
+  assert.equal(service.getSessionState({ slotId: 'tab-1', threadId: 'thread-1' })?.latestTurn?.status, 'inProgress');
 });
 
-test('turn completion clears the interrupting lifecycle and restores fresh input', async () => {
+test('turn completion records the interrupted Codex turn and restores fresh input', async () => {
   const service = createChatService({
     codexGateway: {
       async startThread() {
@@ -87,11 +91,11 @@ test('turn completion clears the interrupting lifecycle and restores fresh input
 
   const sessionState = service.getSessionState({ slotId: 'tab-1', threadId: 'thread-1' });
 
-  assert.equal(sessionState?.turnExecution.turnLifecycle, 'interrupted');
-  assert.equal(sessionState?.turnExecution.activeTurnId, 'turn-1');
+  assert.equal(sessionState?.latestTurn?.status, 'interrupted');
+  assert.equal(sessionState?.latestTurn?.id, 'turn-1');
 });
 
-test('assistant deltas keep the runtime interrupting after an interrupt has been accepted', async () => {
+test('assistant deltas keep the Codex turn in progress after an interrupt has been accepted', async () => {
   const service = createChatService({
     codexGateway: {
       async startThread() {
@@ -131,6 +135,6 @@ test('assistant deltas keep the runtime interrupting after an interrupt has been
 
   const sessionState = service.getSessionState({ slotId: 'tab-1', threadId: 'thread-1' });
 
-  assert.equal(sessionState?.turnExecution.turnLifecycle, 'interrupting');
+  assert.equal(sessionState?.latestTurn?.status, 'inProgress');
   assert.equal(sessionState?.messages.at(-1)?.text, 'still streaming');
 });

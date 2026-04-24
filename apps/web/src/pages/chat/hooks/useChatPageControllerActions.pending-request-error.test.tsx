@@ -1,6 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { parseSessionTurnExecution } from '@my-code-x/contracts';
+import { parseChatTurn } from '@my-code-x/contracts';
 
 import { useChatPageControllerActions } from './useChatPageControllerActions';
 import { useChatPageControllerState } from './useChatPageControllerState';
@@ -22,9 +22,9 @@ describe('useChatPageControllerActions pending request error routing', () => {
             phase: 'ready',
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-user-input',
-            turnExecution: parseSessionTurnExecution({
-              activeTurnId: 'turn-user-input',
-              turnLifecycle: 'running',
+            latestTurn: parseChatTurn({
+              turnId: 'turn-user-input',
+              status: 'inProgress',
             }),
             pendingRequests: [
               {
@@ -43,7 +43,7 @@ describe('useChatPageControllerActions pending request error routing', () => {
           canOpenExplorer: false,
           canSubmitPendingRequests: true,
           sendSessionMessage: async () => false,
-          interruptSessionTurn: async () => false,
+          interruptChatTurn: async () => false,
           submitSessionRequestResponse,
           workspaceExplorer: {
             handleWorkspaceExplorerOpen: async () => false,

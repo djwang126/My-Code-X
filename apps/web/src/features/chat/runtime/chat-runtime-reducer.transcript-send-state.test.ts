@@ -13,10 +13,7 @@ describe('chatRuntimeReducer transcript send state', () => {
         session: {
           ...bootstrapPayload.session,
           threadId: '',
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
         },
         conversation: {
           messages: [],
@@ -30,10 +27,14 @@ describe('chatRuntimeReducer transcript send state', () => {
       acceptedText: 'Explain this bug',
       payload: {
         threadId: 'thread-2',
-        turnExecution: {
-          activeTurnId: 'turn-2',
-          turnLifecycle: 'running',
-        },
+        turn: {
+        id: 'turn-2',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         stream: {
           url: '/api/v2/chat/events?slotId=tab-9&threadId=thread-2',
         },
@@ -53,9 +54,9 @@ describe('chatRuntimeReducer transcript send state', () => {
       },
     ]);
     expect(next.threadId).toBe('thread-2');
-    expect(next.turnExecution.activeTurnId).toBe('turn-2');
+    expect(next.latestTurn?.id).toBe('turn-2');
     expect(next.streamUrl).toBe('/api/v2/chat/events?slotId=tab-9&threadId=thread-2');
-    expect(next.turnExecution.turnLifecycle).toBe('running');
+    expect(next.latestTurn?.status).toBe('running');
   });
 });
 

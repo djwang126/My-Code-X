@@ -10,10 +10,10 @@ export function useChatPageSessionSnapshot(state: ChatPageRuntimeState) {
       phase: state.phase,
       workspace: state.workspace,
       threadId: state.threadId,
-      turnExecution: state.turnExecution,
+      latestTurn: state.latestTurn,
       pendingRequests: state.pendingRequests,
     }),
-    [state.pendingRequests, state.phase, state.threadId, state.turnExecution, state.workspace],
+    [state.latestTurn, state.pendingRequests, state.phase, state.threadId, state.workspace],
   );
 
   const baseInteractionState = useMemo(

@@ -60,10 +60,7 @@ function createSessionResponse({ viewerId, slotId }: { viewerId: string | null; 
     session: {
       workspace: 'D:/workspace/example-app',
       threadId: 'thread-ready',
-      turnExecution: {
-        activeTurnId: null,
-        turnLifecycle: 'idle',
-      },
+      latestTurn: null,
       lastUpdatedAt: '2026-04-03T12:34:56.000Z',
     },
     conversation: {

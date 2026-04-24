@@ -7,14 +7,14 @@ import {
   createAssistantMessage,
   createUserMessage,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 function createTurnLevelError(message: string) {
   return {
@@ -46,10 +46,14 @@ describe('ChatRuntime transcript turn failure ordering', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-turn-ordering',
-            turnExecution: {
-              activeTurnId: 'turn-turn-ordering',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-turn-ordering',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -106,9 +110,13 @@ describe('ChatRuntime transcript turn failure ordering', () => {
 
     MockEventSource.instances[0]?.emit('turn_completed', {
       threadId: 'thread-turn-ordering',
-      turnExecution: {
-        activeTurnId: 'turn-turn-ordering',
-        turnLifecycle: 'failed',
+      latestTurn: {
+        id: 'turn-turn-ordering',
+        status: 'failed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       error: createTurnLevelError('Upstream failed after the plan step'),
     });

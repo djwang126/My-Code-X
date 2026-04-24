@@ -15,9 +15,13 @@ export const bootstrapPayload = {
   session: {
     workspace: 'D:/workspaces/sample',
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'running',
+    latestTurn: {
+      id: 'turn-1',
+      status: 'inProgress',
+      error: null,
+      startedAt: null,
+      completedAt: null,
+      durationMs: null,
     },
     collaborationModeKind: 'default',
     lastUpdatedAt: '2026-04-03T12:34:56.000Z',

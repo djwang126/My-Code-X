@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSessionTurnExecution } from '@my-code-x/contracts';
+import { parseChatTurn } from '@my-code-x/contracts';
 
 import { buildChatPageViewModel } from './view-model';
 import type {
@@ -8,10 +8,10 @@ import type {
   ChatPageSessionSnapshot,
 } from './page-state-types';
 
-type SessionSnapshotOverrides = Partial<Omit<ChatPageSessionSnapshot, 'turnExecution'>> & {
-  turnExecution?: ChatPageSessionSnapshot['turnExecution'];
-  turnLifecycle?: ChatPageSessionSnapshot['turnExecution']['turnLifecycle'];
-  activeTurnId?: ChatPageSessionSnapshot['turnExecution']['activeTurnId'];
+type SessionSnapshotOverrides = Partial<Omit<ChatPageSessionSnapshot, 'latestTurn'>> & {
+  latestTurn?: ChatPageSessionSnapshot['latestTurn'];
+  turnStatus?: 'idle' | 'inProgress' | 'completed' | 'interrupted' | 'failed';
+  turnId?: string;
 };
 
 type ViewModelOverrides = {
@@ -23,21 +23,27 @@ type ViewModelOverrides = {
 
 function buildInput(overrides: ViewModelOverrides = {}) {
   const {
-    activeTurnId,
-    turnExecution,
-    turnLifecycle = 'idle',
+    turnId,
+    latestTurn,
+    turnStatus = 'idle',
     ...sessionOverrides
   } = overrides.session ?? {};
   const session = {
     phase: 'ready',
     workspace: 'D:/workspaces/my-code-x',
     threadId: 'thread-1',
-    turnExecution:
-      turnExecution ??
-      parseSessionTurnExecution({
-        activeTurnId: activeTurnId ?? (turnLifecycle === 'idle' ? null : 'turn-1'),
-        turnLifecycle,
-      }),
+    latestTurn:
+      latestTurn ??
+      turnStatus === 'idle'
+        ? null
+        : parseChatTurn({
+            id: turnId ?? 'turn-1',
+            status: turnStatus,
+            error: null,
+            startedAt: null,
+            completedAt: null,
+            durationMs: null,
+          }),
     pendingRequests: [],
     ...sessionOverrides,
   } as ChatPageSessionSnapshot;
@@ -84,7 +90,7 @@ describe('buildChatPageViewModel', () => {
       buildInput({
         draft: 'Still queued',
         session: {
-          turnLifecycle: 'running',
+          turnStatus: 'inProgress',
         },
       }),
     );
@@ -101,8 +107,9 @@ describe('buildChatPageViewModel', () => {
     const viewModel = buildChatPageViewModel(
       buildInput({
         session: {
-          turnLifecycle: 'interrupting',
+          turnStatus: 'inProgress',
         },
+        operations: { interrupt: 'pending' },
       }),
     );
 
@@ -117,7 +124,7 @@ describe('buildChatPageViewModel', () => {
     const viewModel = buildChatPageViewModel(
       buildInput({
         session: {
-          turnLifecycle: 'running',
+          turnStatus: 'inProgress',
           pendingRequests: [
             {
               id: 'req-1',
@@ -190,11 +197,11 @@ describe('buildChatPageViewModel', () => {
     });
   });
 
-  it('derives ready-idle sendability from lifecycle instead of stale transport flags', () => {
+  it('derives ready-idle sendability from state instead of stale transport flags', () => {
     const viewModel = buildChatPageViewModel(
       buildInput({
         session: {
-          turnLifecycle: 'idle',
+          turnStatus: 'completed',
         },
       }),
     );

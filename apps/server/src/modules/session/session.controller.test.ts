@@ -15,10 +15,7 @@ test('GET /api/v2/session returns the runtime-backed bootstrap payload', async (
         return {
           workspace: 'D:/workspaces/My-Code-X',
           threadId: 'thread-9',
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           collaborationModeKind: 'plan',
           appliedThreadRuntimeOverrides: {
             promptOverride: 'normal',
@@ -103,10 +100,7 @@ test('GET /api/v2/session returns the runtime-backed bootstrap payload', async (
       session: {
         workspace: 'D:/workspaces/My-Code-X',
         threadId: 'thread-9',
-        turnExecution: {
-          activeTurnId: null,
-          turnLifecycle: 'idle',
-        },
+        latestTurn: null,
         collaborationModeKind: 'plan',
         promptOverride: 'normal',
         lastUpdatedAt: '2026-04-03T12:00:00.000Z',
@@ -178,10 +172,7 @@ test('GET /api/v2/session returns cleared thread prompt override metadata when t
         return {
           workspace: 'D:/workspaces/My-Code-X',
           threadId: 'thread-10',
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           appliedThreadRuntimeOverrides: {
             promptOverride: null,
           },
@@ -244,10 +235,7 @@ test('GET /api/v2/session omits large command and file-change bodies from the bo
         return {
           workspace: 'D:/workspaces/My-Code-X',
           threadId: 'thread-9',
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           lastUpdatedAt: '2026-04-03T12:00:00.000Z',
           messages: [
             {

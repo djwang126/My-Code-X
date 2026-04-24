@@ -1,7 +1,7 @@
 import type {
+  ChatTurn,
   SessionError,
   SessionThreadStatus,
-  SessionTurnExecutionState,
 } from '@my-code-x/contracts';
 import type { LooseRecord, RuntimeSettings } from '../../../common/codex/codex-types.js';
 
@@ -35,7 +35,7 @@ export interface ChatSessionState {
   viewerId: string;
   workspace: string;
   threadId: string;
-  turnExecution: SessionTurnExecutionState;
+  latestTurn: ChatTurn | null;
   collaborationModeKind?: string;
   appliedThreadRuntimeOverrides?: RuntimeSettings | null;
   threadName: string;

@@ -16,10 +16,14 @@ test('POST /api/v2/chat/message starts a turn and returns the stream URL', async
         calls.push({ viewerId, slotId, workspace, threadId, text, runtimeSettings, collaborationModeKind });
         return {
           threadId: 'thread-9',
-          turnExecution: {
-            activeTurnId: 'turn-9',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-9',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         };
       },
     },
@@ -68,9 +72,13 @@ test('POST /api/v2/chat/message starts a turn and returns the stream URL', async
     ]);
     assert.deepEqual(body, {
       threadId: 'thread-9',
-      turnExecution: {
-        activeTurnId: 'turn-9',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-9',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       stream: { url: '/api/v2/chat/events?slotId=tab-1&threadId=thread-9' },
     });

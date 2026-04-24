@@ -111,9 +111,13 @@ test('live special-item deltas reconcile in place and create late rows when need
     {
       type: 'turn_started',
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     },
     {
@@ -217,7 +221,7 @@ test('timeline item deltas keep the runtime interrupting after an interrupt has 
 
   const sessionState = service.getSessionState({ slotId: 'tab-1', threadId: 'thread-1' });
 
-  assert.equal(sessionState?.turnExecution.turnLifecycle, 'interrupting');
+  assert.equal(sessionState?.latestTurn?.status, 'interrupting');
   assert.deepEqual(sessionState?.messages.at(-1), {
     id: 'plan-1',
     kind: 'special',

@@ -14,10 +14,14 @@ test('POST /api/v2/chat/interrupt interrupts the active turn for the current slo
         return {
           ok: true,
           threadId,
-          turnExecution: {
-            activeTurnId: 'turn-9',
-            turnLifecycle: 'interrupting',
-          },
+          latestTurn: {
+        id: 'turn-9',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         };
       },
     },
@@ -39,9 +43,13 @@ test('POST /api/v2/chat/interrupt interrupts the active turn for the current slo
     assert.deepEqual(body, {
       ok: true,
       threadId: 'thread-9',
-      turnExecution: {
-        activeTurnId: 'turn-9',
-        turnLifecycle: 'interrupting',
+      latestTurn: {
+        id: 'turn-9',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     });
   });

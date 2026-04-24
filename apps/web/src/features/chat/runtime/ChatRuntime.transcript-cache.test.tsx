@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSessionTurnExecution } from '@my-code-x/contracts';
+import { parseChatTurn } from '@my-code-x/contracts';
 
 import { loadTranscriptCache, persistTranscriptCache } from './lib/transcript-cache-storage';
 import {
@@ -7,14 +7,14 @@ import {
   createAssistantMessage,
   createUserMessage,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 function prepareCachedSlot(slotId = 'slot-cached') {
   window.history.replaceState({}, '', `/?slot=${slotId}`);
@@ -23,22 +23,26 @@ function prepareCachedSlot(slotId = 'slot-cached') {
   window.localStorage.setItem(`my-code-x-slot:${slotId}:active-workspace`, 'D:/workspace/example-app');
 }
 
-function createTurnExecution(turnLifecycle: 'completed' | 'interrupted' | 'running') {
-  return parseSessionTurnExecution({
-    activeTurnId: turnLifecycle === 'running' ? 'turn-running' : 'turn-cached',
-    turnLifecycle,
+function createChatTurn(status: 'completed' | 'interrupted' | 'inProgress') {
+  return parseChatTurn({
+    id: status === 'inProgress' ? 'turn-running' : 'turn-cached',
+    status: status === 'inProgress' ? 'inProgress' : status,
+    error: null,
+    startedAt: null,
+    completedAt: null,
+    durationMs: null,
   });
 }
 
 function seedTranscriptCache(
-  turnLifecycle: 'completed' | 'interrupted' | 'running',
+  status: 'completed' | 'interrupted' | 'inProgress',
   workspace = 'D:/workspace/example-app',
 ) {
   persistTranscriptCache({
     workspace,
     threadId: 'thread-cached',
-    threadName: turnLifecycle === 'running' ? 'Running thread' : 'Cached thread',
-    turnExecution: createTurnExecution(turnLifecycle),
+    threadName: status === 'inProgress' ? 'Running thread' : 'Cached thread',
+    latestTurn: createChatTurn(status),
     messages: [
       createUserMessage('user:cached', 'cached question', 'thread-cached', 'turn-cached'),
       createAssistantMessage('assistant:cached', 'Cached answer', 'thread-cached', 'turn-cached'),
@@ -53,9 +57,13 @@ function createCompletedBootstrapResponse(messageText = 'Live answer', threadNam
     session: {
       workspace: 'D:/workspace/example-app',
       threadId: 'thread-cached',
-      turnExecution: {
-        activeTurnId: 'turn-live',
-        turnLifecycle: 'completed',
+      latestTurn: {
+        id: 'turn-live',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       threadName,
       lastUpdatedAt: '2026-04-03T12:34:56.000Z',
@@ -139,7 +147,7 @@ describe('ChatRuntime transcript cache', () => {
     }));
 
     prepareCachedSlot();
-    seedTranscriptCache('running');
+    seedTranscriptCache('inProgress');
 
     render();
 
@@ -195,9 +203,13 @@ describe('ChatRuntime transcript cache', () => {
         workspace: 'D:/workspace/example-app',
         threadId: 'thread-cached',
         threadName: 'Persisted thread',
-        turnExecution: parseSessionTurnExecution({
-          activeTurnId: 'turn-live',
-          turnLifecycle: 'completed',
+        latestTurn: parseChatTurn({
+          id: 'turn-live',
+          status: 'completed',
+          error: null,
+          startedAt: null,
+          completedAt: null,
+          durationMs: null,
         }),
         messages: [createAssistantMessage('assistant:live', 'Persisted answer', 'thread-cached', 'turn-live')],
       }),

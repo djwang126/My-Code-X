@@ -13,7 +13,7 @@ export function ChatPageScreen() {
       status={controller.isRestarting ? 'Restarting My-Code-X…' : state.statusMessage}
       workspace={state.workspace}
       threadId={state.threadId}
-      turnExecution={state.turnExecution}
+      latestTurn={state.latestTurn}
       collaborationModeLabel={controller.collaborationModeLabel}
       canCycleCollaborationMode={controller.canCycleCollaborationMode}
       actionBlocked={controller.actionBlocked}

@@ -283,10 +283,14 @@ describe('chatRuntimeReducer notice routing', () => {
       type: 'stream/snapshot',
       payload: {
         threadId: 'thread-1',
-        turnExecution: {
-          activeTurnId: 'turn-1',
-          turnLifecycle: 'completed',
-        },
+        latestTurn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         messages: bootstrapPayload.conversation.messages,
         threadName: '',
         threadStatusText: '',

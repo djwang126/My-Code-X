@@ -17,10 +17,7 @@ test('sendMessage allows image-only content at the public boundary and still han
     slotId: 'tab-1',
     workspace: 'D:/workspaces/My-Code-X',
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: null,
-      turnLifecycle: 'idle',
-    },
+    latestTurn: null,
     now,
   });
   const normalizedContent = [

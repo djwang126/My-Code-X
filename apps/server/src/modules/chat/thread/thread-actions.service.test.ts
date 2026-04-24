@@ -41,10 +41,14 @@ test('interruptTurn interrupts the active turn tracked by the runtime', async ()
   assert.deepEqual(result, {
     ok: true,
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'interrupting',
-    },
+    latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
   });
 });
 
@@ -165,10 +169,14 @@ test('rollbackThread refreshes the same-thread runtime so the next hydrate sees 
         calls.push({ method: 'resumeThread', threadId });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: 'turn-1',
-            turnLifecycle: 'completed',
-          },
+          latestTurn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [
             createUserTimelineMessage({ threadId, turnId: 'turn-1', text: 'first message' }),
             createAssistantTimelineMessage({ threadId, turnId: 'turn-1', text: 'first answer', state: 'complete' }),
@@ -250,8 +258,8 @@ test('rollbackThread refreshes the same-thread runtime so the next hydrate sees 
     createUserTimelineMessage({ threadId: 'thread-1', turnId: 'turn-1', text: 'first message' }),
     createAssistantTimelineMessage({ threadId: 'thread-1', turnId: 'turn-1', text: 'first answer', state: 'complete' }),
   ]);
-  assert.equal(hydrated.turnExecution.activeTurnId, 'turn-1');
-  assert.equal(hydrated.turnExecution.turnLifecycle, 'completed');
+  assert.equal(hydrated.latestTurn?.id, 'turn-1');
+  assert.equal(hydrated.latestTurn?.status, 'completed');
   assert.deepEqual(calls, [
     { method: 'startTurn', threadId: 'thread-1', text: 'first message' },
     { method: 'startTurn', threadId: 'thread-1', text: 'second message' },

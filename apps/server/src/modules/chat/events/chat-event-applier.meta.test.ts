@@ -76,9 +76,13 @@ test('session meta and notice events persist across runtime snapshots and subscr
     {
       type: 'turn_started',
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     },
     {
@@ -147,9 +151,13 @@ test('unsubscribe stops future runtime events for that subscriber', async () => 
     {
       type: 'turn_started',
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     },
   ]);

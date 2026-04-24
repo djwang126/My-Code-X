@@ -221,7 +221,7 @@ export function ChatPageLayout(props: ChatPageProps) {
         sendButtonDisabled={resolvedSendButtonDisabled}
         showProposedPlanAction={showProposedPlanAction}
         threadId={props.threadId}
-        turnExecution={props.turnExecution}
+        latestTurn={props.latestTurn}
         todoListCollapsed={todoCollapsed}
         transcriptSectionRef={transcriptSectionRef}
         visibleTodoList={visibleTodo}

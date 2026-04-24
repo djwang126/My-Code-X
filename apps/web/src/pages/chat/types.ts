@@ -2,11 +2,11 @@ import type { ReviewStartTarget } from '../../features/tools/review';
 import type { RuntimeOptions, RuntimeSettings } from '../../features/chat/settings';
 import type {
   ChatRuntimeState,
+  ChatTurn,
   SessionNotice,
   SessionPendingRequest,
   SessionSendInput,
   SessionTimelineItem,
-  SessionTurnExecutionState,
   TimelineItemContentPayload,
 } from '../../features/chat/runtime';
 import type { SessionState as SessionShellState } from '../../features/session';
@@ -33,7 +33,7 @@ export type ChatPageRuntimeState = {
   serverInstanceId: SessionShellState['serverInstanceId'];
   statusMessage: string;
   errorMessage: string;
-  turnExecution: SessionTurnExecutionState;
+  latestTurn: ChatTurn | null;
   threadName: ChatRuntimeState['threadName'];
   threadStatusText: ChatRuntimeState['threadStatusText'];
   tokenUsageText: ChatRuntimeState['tokenUsageText'];
@@ -68,7 +68,7 @@ export type ChatPageProps = {
   status: string;
   workspace: string;
   threadId: string;
-  turnExecution: SessionTurnExecutionState;
+  latestTurn: ChatTurn | null;
   threadName?: string;
   threadStatusText?: string;
   tokenUsageText?: string;

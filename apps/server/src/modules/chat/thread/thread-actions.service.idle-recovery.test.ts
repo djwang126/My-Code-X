@@ -28,10 +28,14 @@ function createMutableGateway() {
       calls.push({ method: 'resumeThread', threadId });
       return {
         threadId,
-        turnExecution: {
-          activeTurnId: 'restored-turn-1',
-          turnLifecycle: 'completed',
-        },
+        latestTurn: {
+        id: 'restored-turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         messages: [
           createUserTimelineMessage({
             threadId,

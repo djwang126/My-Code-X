@@ -5,7 +5,7 @@ import {
   HttpResponse,
   createSessionResponse,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -14,7 +14,7 @@ import {
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime transcript pre-turn failure behavior', () => {
   it('keeps pre-turn send failures outside the transcript and does not insert the unsent user turn', async () => {

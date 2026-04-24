@@ -5,7 +5,7 @@ import {
   HttpResponse,
   http,
   MockEventSource,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -13,7 +13,7 @@ import {
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 function setSessionIdentity(viewerId: string, slotId: string, threadId = 'thread-ready') {
   window.sessionStorage.setItem('my-code-x-viewer-id', viewerId);
@@ -92,10 +92,14 @@ describe('ChatRuntime transcript error scope', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-ready',
-            turnExecution: {
-              activeTurnId: 'turn-ready',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-ready',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {

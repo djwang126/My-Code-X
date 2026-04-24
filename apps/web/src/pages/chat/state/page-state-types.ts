@@ -1,4 +1,4 @@
-import type { SessionPendingRequest, SessionTurnExecutionState } from '../../../features/chat/runtime';
+import type { ChatTurn, SessionPendingRequest } from '../../../features/chat/runtime';
 
 export type SessionPhase = 'idle' | 'loading' | 'ready' | 'auth-required' | 'error';
 
@@ -73,7 +73,7 @@ export type ChatPageSessionSnapshot = {
   phase: SessionPhase;
   workspace: string;
   threadId: string;
-  turnExecution: SessionTurnExecutionState;
+  latestTurn: ChatTurn | null;
   pendingRequests: SessionPendingRequest[];
 };
 

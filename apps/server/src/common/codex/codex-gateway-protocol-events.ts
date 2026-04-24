@@ -2,6 +2,7 @@ import { normalizeCodexThreadItem } from './codex-gateway-protocol-normalize.js'
 import { createRequestResolvedNotice, createSessionMetaEvent, createSystemNoticeEvent } from './codex-gateway-protocol-meta-events.js';
 import { mapTimelineDeltaEvent } from './codex-gateway-protocol-timeline-deltas.js';
 import { createCodexRuntimeErrorFromTurnError } from './codex-runtime-error.js';
+import { normalizeCodexTurnCompleted, normalizeCodexTurnStarted } from './normalize-codex-turn.js';
 import type { LooseRecord } from './codex-types.js';
 
 export { mapCodexServerRequestToRuntimeEvent } from './codex-gateway-protocol-pending-requests.js';
@@ -37,7 +38,7 @@ function mapAgentMessageCompleted(method: string, params: LooseRecord = {}) {
   };
 }
 
-function mapThreadItemLifecycle(method: string, params: LooseRecord = {}) {
+function mapThreadItemState(method: string, params: LooseRecord = {}) {
   if (method !== 'item/started' && method !== 'item/completed') {
     return null;
   }
@@ -61,12 +62,18 @@ function mapThreadItemLifecycle(method: string, params: LooseRecord = {}) {
   };
 }
 
-function mapTurnLifecycle(method: string, params: LooseRecord = {}) {
+function mapTurnEvent(method: string, params: LooseRecord = {}) {
   if (method === 'turn/started') {
     return {
       type: 'turn_started',
       threadId: params?.threadId,
       turnId: params?.turn?.id ?? params?.turnId ?? null,
+      turn: normalizeCodexTurnStarted({
+        turn: params?.turn,
+        threadId: params?.threadId,
+        source: 'turn_started',
+        fieldName: 'turn started event.turn',
+      }),
     };
   }
 
@@ -75,17 +82,12 @@ function mapTurnLifecycle(method: string, params: LooseRecord = {}) {
       type: 'turn_completed',
       threadId: params.threadId,
       turnId: params.turn?.id ?? null,
-      turn: {
-        id: params.turn.id,
-        status: params.turn.status,
-        error: createCodexRuntimeErrorFromTurnError({
-          error: params.turn.error,
-          threadId: params.threadId,
-          turnId: params.turn?.id,
-          presentationScope: 'conversation',
-          source: 'turn_completed',
-        }),
-      },
+      turn: normalizeCodexTurnCompleted({
+        turn: params?.turn,
+        threadId: params?.threadId,
+        source: 'turn_completed',
+        fieldName: 'turn completed event.turn',
+      }),
     };
   }
 
@@ -158,14 +160,14 @@ export function mapCodexNotificationToRuntimeEvent(method: string, params: Loose
     return systemNoticeEvent;
   }
 
-  const threadItemLifecycleEvent = mapThreadItemLifecycle(method, params);
-  if (threadItemLifecycleEvent) {
-    return threadItemLifecycleEvent;
+  const threadItemStateEvent = mapThreadItemState(method, params);
+  if (threadItemStateEvent) {
+    return threadItemStateEvent;
   }
 
-  const turnLifecycleEvent = mapTurnLifecycle(method, params);
-  if (turnLifecycleEvent) {
-    return turnLifecycleEvent;
+  const mappedTurnEvent = mapTurnEvent(method, params);
+  if (mappedTurnEvent) {
+    return mappedTurnEvent;
   }
 
   return null;

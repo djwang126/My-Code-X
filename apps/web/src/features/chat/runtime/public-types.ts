@@ -1,16 +1,19 @@
-export type { ChatRuntimeAction, ChatRuntimeState } from './state/chat-runtime-state';
+export type { ChatRuntimeAction, ChatRuntimeState, RuntimeOperationState } from './state/chat-runtime-state';
 export type {
   AssistantTimelineMessageItem,
   ChatInterruptAcceptedPayload,
   ChatMessage,
   ChatMessageAcceptedPayload,
+  ChatTurn,
+  ChatTurnInProgress,
+  ChatTurnStatus,
+  ChatTurnTerminal,
   SessionNotice,
   SessionPayload,
   SessionPendingRequest,
   SessionPendingRequestApprovalDecision,
   SessionPendingRequestQuestion,
   SessionSendContentItem,
-  SessionTurnLifecycle,
   SessionTimelineFallbackItem,
   SessionTimelineItem,
   SessionTimelineMessageItem,
@@ -20,5 +23,4 @@ export type {
   UserInputImageContentItem,
   UserInputLocalImageContentItem,
   SessionSendInput,
-  SessionTurnExecutionState,
 } from './session-types';

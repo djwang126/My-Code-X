@@ -54,7 +54,7 @@ function createSessionResponse({
     session: {
       workspace: 'D:/workspace/example-app',
       threadId: 'thread-ready',
-      turnExecution: { activeTurnId: null, turnLifecycle: 'idle' },
+      latestTurn: null,
       lastUpdatedAt: '2026-04-09T12:34:56.000Z',
     },
     conversation: { messages },

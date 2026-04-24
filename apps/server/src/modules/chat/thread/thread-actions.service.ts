@@ -1,6 +1,7 @@
+import { serializeChatTurn } from '@my-code-x/contracts';
 import { createHttpError } from '../../../common/errors/http-error.js';
 import { createThreadBootstrapState } from './thread-bootstrap-policy.js';
-import { canRuntimeInterrupt, markRuntimeTurnInterrupting } from '../shared/chat-turn-lifecycle.js';
+import { canRuntimeInterrupt } from '../shared/chat-turn-state.js';
 import type { ChatSessionRegistry, ChatSessionState } from '../shared/chat-types.js';
 import type { CodexGatewayLike, PromptOverrideResolver, RuntimeSettings } from '../../../common/codex/codex-types.js';
 interface ThreadActionsServiceDependencies {
@@ -48,18 +49,19 @@ export function createThreadActionsService({ codexGateway, registry, promptOverr
         if (!canRuntimeInterrupt(runtime)) {
             throw createHttpError('turn not in progress', 409);
         }
+        const latestTurn = runtime.latestTurn;
+        if (!latestTurn) {
+            throw createHttpError('turn not in progress', 409);
+        }
         await codexGateway.interruptTurn!({
             threadId: runtime.threadId,
-            turnId: runtime.turnExecution.activeTurnId,
+            turnId: latestTurn.id,
         });
-        markRuntimeTurnInterrupting(runtime);
         runtime.lastUpdatedAt = new Date().toISOString();
         return {
             ok: true,
             threadId: runtime.threadId,
-            turnExecution: {
-                ...runtime.turnExecution,
-            },
+            turn: serializeChatTurn(runtime.latestTurn, { fieldName: 'interruptTurn.latestTurn' }),
         };
     }
     async function compactThread({ slotId, threadId, workspace = '' }: {
@@ -199,3 +201,4 @@ export function createThreadActionsService({ codexGateway, registry, promptOverr
         listThreadHistory,
     };
 }
+

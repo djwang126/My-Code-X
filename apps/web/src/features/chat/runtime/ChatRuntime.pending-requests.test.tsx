@@ -4,7 +4,7 @@ import {
   HttpResponse,
   MockEventSource,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -13,7 +13,7 @@ import {
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime pending requests', () => {
   it('submits threadless auth-refresh responses without forcing the active thread id', async () => {
@@ -28,10 +28,14 @@ describe('ChatRuntime pending requests', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-auth-refresh',
-            turnExecution: {
-              activeTurnId: 'turn-auth-refresh',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-auth-refresh',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -130,10 +134,14 @@ describe('ChatRuntime pending requests', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-auth-refresh-conflict',
-            turnExecution: {
-              activeTurnId: 'turn-auth-refresh-conflict',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-auth-refresh-conflict',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {

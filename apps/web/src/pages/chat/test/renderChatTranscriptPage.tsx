@@ -13,10 +13,7 @@ const defaultProps: ChatPageProps = {
   status: 'Session synced',
   workspace: 'D:/workspaces/sample',
   threadId: 'thread-1',
-  turnExecution: {
-    activeTurnId: null,
-    turnLifecycle: 'idle',
-  },
+  latestTurn: null,
   messages: [],
   pageFeedback: null,
 };

@@ -2,9 +2,9 @@ import {
   DEFAULT_COLLABORATION_MODE_KIND,
   readOptionalCollaborationModeKind,
 } from '../../../../shared/lib/collaboration-mode';
-import { isSessionExecutionActive } from '@my-code-x/contracts';
+import { isChatTurnActive } from '@my-code-x/contracts';
 
-import type { SessionTimelineItem, SessionTurnExecutionState } from '../../runtime/public-types';
+import type { ChatTurn, SessionTimelineItem } from '../../runtime/public-types';
 
 export const PROPOSED_PLAN_ACTION_MESSAGE = 'Implement the plan.';
 
@@ -15,15 +15,15 @@ export type ProposedPlanActionCandidate = {
 type FindProposedPlanActionCandidateInput = {
   messages: SessionTimelineItem[];
   collaborationModeKind: string;
-  turnExecution: SessionTurnExecutionState;
+  latestTurn: ChatTurn | null;
 };
 
 export function findProposedPlanActionCandidate({
   messages,
   collaborationModeKind,
-  turnExecution,
+  latestTurn,
 }: FindProposedPlanActionCandidateInput): ProposedPlanActionCandidate | null {
-  if (isSessionExecutionActive(turnExecution)) {
+  if (isChatTurnActive(latestTurn)) {
     return null;
   }
 

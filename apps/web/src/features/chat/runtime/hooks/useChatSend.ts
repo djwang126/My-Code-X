@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react';
 
-import { postChatInterrupt, postChatMessage } from '../api/session-turn-api';
+import { postChatInterrupt, postChatMessage } from '../api/chat-turn-api';
 import { postThreadFork } from '../../commands';
 import { normalizeCollaborationModeKind } from '../../../../shared/lib/collaboration-mode';
 import {
@@ -19,7 +19,7 @@ import { useChatRuntimeDispatch } from '../components/ChatRuntimeProvider';
 import type { ChatRuntimeState } from '../state/chat-runtime-state';
 import type { SessionSendInput } from '../session-types';
 import type { SessionState as SessionShellState } from '../../../session/public-types';
-import { canInterruptForTurnExecution, canSendForTurnExecution } from '../state/session-turn-lifecycle';
+import { canInterruptForRuntimeOperation, canSendForRuntimeOperation } from '../state/chat-turn-state';
 
 function isClientSendDebugEnabled() {
   if (typeof window === 'undefined') {
@@ -79,7 +79,7 @@ export function useChatSend(state: ChatRuntimeState, sessionState: SessionShellS
 
       if (sessionState.phase !== 'ready') return false;
       if (!sessionState.workspace) return false;
-      if (!canSendForTurnExecution(state.turnExecution)) return false;
+      if (!canSendForRuntimeOperation({ latestTurn: state.latestTurn, operations: state.operations })) return false;
       if (!text && !hasContent) return false;
       if (submitInFlightRef.current) return false;
       if (displaceIfSlotTakenOver()) return false;
@@ -97,6 +97,7 @@ export function useChatSend(state: ChatRuntimeState, sessionState: SessionShellS
       }
 
       submitInFlightRef.current = true;
+      dispatch({ type: 'send/requested' });
 
       try {
         const startedAt = Date.now();
@@ -134,7 +135,7 @@ export function useChatSend(state: ChatRuntimeState, sessionState: SessionShellS
         logClientSendDebug('request_succeeded', {
           slotId: sessionState.slotId,
           threadId: payload.threadId,
-          turnId: payload.turnExecution.activeTurnId,
+          turnId: payload.turn.id,
           durationMs: Date.now() - startedAt,
         });
         return true;
@@ -162,20 +163,22 @@ export function useChatSend(state: ChatRuntimeState, sessionState: SessionShellS
       sessionState.viewerId,
       sessionState.workspace,
       state.options,
+      state.operations,
       state.preferences,
       state.threadId,
-      state.turnExecution,
+      state.latestTurn,
     ],
   );
 
   const interruptTurn = useCallback(async () => {
     if (sessionState.phase !== 'ready') return false;
     if (!state.threadId) return false;
-    if (!canInterruptForTurnExecution(state.turnExecution)) return false;
+    if (!canInterruptForRuntimeOperation({ latestTurn: state.latestTurn, operations: state.operations })) return false;
     if (interruptInFlightRef.current) return false;
     if (displaceIfSlotTakenOver()) return false;
 
     interruptInFlightRef.current = true;
+    dispatch({ type: 'interrupt/requested' });
 
     try {
       const payload = await postChatInterrupt({
@@ -189,20 +192,28 @@ export function useChatSend(state: ChatRuntimeState, sessionState: SessionShellS
       return true;
     } catch (error) {
       dispatch({
-        type: 'send/failed',
+        type: 'interrupt/failed',
         errorMessage: error instanceof Error ? error.message : String(error),
       });
       return false;
     } finally {
       interruptInFlightRef.current = false;
     }
-  }, [dispatch, displaceIfSlotTakenOver, sessionState.phase, sessionState.slotId, state.threadId, state.turnExecution]);
+  }, [
+    dispatch,
+    displaceIfSlotTakenOver,
+    sessionState.phase,
+    sessionState.slotId,
+    state.latestTurn,
+    state.operations,
+    state.threadId,
+  ]);
 
   const forkFromMessage = useCallback(
     async (messageId: string) => {
       if (sessionState.phase !== 'ready') return '';
       if (!sessionState.workspace || !state.threadId) return '';
-      if (!canSendForTurnExecution(state.turnExecution)) return '';
+      if (!canSendForRuntimeOperation({ latestTurn: state.latestTurn, operations: state.operations })) return '';
       if (forkInFlightRef.current) return '';
       if (displaceIfSlotTakenOver()) return '';
 
@@ -252,9 +263,10 @@ export function useChatSend(state: ChatRuntimeState, sessionState: SessionShellS
       sessionState.phase,
       sessionState.slotId,
       sessionState.workspace,
+      state.latestTurn,
+      state.operations,
       state.messages,
       state.threadId,
-      state.turnExecution,
     ],
   );
 

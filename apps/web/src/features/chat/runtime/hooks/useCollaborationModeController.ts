@@ -15,7 +15,7 @@ import { getCollaborationModeOptions, normalizeRuntimeSettings, readRuntimeOptio
 import type { ChatRuntimeState } from '../state/chat-runtime-state';
 import type { RuntimeSettings } from '../../settings';
 import type { SessionSendInput } from '../session-types';
-import { isTurnExecutionActive } from '../state/session-turn-lifecycle';
+import { isChatTurnStateActive } from '../state/chat-turn-state';
 
 export function useCollaborationModeController({
   state,
@@ -53,7 +53,7 @@ export function useCollaborationModeController({
   }
 
   async function handleCycleCollaborationMode() {
-    if (isTurnExecutionActive(state.turnExecution)) {
+    if (isChatTurnStateActive(state.latestTurn)) {
       return false;
     }
 
@@ -85,7 +85,7 @@ export function useCollaborationModeController({
         findProposedPlanActionCandidate({
           messages: state.messages,
           collaborationModeKind: collaborationModeKind ?? DEFAULT_COLLABORATION_MODE_KIND,
-          turnExecution: state.turnExecution,
+          latestTurn: state.latestTurn,
         })?.turnId ?? null;
 
       if (turnId) {

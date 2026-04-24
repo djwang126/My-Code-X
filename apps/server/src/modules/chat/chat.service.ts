@@ -9,7 +9,6 @@ import { createItemContentService } from './item-content/item-content.service.js
 import { createChatEventApplier } from './events/chat-event-applier.js';
 import { createAttachmentService } from './attachments/attachment.service.js';
 import { createAttachmentRetentionService } from './attachments/attachment-retention.service.js';
-import { createIdleSessionTurnExecution } from '@my-code-x/contracts';
 import type { CodexGatewayLike, PromptOverrideResolver } from '../../common/codex/codex-types.js';
 import type { ChatSessionRegistry } from './shared/chat-types.js';
 interface LoggerLike {
@@ -47,7 +46,7 @@ export function createUnconfiguredChatService({ now = () => new Date().toISOStri
                 slotId,
                 workspace,
                 threadId,
-                turnExecution: createIdleSessionTurnExecution(),
+                latestTurn: null,
                 now,
             });
         },
@@ -213,7 +212,7 @@ export function createChatService({ codexGateway: codexGatewayOverrides = create
                 sessions: registry.listRuntimes().map((runtime: any) => ({
                     slotId: runtime.slotId,
                     threadId: runtime.threadId,
-                    turnExecution: runtime.turnExecution,
+                    latestTurn: runtime.latestTurn,
                     pendingRequestCount: runtime.pendingRequests.length,
                 })),
             };

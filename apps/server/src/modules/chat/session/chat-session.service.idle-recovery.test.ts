@@ -28,10 +28,14 @@ function createMutableGateway() {
       calls.push({ method: 'resumeThread', threadId });
       return {
         threadId,
-        turnExecution: {
-          activeTurnId: 'restored-turn-1',
-          turnLifecycle: 'completed',
-        },
+        latestTurn: {
+        id: 'restored-turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         messages: [
           createUserTimelineMessage({ threadId, turnId: 'restored-turn-1', text: 'restored prompt' }),
           createAssistantTimelineMessage({
@@ -140,7 +144,7 @@ test('hydrateSession re-resumes a stale in-memory runtime instead of returning t
       state: 'complete',
     }),
   ]);
-  assert.equal(hydrated.turnExecution.activeTurnId, 'restored-turn-1');
+  assert.equal(hydrated.latestTurn?.id, 'restored-turn-1');
 });
 
 test('sendMessage still reuses an attached runtime without an extra resume', async () => {

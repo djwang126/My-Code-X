@@ -6,14 +6,14 @@ import {
   MockEventSource,
   createUserMessage,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 function createTurnLevelError(message: string, { codexErrorInfo = 'other' }: { codexErrorInfo?: 'other' | null } = {}) {
   return {
@@ -60,10 +60,14 @@ describe('ChatRuntime transcript turn failure behavior', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-turn-failed',
-            turnExecution: {
-              activeTurnId: 'turn-turn-failed',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-turn-failed',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -95,9 +99,13 @@ describe('ChatRuntime transcript turn failure behavior', () => {
 
     MockEventSource.instances[0]?.emit('turn_completed', {
       threadId: 'thread-turn-failed',
-      turnExecution: {
-        activeTurnId: 'turn-turn-failed',
-        turnLifecycle: 'failed',
+      latestTurn: {
+        id: 'turn-turn-failed',
+        status: 'failed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       error: createTurnLevelError('Upstream failed after acceptance'),
     });
@@ -129,10 +137,14 @@ describe('ChatRuntime transcript turn failure behavior', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-turn-failed',
-            turnExecution: {
-              activeTurnId: 'turn-turn-failed',
-              turnLifecycle: 'failed',
-            },
+            latestTurn: {
+        id: 'turn-turn-failed',
+        status: 'failed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastError: createTurnLevelError('Codex turn failed upstream'),
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
@@ -184,10 +196,14 @@ describe('ChatRuntime transcript turn failure behavior', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-turn-failed',
-            turnExecution: {
-              activeTurnId: 'turn-turn-failed',
-              turnLifecycle: 'failed',
-            },
+            latestTurn: {
+        id: 'turn-turn-failed',
+        status: 'failed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastError: createTurnLevelError('Missing skill metadata still stays in transcript', {
               codexErrorInfo: null,
             }),
@@ -242,10 +258,14 @@ describe('ChatRuntime transcript turn failure behavior', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-turn-failed',
-            turnExecution: {
-              activeTurnId: 'turn-turn-failed',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-turn-failed',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -301,10 +321,14 @@ describe('ChatRuntime transcript turn failure behavior', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-turn-failed',
-            turnExecution: {
-              activeTurnId: 'turn-turn-failed',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-turn-failed',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -336,9 +360,13 @@ describe('ChatRuntime transcript turn failure behavior', () => {
 
     MockEventSource.instances[0]?.emit('snapshot', {
       threadId: 'thread-turn-failed',
-      turnExecution: {
-        activeTurnId: 'turn-turn-failed',
-        turnLifecycle: 'failed',
+      latestTurn: {
+        id: 'turn-turn-failed',
+        status: 'failed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       messages: [
         createUserMessage(

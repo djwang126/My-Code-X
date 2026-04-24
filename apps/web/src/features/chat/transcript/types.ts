@@ -1,9 +1,9 @@
 import type { ReactNode, RefObject } from 'react';
 
 import type {
+  ChatTurn,
   SessionPendingRequest,
   SessionTimelineItem,
-  SessionTurnExecutionState,
   TimelineItemContentPayload,
 } from '../runtime/public-types';
 
@@ -23,14 +23,14 @@ export type TranscriptImagePreviewOpenHandler = (image: TranscriptImagePreview) 
 export type PendingRequestCardProps = {
   request: SessionPendingRequest;
   onRequestResponse?: TranscriptRequestResponseHandler;
-  turnExecution?: SessionTurnExecutionState;
+  latestTurn?: ChatTurn | null;
   currentThreadId?: string;
 };
 
 export type ChatTranscriptProps = {
   fallbackPendingRequests: SessionPendingRequest[];
   inlineRequestsByMessageId: Map<string, SessionPendingRequest[]>;
-  turnExecution?: SessionTurnExecutionState;
+  latestTurn?: ChatTurn | null;
   currentThreadId?: string;
   proposedPlanActionTurnId?: string | null;
   showProposedPlanAction?: boolean;

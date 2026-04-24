@@ -61,9 +61,13 @@ test('Codex completion events finalize the assistant message and unlock input', 
     viewerId: 'viewer-1',
     workspace: '',
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'completed',
+    latestTurn: {
+      id: 'turn-1',
+      status: 'completed',
+      error: null,
+      startedAt: null,
+      completedAt: null,
+      durationMs: null,
     },
     threadName: '',
     threadStatus: null,
@@ -152,9 +156,13 @@ test('subscribe receives turn start and live Codex thread events for the runtime
     {
       type: 'turn_started',
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      turn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     },
     {
@@ -179,9 +187,13 @@ test('subscribe receives turn start and live Codex thread events for the runtime
     {
       type: 'turn_completed',
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'completed',
+      turn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       error: null,
     },
@@ -318,8 +330,7 @@ test('turn completion fails explicitly when Codex reports a non-terminal status'
       }),
     error =>
       error instanceof Error &&
-      error.message ===
-        'turn completed event.turn.status must resolve to a terminal lifecycle: completed, interrupted, or failed.',
+      error.message === 'turn completed event.turn.status must be completed, interrupted, or failed.',
   );
 });
 

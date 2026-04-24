@@ -15,9 +15,9 @@ test('hydrateSession allows the same slot to switch to a different thread and re
         calls.push({ method: 'resumeThread', threadId });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: `turn:${threadId}`,
-            turnLifecycle: 'completed',
+          latestTurn: {
+            turnId: `turn:${threadId}`,
+            status: 'completed',
           },
           messages: [
             {
@@ -84,10 +84,14 @@ test('hydrateSession allows the same slot to switch to a different thread and re
 
   assert.deepEqual(sendResult, {
     threadId: 'thread-2',
-    turnExecution: {
-      activeTurnId: 'send:thread-2',
-      turnLifecycle: 'running',
-    },
+    latestTurn: {
+        id: 'send:thread-2',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
   });
   assert.deepEqual(calls, [
     { method: 'startTurn', threadId: 'thread-1', text: 'hello codex' },
@@ -149,7 +153,7 @@ test('hydrateSession returns the in-memory runtime without re-resuming after bac
       state: 'streaming',
     }),
   ]);
-  assert.equal(result.turnExecution.turnLifecycle, 'running');
+  assert.equal(result.latestTurn?.status, 'running');
 });
 
 test('hydrateSession preserves the raw resume error text', async () => {

@@ -5,7 +5,7 @@ import { setupServer } from 'msw/node';
 import { SessionApiError } from '../../../shared/lib/app-api-client';
 import { fetchSessionPayload } from './api/session-bootstrap-api';
 import { postServerRequestResponse } from './api/session-request-api';
-import { postChatInterrupt, postChatMessage } from './api/session-turn-api';
+import { postChatInterrupt, postChatMessage } from './api/chat-turn-api';
 import { fetchTimelineItemContent } from '../transcript';
 import { fetchWorkspaceThreads } from '../../workspace/threads';
 import { requestAppRestart, waitForAppReady } from '../../tools/restart';
@@ -25,10 +25,7 @@ const server = setupServer(
       session: {
         workspace: url.searchParams.get('workspace') || '',
         threadId: url.searchParams.get('threadId') || '',
-        turnExecution: {
-          activeTurnId: null,
-          turnLifecycle: 'idle',
-        },
+        latestTurn: null,
         lastUpdatedAt: '2026-04-03T12:34:56.000Z',
       },
       conversation: {
@@ -104,11 +101,11 @@ describe('fetchSessionPayload', () => {
     expect(payload.viewer.slotId).toBe('tab-5');
     expect(payload.session.workspace).toBe('D:/workspaces/My-Code-X');
     expect(payload.session.threadId).toBe('thread-7');
-    expect(payload.session.turnExecution.activeTurnId).toBeNull();
+    expect(payload.session.latestTurn?.id).toBeNull();
     expect(payload.conversation.messages).toEqual([]);
   });
 
-  it('rejects bootstrap payloads that omit turnExecution.turnLifecycle', async () => {
+  it('rejects bootstrap payloads that omit latestTurn?.status', async () => {
     server.use(
       http.get('/api/v2/session', () =>
         HttpResponse.json({
@@ -117,8 +114,8 @@ describe('fetchSessionPayload', () => {
           session: {
             workspace: '',
             threadId: '',
-            turnExecution: {
-              activeTurnId: null,
+            latestTurn: {
+              turnId: null,
             },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
@@ -135,7 +132,7 @@ describe('fetchSessionPayload', () => {
     );
 
     await expect(fetchSessionPayload({ viewerId: 'viewer-22', slotId: 'tab-5', workspace: '', threadId: '' })).rejects.toThrowError(
-      'session payload.session.turnExecution.turnLifecycle must be one of idle, running, interrupting, completed, interrupted, or failed.',
+      'session payload.session.latestTurn?.status must be one of idle, running, interrupting, completed, interrupted, or failed.',
     );
   });
 
@@ -342,10 +339,14 @@ describe('postChatMessage', () => {
         requestBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({
           threadId: 'thread-22',
-          turnExecution: {
-            activeTurnId: 'turn-9',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-9',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-5&threadId=thread-22',
           },
@@ -387,9 +388,13 @@ describe('postChatMessage', () => {
     });
     expect(payload).toEqual({
       threadId: 'thread-22',
-      turnExecution: {
-        activeTurnId: 'turn-9',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-9',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       stream: {
         url: '/api/v2/chat/events?slotId=tab-5&threadId=thread-22',
@@ -405,10 +410,14 @@ describe('postChatMessage', () => {
         requestBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({
           threadId: 'thread-22',
-          turnExecution: {
-            activeTurnId: 'turn-10',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-10',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-5&threadId=thread-22',
           },
@@ -459,10 +468,14 @@ describe('postChatMessage', () => {
         requestBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({
           threadId: 'thread-22',
-          turnExecution: {
-            activeTurnId: 'turn-11',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-11',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-5&threadId=thread-22',
           },
@@ -522,13 +535,13 @@ describe('postChatMessage', () => {
     ).rejects.toThrowError('thread mismatch for tab runtime');
   });
 
-  it('rejects accepted send payloads that omit turnExecution.turnLifecycle', async () => {
+  it('rejects accepted send payloads that omit latestTurn?.status', async () => {
     server.use(
       http.post('/api/v2/chat/message', () =>
         HttpResponse.json({
           threadId: 'thread-22',
-          turnExecution: {
-            activeTurnId: 'turn-9',
+          latestTurn: {
+            turnId: 'turn-9',
           },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-5&threadId=thread-22',
@@ -546,7 +559,7 @@ describe('postChatMessage', () => {
         text: 'continue',
       }),
     ).rejects.toThrowError(
-      'chat message accepted payload.turnExecution.turnLifecycle must be one of idle, running, interrupting, completed, interrupted, or failed.',
+      'chat message accepted payload.latestTurn?.status must be one of idle, running, interrupting, completed, interrupted, or failed.',
     );
   });
 });
@@ -561,10 +574,14 @@ describe('postChatInterrupt', () => {
         return HttpResponse.json({
           ok: true,
           threadId: 'thread-22',
-          turnExecution: {
-            activeTurnId: 'turn-10',
-            turnLifecycle: 'interrupting',
-          },
+          latestTurn: {
+        id: 'turn-10',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         });
       }),
     );
@@ -581,9 +598,13 @@ describe('postChatInterrupt', () => {
     expect(payload).toEqual({
       ok: true,
       threadId: 'thread-22',
-      turnExecution: {
-        activeTurnId: 'turn-10',
-        turnLifecycle: 'interrupting',
+      latestTurn: {
+        id: 'turn-10',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     });
   });
@@ -606,14 +627,14 @@ describe('postChatInterrupt', () => {
     ).rejects.toThrowError('turn not found');
   });
 
-  it('rejects interrupt payloads that omit turnExecution.turnLifecycle', async () => {
+  it('rejects interrupt payloads that omit latestTurn?.status', async () => {
     server.use(
       http.post('/api/v2/chat/interrupt', () =>
         HttpResponse.json({
           ok: true,
           threadId: 'thread-22',
-          turnExecution: {
-            activeTurnId: 'turn-10',
+          latestTurn: {
+            turnId: 'turn-10',
           },
         }),
       ),
@@ -625,7 +646,7 @@ describe('postChatInterrupt', () => {
         threadId: 'thread-22',
       }),
     ).rejects.toThrowError(
-      'chat interrupt accepted payload.turnExecution.turnLifecycle must be one of idle, running, interrupting, completed, interrupted, or failed.',
+      'chat interrupt accepted payload.latestTurn?.status must be one of idle, running, interrupting, completed, interrupted, or failed.',
     );
   });
 });

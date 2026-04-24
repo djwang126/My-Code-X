@@ -165,7 +165,7 @@ export function createGatewayClient({ cwd, dynamicToolSpecs, state, transport, w
                 collaborationMode,
             }));
             return {
-                turnId: result.turn.id,
+                turn: result.turn,
             };
         },
     };

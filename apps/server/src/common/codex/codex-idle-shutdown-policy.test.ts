@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 
 import { canShutdownCodexForIdle } from './codex-idle-shutdown-policy.js';
 
-function createSessionTurnExecution(activeTurnId, turnLifecycle) {
+function createSessionChatTurn(turnId, status) {
   return {
-    activeTurnId,
-    turnLifecycle,
+    turnId,
+    status,
   };
 }
 
@@ -18,13 +18,13 @@ test('canShutdownCodexForIdle allows shutdown when every session is idle and has
           {
             slotId: 'tab-1',
             threadId: 'thr-1',
-            turnExecution: createSessionTurnExecution('turn-1', 'completed'),
+            latestTurn: createSessionChatTurn('turn-1', 'completed'),
             pendingRequestCount: 0,
           },
           {
             slotId: 'tab-2',
             threadId: '',
-            turnExecution: createSessionTurnExecution(null, 'idle'),
+            latestTurn: createSessionChatTurn(null, 'idle'),
             pendingRequestCount: 0,
           },
         ],
@@ -42,13 +42,13 @@ test('canShutdownCodexForIdle blocks shutdown when any session is still active o
           {
             slotId: 'tab-1',
             threadId: 'thr-1',
-            turnExecution: createSessionTurnExecution('turn-1', 'running'),
+            latestTurn: createSessionChatTurn('turn-1', 'running'),
             pendingRequestCount: 0,
           },
           {
             slotId: 'tab-2',
             threadId: 'thr-2',
-            turnExecution: createSessionTurnExecution('turn-2', 'completed'),
+            latestTurn: createSessionChatTurn('turn-2', 'completed'),
             pendingRequestCount: 1,
           },
         ],

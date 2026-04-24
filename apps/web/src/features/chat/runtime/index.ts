@@ -8,17 +8,24 @@ export { useChatSend } from './hooks/useChatSend';
 export { useTranscriptCache } from './hooks/useTranscriptCache';
 export { selectChatToastItems } from './lib/chat-toast-selector';
 export {
-  canInterruptForTurnExecution,
-  canSendForTurnExecution,
-  isTurnExecutionActive,
-} from './state/session-turn-lifecycle';
+  canInterruptForChatTurn,
+  canInterruptForRuntimeOperation,
+  canSendForChatTurn,
+  canSendForRuntimeOperation,
+  isChatTurnStateActive,
+} from './state/chat-turn-state';
 export type {
   AssistantTimelineMessageItem,
   ChatInterruptAcceptedPayload,
   ChatMessage,
   ChatMessageAcceptedPayload,
+  ChatTurn,
+  ChatTurnInProgress,
+  ChatTurnStatus,
+  ChatTurnTerminal,
   ChatRuntimeAction,
   ChatRuntimeState,
+  RuntimeOperationState,
   SessionNotice,
   SessionPayload,
   SessionPendingRequest,
@@ -30,8 +37,6 @@ export type {
   SessionTimelineItem,
   SessionTimelineMessageItem,
   SessionTimelineSpecialItem,
-  SessionTurnExecutionState,
-  SessionTurnLifecycle,
   TimelineItemContentPayload,
   UserInputContentItem,
   UserInputImageContentItem,

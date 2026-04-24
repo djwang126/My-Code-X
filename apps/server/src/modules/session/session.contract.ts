@@ -1,4 +1,4 @@
-import { serializeSessionTurnExecution } from '@my-code-x/contracts';
+import { serializeChatTurn } from '@my-code-x/contracts';
 import type { RuntimeOptions, RuntimePreferences } from '../../common/codex/codex-types.js';
 import { buildChatEventsUrl, serializeTimelineItemsForBootstrap } from '../chat/index.js';
 import type { ChatSessionState } from '../chat/shared/chat-types.js';
@@ -21,8 +21,8 @@ export function createSessionBootstrapPayload({
   options?: RuntimeOptions;
 }) {
   const promptOverride = sessionState.appliedThreadRuntimeOverrides?.promptOverride;
-  const turnExecution = serializeSessionTurnExecution(sessionState.turnExecution, {
-    fieldName: 'session bootstrap',
+  const latestTurn = serializeChatTurn(sessionState.latestTurn, {
+    fieldName: 'session bootstrap latestTurn',
   });
 
   return {
@@ -31,7 +31,7 @@ export function createSessionBootstrapPayload({
     session: {
       workspace: sessionState.workspace || '',
       threadId: sessionState.threadId,
-      turnExecution,
+      latestTurn,
       ...(sessionState.collaborationModeKind ? { collaborationModeKind: sessionState.collaborationModeKind } : {}),
       ...(sessionState.appliedThreadRuntimeOverrides &&
       Object.prototype.hasOwnProperty.call(sessionState.appliedThreadRuntimeOverrides, 'promptOverride')

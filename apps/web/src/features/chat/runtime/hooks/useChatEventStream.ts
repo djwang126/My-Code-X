@@ -8,13 +8,13 @@ import { logClientStreamDebug } from './session-event-stream/debug';
 import { useAssistantDeltaBatcher } from './session-event-stream/assistant-delta-batcher';
 import { createSessionEventHandlers } from './session-event-stream/event-handlers';
 import { useSessionStreamVisibility } from './session-event-stream/visibility';
-import { isTurnExecutionActive } from '../state/session-turn-lifecycle';
+import { isChatTurnStateActive } from '../state/chat-turn-state';
 
 export function useChatEventStream(state: ChatRuntimeState, sessionState: SessionShellState) {
   const dispatch = useChatRuntimeDispatch();
   const { isDocumentVisible, hiddenStreamRevision } = useSessionStreamVisibility(state.streamRevision);
   const { bufferAssistantDelta, flushAssistantDeltas, resetAssistantDeltaBuffer } = useAssistantDeltaBatcher(dispatch);
-  const turnActive = isTurnExecutionActive(state.turnExecution);
+  const turnActive = isChatTurnStateActive(state.latestTurn);
 
   useEffect(() => {
     if (sessionState.phase !== 'ready') {

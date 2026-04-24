@@ -31,10 +31,7 @@ function createSessionResponse({ viewerId, slotId }: { viewerId: string | null; 
     session: {
       workspace: 'D:/workspace/example-app',
       threadId: 'thread-image',
-      turnExecution: {
-        activeTurnId: null,
-        turnLifecycle: 'idle',
-      },
+      latestTurn: null,
       collaborationModeKind: 'default',
       lastUpdatedAt: '2026-04-15T10:00:00.000Z',
     },
@@ -146,10 +143,7 @@ describe('ChatRuntime image attachments', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-image-history',
-            turnExecution: {
-              activeTurnId: null,
-              turnLifecycle: 'idle',
-            },
+            latestTurn: null,
             collaborationModeKind: 'default',
             lastUpdatedAt: '2026-04-15T10:00:00.000Z',
           },
@@ -241,7 +235,7 @@ describe('ChatRuntime image attachments', () => {
         return HttpResponse.json({
           threadId: 'thread-image',
           turnId: 'turn-image-send',
-          turnLifecycle: 'running',
+          status: 'inProgress',
           stream: {
             url: '/api/v2/chat/events?slotId=tab-image-send&threadId=thread-image',
           },
@@ -317,7 +311,7 @@ describe('ChatRuntime image attachments', () => {
         return HttpResponse.json({
           threadId: 'thread-image',
           turnId: 'turn-image-send',
-          turnLifecycle: 'running',
+          status: 'inProgress',
           stream: {
             url: '/api/v2/chat/events?slotId=tab-image-remove&threadId=thread-image',
           },

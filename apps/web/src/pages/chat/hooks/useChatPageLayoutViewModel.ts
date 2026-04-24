@@ -10,7 +10,7 @@ import type { ChatPageProps } from '../types';
 
 export function useChatPageLayoutViewModel(input: ChatPageProps) {
   const pendingRequestAnchorIdsRef = useRef(new Map<string, string>());
-  const turnExecution = input.turnExecution;
+  const latestTurn = input.latestTurn;
   const fallbackViewModel = useMemo(
     () =>
       buildChatPageViewModel({
@@ -34,7 +34,7 @@ export function useChatPageLayoutViewModel(input: ChatPageProps) {
           phase: 'ready',
           workspace: input.workspace,
           threadId: input.threadId,
-          turnExecution,
+          latestTurn,
           pendingRequests: input.pendingRequests ?? [],
         },
       }),
@@ -49,7 +49,7 @@ export function useChatPageLayoutViewModel(input: ChatPageProps) {
       input.workspaceExplorerLoading,
       input.workspaceFileSaving,
       input.workspaceSwitchReason,
-      turnExecution,
+      latestTurn,
     ],
   );
 
@@ -72,7 +72,7 @@ export function useChatPageLayoutViewModel(input: ChatPageProps) {
       findProposedPlanActionCandidate({
         messages: input.messages,
         collaborationModeKind: input.runtimeSettings?.collaborationModeKind ?? 'default',
-        turnExecution,
+        latestTurn,
       })?.turnId ?? null;
 
     if (!input.threadId || !turnId || isProposedPlanActionDismissed(input.threadId, turnId)) {
@@ -80,7 +80,7 @@ export function useChatPageLayoutViewModel(input: ChatPageProps) {
     }
 
     return turnId;
-  }, [input.messages, input.runtimeSettings?.collaborationModeKind, input.threadId, turnExecution]);
+  }, [input.messages, input.runtimeSettings?.collaborationModeKind, input.threadId, latestTurn]);
 
   return {
     fallbackViewModel,

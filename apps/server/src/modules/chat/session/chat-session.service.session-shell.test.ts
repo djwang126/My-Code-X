@@ -69,10 +69,14 @@ test('sendMessage starts a thread after an empty hydrateSession created a slot s
 
   assert.deepEqual(result, {
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'running',
-    },
+    latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
   });
 });
 
@@ -129,9 +133,13 @@ test('sendMessage still starts a new thread from an empty slot session shell aft
 
   assert.deepEqual(result, {
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'running',
-    },
+    latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
   });
 });

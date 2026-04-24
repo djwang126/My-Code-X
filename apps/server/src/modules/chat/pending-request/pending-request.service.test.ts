@@ -134,9 +134,13 @@ test('pending server requests can be submitted, marked in-flight, and cleared wh
     {
       type: 'turn_started',
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     },
     {

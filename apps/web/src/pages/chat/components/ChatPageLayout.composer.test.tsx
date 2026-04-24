@@ -11,10 +11,7 @@ const baseProps: ChatPageProps = {
   status: 'Session synced',
   workspace: 'D:/workspaces/sample',
   threadId: 'thread-1',
-  turnExecution: {
-    activeTurnId: null,
-    turnLifecycle: 'idle',
-  },
+  latestTurn: null,
   messages: [],
   pageFeedback: null,
 };
@@ -129,9 +126,13 @@ describe('ChatPageLayout composer', () => {
           turnId: 'turn-1',
         },
       ],
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     });
 
@@ -140,11 +141,15 @@ describe('ChatPageLayout composer', () => {
     expect(screen.getByRole('button', { name: 'Stop' })).toBeEnabled();
   });
 
-  it('disables the composer when the active lifecycle is still running', () => {
+  it('disables the composer when the active state is still running', () => {
     renderChatPage({
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     });
 

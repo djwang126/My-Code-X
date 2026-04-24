@@ -35,7 +35,11 @@ export function createHydratedChatRuntimeState(payload: SessionPayload, state: C
     ...state,
     workspace: payload.session.workspace,
     threadId: payload.session.threadId,
-    turnExecution: payload.session.turnExecution,
+    latestTurn: payload.session.latestTurn,
+    operations: {
+      send: 'idle',
+      interrupt: 'idle',
+    },
     threadName: payload.session.threadName || '',
     threadStatus: payload.session.threadStatus ?? null,
     threadStatusText: payload.session.threadStatusText || '',

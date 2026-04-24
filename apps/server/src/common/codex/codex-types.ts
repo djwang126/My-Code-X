@@ -68,12 +68,12 @@ export interface StartThreadResult {
 }
 
 export interface StartTurnResult {
-  turnId: string;
+  turn: LooseRecord;
 }
 
 export interface ResumeThreadResult extends LooseRecord {
   threadId?: string;
-  turnExecution?: LooseRecord;
+  latestTurn?: LooseRecord | null;
   collaborationModeKind?: string;
   threadName?: string;
   threadStatus?: any;

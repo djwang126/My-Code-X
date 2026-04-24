@@ -17,7 +17,7 @@ type UseChatPageControllerActionsInput = {
   canOpenExplorer: boolean;
   canSubmitPendingRequests: boolean;
   sendSessionMessage: (input: SessionSendInput, options?: { collaborationModeKind?: string }) => Promise<boolean>;
-  interruptSessionTurn: () => Promise<boolean>;
+  interruptChatTurn: () => Promise<boolean>;
   submitSessionRequestResponse: (requestId: string, response: Record<string, unknown>) => Promise<boolean>;
   workspaceExplorer: {
     handleWorkspaceExplorerOpen: () => Promise<boolean>;
@@ -37,7 +37,7 @@ export function useChatPageControllerActions({
   canOpenExplorer,
   canSubmitPendingRequests,
   sendSessionMessage,
-  interruptSessionTurn,
+  interruptChatTurn,
   submitSessionRequestResponse,
   workspaceExplorer,
 }: UseChatPageControllerActionsInput) {
@@ -98,14 +98,19 @@ export function useChatPageControllerActions({
     }
 
     startAction('interrupt', 'interrupt');
+    let interruptAccepted = false;
     try {
-      const interrupted = await interruptSessionTurn();
+      const interrupted = await interruptChatTurn();
       if (interrupted) {
+        interruptAccepted = true;
         setSessionErrorHint(null);
+        return true;
       }
-      return interrupted;
+      return false;
     } finally {
-      finishAction('interrupt');
+      if (!interruptAccepted) {
+        finishAction('interrupt');
+      }
     }
   }
 

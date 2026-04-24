@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSessionTurnExecution } from '@my-code-x/contracts';
+import { parseChatTurn } from '@my-code-x/contracts';
 
 import { deriveChatPageGuards } from './action-guards';
 import type { ChatPageGuardInput } from './action-guards';
@@ -8,10 +8,10 @@ import type {
   ChatPageSessionSnapshot,
 } from './page-state-types';
 
-type SessionSnapshotOverrides = Partial<Omit<ChatPageSessionSnapshot, 'turnExecution'>> & {
-  turnExecution?: ChatPageSessionSnapshot['turnExecution'];
-  turnLifecycle?: ChatPageSessionSnapshot['turnExecution']['turnLifecycle'];
-  activeTurnId?: ChatPageSessionSnapshot['turnExecution']['activeTurnId'];
+type SessionSnapshotOverrides = Partial<Omit<ChatPageSessionSnapshot, 'latestTurn'>> & {
+  latestTurn?: ChatPageSessionSnapshot['latestTurn'];
+  turnStatus?: 'idle' | 'inProgress' | 'completed' | 'interrupted' | 'failed';
+  turnId?: string;
 };
 
 type ChatPageGuardInputOverrides = {
@@ -23,9 +23,9 @@ type ChatPageGuardInputOverrides = {
 
 function buildSessionSnapshot(overrides: SessionSnapshotOverrides = {}): ChatPageSessionSnapshot {
   const {
-    activeTurnId,
-    turnExecution,
-    turnLifecycle = 'idle',
+    turnId,
+    latestTurn,
+    turnStatus = 'idle',
     ...rest
   } = overrides;
 
@@ -33,12 +33,18 @@ function buildSessionSnapshot(overrides: SessionSnapshotOverrides = {}): ChatPag
     phase: 'ready',
     workspace: 'D:/workspaces/my-code-x',
     threadId: 'thread-1',
-    turnExecution:
-      turnExecution ??
-      parseSessionTurnExecution({
-        activeTurnId: activeTurnId ?? (turnLifecycle === 'idle' ? null : 'turn-1'),
-        turnLifecycle,
-      }),
+    latestTurn:
+      latestTurn ??
+      turnStatus === 'idle'
+        ? null
+        : parseChatTurn({
+            id: turnId ?? 'turn-1',
+            status: turnStatus,
+            error: null,
+            startedAt: null,
+            completedAt: null,
+            durationMs: null,
+          }),
     pendingRequests: [],
     ...rest,
   };
@@ -84,12 +90,12 @@ describe('deriveChatPageGuards', () => {
     expect(guards.canSend).toBe(false);
   });
 
-  it('blocks send when the active lifecycle is still running', () => {
+  it('blocks send when the active state is still running', () => {
     const guards = deriveChatPageGuards(
       buildInput({
         interactionState: 'ready-idle',
         session: {
-          turnLifecycle: 'running',
+          turnStatus: 'inProgress',
         },
       }),
     );
@@ -114,7 +120,7 @@ describe('deriveChatPageGuards', () => {
       buildInput({
         interactionState: 'awaiting-requests',
         session: {
-          turnLifecycle: 'running',
+          turnStatus: 'inProgress',
           pendingRequests: [
             {
               id: 'req-1',
@@ -169,7 +175,7 @@ describe('deriveChatPageGuards', () => {
       buildInput({
         interactionState: 'awaiting-requests',
         session: {
-          turnLifecycle: 'running',
+          turnStatus: 'inProgress',
           pendingRequests: [
             {
               id: 'req-1',
@@ -209,13 +215,13 @@ describe('deriveChatPageGuards', () => {
     const runningGuards = deriveChatPageGuards(
       buildInput({
         interactionState: 'running',
-        session: { turnLifecycle: 'running' },
+        session: { turnStatus: 'inProgress' },
       }),
     );
     const blockedGuards = deriveChatPageGuards(
       buildInput({
         interactionState: 'running',
-        session: { turnLifecycle: 'running' },
+        session: { turnStatus: 'inProgress' },
         operations: { interrupt: 'pending' },
       }),
     );
@@ -229,7 +235,7 @@ describe('deriveChatPageGuards', () => {
       buildInput({
         interactionState: 'interrupting',
         session: {
-          turnLifecycle: 'interrupting',
+          turnStatus: 'inProgress',
         },
       }),
     );
@@ -243,7 +249,7 @@ describe('deriveChatPageGuards', () => {
     const guards = deriveChatPageGuards(
       buildInput({
         interactionState: 'running',
-        session: { turnLifecycle: 'running' },
+        session: { turnStatus: 'inProgress' },
       }),
     );
 
@@ -256,7 +262,7 @@ describe('deriveChatPageGuards', () => {
     const guards = deriveChatPageGuards(
       buildInput({
         interactionState: 'running',
-        session: { turnLifecycle: 'running' },
+        session: { turnStatus: 'inProgress' },
       }),
     );
 
@@ -268,7 +274,7 @@ describe('deriveChatPageGuards', () => {
     const guards = deriveChatPageGuards(
       buildInput({
         interactionState: 'running',
-        session: { turnLifecycle: 'running' },
+        session: { turnStatus: 'inProgress' },
       }),
     );
 
@@ -319,7 +325,7 @@ describe('deriveChatPageGuards', () => {
       buildInput({
         interactionState: 'awaiting-requests',
         session: {
-          turnLifecycle: 'running',
+          turnStatus: 'inProgress',
           pendingRequests: [
             {
               id: 'req-1',

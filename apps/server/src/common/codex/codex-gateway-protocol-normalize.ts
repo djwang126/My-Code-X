@@ -1,7 +1,6 @@
 import { createCodexRuntimeErrorFromTurnError } from './codex-runtime-error.js';
 import { createCanonicalUserMessageId } from '@my-code-x/contracts';
-import { createIdleSessionTurnExecution, serializeSessionTurnExecution, } from '@my-code-x/contracts';
-import { parseCodexTurnLifecycle } from './derive-codex-turn-lifecycle.js';
+import { normalizeCodexTurn } from './normalize-codex-turn.js';
 import type { LooseRecord } from './codex-types.js';
 const SPECIAL_ITEM_TYPES = new Set([
     'hookPrompt',
@@ -297,19 +296,16 @@ export function normalizeResumeThreadResult(result: any) {
     const thread = result?.thread;
     const turns = thread?.turns || [];
     const latestTurn = turns.at(-1) || null;
-    const turnExecution = latestTurn
-        ? serializeSessionTurnExecution({
-            activeTurnId: latestTurn.id ?? null,
-            turnLifecycle: parseCodexTurnLifecycle(normalizeTurnStatus(latestTurn.status) as any, {
-                fieldName: 'resume thread latestTurn.status',
-            }),
-        }, {
-            fieldName: 'resume thread turnExecution',
+    const normalizedLatestTurn = latestTurn
+        ? normalizeCodexTurn({
+            turn: latestTurn,
+            threadId: thread?.id,
+            source: 'thread_resume',
         })
-        : createIdleSessionTurnExecution();
+        : null;
     return {
         threadId: thread?.id || '',
-        turnExecution,
+        latestTurn: normalizedLatestTurn,
         collaborationModeKind: typeof thread?.collaborationModeKind === 'string' && thread.collaborationModeKind ? thread.collaborationModeKind : undefined,
         threadName: typeof thread?.name === 'string' ? thread.name : '',
         threadStatus: thread?.status ?? null,

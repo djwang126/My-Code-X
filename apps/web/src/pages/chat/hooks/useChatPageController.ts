@@ -33,7 +33,7 @@ export function useChatPageController() {
   const sessionDispatch = useSessionDispatch();
   const chatState = useChatRuntimeState();
   const chatDispatch = useChatRuntimeDispatch();
-  const { sendMessage: sendSessionMessage, interruptTurn: interruptSessionTurn, forkFromMessage } = useChatSend(chatState, sessionState);
+  const { sendMessage: sendSessionMessage, interruptTurn: interruptChatTurn, forkFromMessage } = useChatSend(chatState, sessionState);
   const { submitRequestResponse: submitSessionRequestResponse } = useChatRequests(chatState, sessionState);
 
   useChatEventStream(chatState, sessionState);
@@ -52,7 +52,7 @@ export function useChatPageController() {
       serverInstanceId: sessionState.serverInstanceId,
       statusMessage: ready ? chatState.threadStatusText || chatState.statusMessage : sessionState.statusMessage,
       errorMessage: ready ? chatState.errorMessage : sessionState.errorMessage,
-      turnExecution: chatState.turnExecution,
+      latestTurn: chatState.latestTurn,
       threadName: chatState.threadName,
       threadStatusText: chatState.threadStatusText,
       tokenUsageText: chatState.tokenUsageText,
@@ -85,6 +85,14 @@ export function useChatPageController() {
   useEffect(() => {
     setOperationPending('bootstrap', sessionState.phase === 'loading');
   }, [sessionState.phase, setOperationPending]);
+
+  useEffect(() => {
+    setOperationPending('send', chatState.operations.send === 'pending');
+  }, [chatState.operations.send, setOperationPending]);
+
+  useEffect(() => {
+    setOperationPending('interrupt', chatState.operations.interrupt === 'pending');
+  }, [chatState.operations.interrupt, setOperationPending]);
 
   function reportError(input: { kind: ChatPageErrorKind; message: string }) {
     return recordError(input);
@@ -125,7 +133,7 @@ export function useChatPageController() {
     canOpenExplorer: controllerViewModel.runtimeViewModel.guards.canOpenExplorer,
     canSubmitPendingRequests: controllerViewModel.runtimeViewModel.guards.canSubmitPendingRequests,
     sendSessionMessage,
-    interruptSessionTurn,
+    interruptChatTurn,
     submitSessionRequestResponse,
     workspaceExplorer,
   });

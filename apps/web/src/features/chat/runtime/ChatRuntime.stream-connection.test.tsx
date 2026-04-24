@@ -8,7 +8,7 @@ import {
   createAssistantMessage,
   createUserMessage,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -17,7 +17,7 @@ import {
 } from './test/chatRuntimeTestHarness';
 import { getPageOwnerInstanceId, SLOT_DISPLACED_MESSAGE } from '../../session';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime stream connection', () => {
   it('reconnects the event stream on visibility return when the turn is still in progress', async () => {
@@ -33,10 +33,14 @@ describe('ChatRuntime stream connection', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-reconnect',
-            turnExecution: {
-              activeTurnId: 'turn-reconnect',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-reconnect',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -81,8 +85,8 @@ describe('ChatRuntime stream connection', () => {
 
     MockEventSource.instances[1]?.emit('snapshot', {
       threadId: 'thread-reconnect',
-      activeTurnId: 'turn-reconnect',
-      turnLifecycle: 'running',
+      turnId: 'turn-reconnect',
+      status: 'inProgress',
       messages: [
         createUserMessage('user:turn-reconnect', 'status?', 'thread-reconnect', 'turn-reconnect'),
         createAssistantMessage('assistant:turn-reconnect', 'second partial', 'thread-reconnect', 'turn-reconnect', 'streaming'),
@@ -103,10 +107,14 @@ describe('ChatRuntime stream connection', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-hidden-pause',
-            turnExecution: {
-              activeTurnId: 'turn-hidden-pause',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-hidden-pause',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -156,10 +164,14 @@ describe('ChatRuntime stream connection', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-takeover',
-            turnExecution: {
-              activeTurnId: 'turn-takeover',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-takeover',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -213,10 +225,14 @@ describe('ChatRuntime stream connection', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-retake',
-            turnExecution: {
-              activeTurnId: 'turn-retake',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-retake',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -267,8 +283,8 @@ describe('ChatRuntime stream connection', () => {
 
     MockEventSource.instances[1]?.emit('snapshot', {
       threadId: 'thread-retake',
-      activeTurnId: 'turn-retake',
-      turnLifecycle: 'running',
+      turnId: 'turn-retake',
+      status: 'inProgress',
       messages: [
         createUserMessage('user:turn-retake', 'status?', 'thread-retake', 'turn-retake'),
         createAssistantMessage('assistant:turn-retake', 'reclaimed partial', 'thread-retake', 'turn-retake', 'streaming'),
@@ -308,10 +324,14 @@ describe('ChatRuntime stream connection', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-stale-bootstrap',
-            turnExecution: {
-              activeTurnId: 'turn-stale-bootstrap',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-stale-bootstrap',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {

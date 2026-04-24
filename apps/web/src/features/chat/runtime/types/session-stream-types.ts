@@ -1,16 +1,16 @@
-import type { SessionError, SessionThreadStatus, SessionTurnExecutionState } from '@my-code-x/contracts';
+import type { ChatTurn, SessionError, SessionThreadStatus } from '@my-code-x/contracts';
 
 import type {
+  ChatTurnInProgress,
+  ChatTurnTerminal,
   SessionNotice,
-  SessionStreamingTurnExecutionState,
-  SessionTerminalTurnExecutionState,
 } from './session-core-types';
 import type { SessionPendingRequest } from './session-request-types';
 import type { AssistantTimelineMessageItem, SessionTimelineItem } from './session-timeline-types';
 
 export type SessionStreamSnapshot = {
   threadId: string;
-  turnExecution: SessionTurnExecutionState;
+  latestTurn: ChatTurn | null;
   collaborationModeKind?: string | null;
   promptOverride?: string | null;
   messages: SessionTimelineItem[];
@@ -33,7 +33,7 @@ export type SessionStreamAssistantDelta = {
 
 export type SessionStreamTurnStarted = {
   threadId: string;
-  turnExecution: SessionStreamingTurnExecutionState;
+  turn: ChatTurnInProgress;
 };
 
 export type SessionStreamMessageCompleted = {
@@ -92,7 +92,7 @@ export type SessionStreamPendingRequestResolved = {
 
 export type SessionStreamTurnCompleted = {
   threadId: string;
-  turnExecution: SessionTerminalTurnExecutionState;
+  turn: ChatTurnTerminal;
   error: SessionError | null;
 };
 

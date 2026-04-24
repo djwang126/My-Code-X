@@ -165,10 +165,7 @@ function createSessionResponse({
     session: {
       workspace,
       threadId,
-      turnExecution: {
-        activeTurnId: null,
-        turnLifecycle: 'idle',
-      },
+      latestTurn: null,
       lastUpdatedAt: '2026-04-03T12:34:56.000Z',
     },
     conversation: {
@@ -333,7 +330,7 @@ describe('ChatRuntime', () => {
         return HttpResponse.json({
           threadId: 'thread-runtime-send',
           turnId: 'turn-runtime-send',
-          turnLifecycle: 'running',
+          status: 'inProgress',
           stream: {
             url: '/api/v2/chat/events?slotId=tab-runtime-send&threadId=thread-runtime-send',
           },

@@ -1,5 +1,5 @@
 import { upsertPendingRequest } from '../shared/chat-session-state.js';
-import { isRuntimeTurnActive } from './chat-turn-lifecycle.js';
+import { isRuntimeTurnActive } from './chat-turn-state.js';
 import { createHttpError } from '../../../common/errors/http-error.js';
 import type { ChatSessionRegistry, ChatSessionState } from './chat-types.js';
 import type { LooseRecord } from '../../../common/codex/codex-types.js';
@@ -170,3 +170,4 @@ export function createSessionRegistry(): ChatSessionRegistry {
         },
     };
 }
+

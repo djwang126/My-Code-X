@@ -6,7 +6,7 @@ import {
   createSessionResponse,
   fireEvent,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -15,7 +15,7 @@ import {
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime send request shape', () => {
   it('submits trimmed text on first send, persists the returned thread id, and opens the stream', async () => {
@@ -35,10 +35,14 @@ describe('ChatRuntime send request shape', () => {
         sendBodies.push((await request.json()) as Record<string, unknown>);
         return HttpResponse.json({
           threadId: 'thread-sent',
-          turnExecution: {
-            activeTurnId: 'turn-sent',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-sent',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-send&threadId=thread-sent',
           },
@@ -88,10 +92,14 @@ describe('ChatRuntime send request shape', () => {
         sendCount += 1;
         return HttpResponse.json({
           threadId: 'thread-should-not-send',
-          turnExecution: {
-            activeTurnId: 'turn-should-not-send',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-should-not-send',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-ready&threadId=thread-should-not-send',
           },
@@ -132,10 +140,14 @@ describe('ChatRuntime send request shape', () => {
         sendBodies.push((await request.json()) as Record<string, unknown>);
         return HttpResponse.json({
           threadId: 'thread-existing',
-          turnExecution: {
-            activeTurnId: 'turn-only',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-only',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-rapid&threadId=thread-existing',
           },
@@ -181,10 +193,14 @@ describe('ChatRuntime send request shape', () => {
         sendBodies.push((await request.json()) as Record<string, unknown>);
         return HttpResponse.json({
           threadId: 'thread-ready',
-          turnExecution: {
-            activeTurnId: 'turn-follow-up',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-follow-up',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-follow-up&threadId=thread-ready',
           },

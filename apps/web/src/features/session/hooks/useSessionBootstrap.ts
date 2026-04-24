@@ -73,7 +73,7 @@ export function useSessionBootstrap<TPayload>({
   const dispatch = useSessionDispatch();
   const { selectThread, selectWorkspace } = useSessionSelection();
   const bootstrapRequestIdRef = useRef(0);
-  const bootstrapLifecycleIdRef = useRef(0);
+  const bootstrapGenerationRef = useRef(0);
   const trackedSlotIdRef = useRef(getBootstrapIdentity().slotId);
 
   const invalidateBootstrap = useCallback(() => {
@@ -102,11 +102,11 @@ export function useSessionBootstrap<TPayload>({
     }: BootstrapRunInput) => {
       const resolvedIdentity = identityOverride ?? getBootstrapIdentity();
       const requestId = ++bootstrapRequestIdRef.current;
-      const lifecycleId = bootstrapLifecycleIdRef.current;
+      const generation = bootstrapGenerationRef.current;
 
       Promise.resolve()
         .then(() => {
-          if (requestId !== bootstrapRequestIdRef.current || lifecycleId !== bootstrapLifecycleIdRef.current) {
+          if (requestId !== bootstrapRequestIdRef.current || generation !== bootstrapGenerationRef.current) {
             return;
           }
 
@@ -130,7 +130,7 @@ export function useSessionBootstrap<TPayload>({
           }
 
           const { slotId } = resolvedIdentity;
-          if (requestId !== bootstrapRequestIdRef.current || lifecycleId !== bootstrapLifecycleIdRef.current) {
+          if (requestId !== bootstrapRequestIdRef.current || generation !== bootstrapGenerationRef.current) {
             return;
           }
 
@@ -151,7 +151,7 @@ export function useSessionBootstrap<TPayload>({
         })
         .catch(error => {
           const { viewerId, slotId, workspace, threadId } = resolvedIdentity;
-          if (requestId !== bootstrapRequestIdRef.current || lifecycleId !== bootstrapLifecycleIdRef.current) {
+          if (requestId !== bootstrapRequestIdRef.current || generation !== bootstrapGenerationRef.current) {
             return;
           }
 
@@ -250,8 +250,8 @@ export function useSessionBootstrap<TPayload>({
       return;
     }
 
-    bootstrapLifecycleIdRef.current += 1;
-    const lifecycleId = bootstrapLifecycleIdRef.current;
+    bootstrapGenerationRef.current += 1;
+    const generation = bootstrapGenerationRef.current;
     const ownerInstanceId = getPageOwnerInstanceId();
 
     function handleVisibilityChange() {
@@ -285,8 +285,8 @@ export function useSessionBootstrap<TPayload>({
     window.addEventListener('storage', handleStorageEvent);
 
     return () => {
-      if (lifecycleId === bootstrapLifecycleIdRef.current) {
-        bootstrapLifecycleIdRef.current += 1;
+      if (generation === bootstrapGenerationRef.current) {
+        bootstrapGenerationRef.current += 1;
       }
 
       document.removeEventListener('visibilitychange', handleVisibilityChange);

@@ -1,5 +1,5 @@
 import { cloneCodexRuntimeError } from '../../../common/codex/codex-runtime-error.js';
-import { cloneSessionThreadStatus, type SessionTurnExecutionState, parseSessionTurnExecution, serializeSessionTurnExecution, } from '@my-code-x/contracts';
+import { cloneSessionThreadStatus, serializeChatTurn, type ChatTurn, } from '@my-code-x/contracts';
 import { createCanonicalUserMessageId, reconcileCanonicalUserMessageTimelineItem, } from '@my-code-x/contracts';
 import type { LooseRecord, RuntimeSettings } from '../../../common/codex/codex-types.js';
 import type { ChatPendingRequest, ChatSessionNotice, ChatSessionState, ChatTimelineItem, } from './chat-types.js';
@@ -81,18 +81,13 @@ export function extractReasoningText(raw: LooseRecord = {}) {
     }
     return '';
 }
-function cloneTurnExecution(turnExecution: SessionTurnExecutionState) {
-    return serializeSessionTurnExecution(turnExecution, {
-        fieldName: 'cloned session turn execution',
-    });
-}
 export function cloneSessionState(state: ChatSessionState): ChatSessionState {
     return {
         slotId: state.slotId,
         viewerId: state.viewerId,
         workspace: state.workspace,
         threadId: state.threadId,
-        turnExecution: cloneTurnExecution(state.turnExecution),
+        latestTurn: serializeChatTurn(state.latestTurn, { fieldName: 'cloned latest turn' }),
         ...(state.collaborationModeKind ? { collaborationModeKind: state.collaborationModeKind } : {}),
         ...(state.appliedThreadRuntimeOverrides
             ? {
@@ -110,12 +105,12 @@ export function cloneSessionState(state: ChatSessionState): ChatSessionState {
         lastUpdatedAt: state.lastUpdatedAt,
     };
 }
-export function createSessionState({ viewerId, slotId, workspace = '', threadId = '', turnExecution, collaborationModeKind = undefined, appliedThreadRuntimeOverrides = undefined, threadName = '', threadStatus = null, threadStatusText = '', tokenUsageText = '', messages = [], notices = [], pendingRequests = [], lastError = null, gatewayGeneration = undefined, now, }: {
+export function createSessionState({ viewerId, slotId, workspace = '', threadId = '', latestTurn = null, collaborationModeKind = undefined, appliedThreadRuntimeOverrides = undefined, threadName = '', threadStatus = null, threadStatusText = '', tokenUsageText = '', messages = [], notices = [], pendingRequests = [], lastError = null, gatewayGeneration = undefined, now, }: {
     viewerId: string;
     slotId: string;
     workspace?: string;
     threadId?: string;
-    turnExecution: SessionTurnExecutionState;
+    latestTurn?: ChatTurn | null;
     collaborationModeKind?: string;
     appliedThreadRuntimeOverrides?: RuntimeSettings | null;
     threadName?: string;
@@ -129,15 +124,12 @@ export function createSessionState({ viewerId, slotId, workspace = '', threadId 
     gatewayGeneration?: number;
     now: () => string;
 }): ChatSessionState {
-    const parsedTurnExecution = parseSessionTurnExecution(turnExecution, {
-        fieldName: 'createSessionState.turnExecution',
-    });
     return {
         slotId,
         viewerId,
         workspace,
         threadId,
-        turnExecution: parsedTurnExecution,
+        latestTurn: serializeChatTurn(latestTurn, { fieldName: 'createSessionState.latestTurn' }),
         ...(collaborationModeKind ? { collaborationModeKind } : {}),
         ...(appliedThreadRuntimeOverrides
             ? { appliedThreadRuntimeOverrides: { ...(appliedThreadRuntimeOverrides as RuntimeSettings) } }

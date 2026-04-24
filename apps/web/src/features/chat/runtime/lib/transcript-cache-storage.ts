@@ -1,9 +1,9 @@
-import { isSessionExecutionTerminal, readSessionTurnExecution, serializeSessionTurnExecution } from '@my-code-x/contracts';
+import { isChatTurnTerminal, parseNullableChatTurn, serializeChatTurn } from '@my-code-x/contracts';
 
 import { clearSessionStorageValue, persistSessionStorageValue, readSessionStorageValue } from '../../../../shared/lib/browser-storage';
 import { normalizeWorkspacePath } from '../../../../shared/lib/workspace-path';
 import { readBootstrapScope } from '../../../session/scope';
-import type { SessionTimelineItem, SessionTurnExecutionState } from '../session-types';
+import type { ChatTurn, SessionTimelineItem } from '../session-types';
 
 const transcriptCacheStoragePrefix = 'my-code-x-transcript-cache:';
 
@@ -11,7 +11,7 @@ export type TranscriptCache = {
   workspace: string;
   threadId: string;
   threadName: string;
-  turnExecution: SessionTurnExecutionState;
+  latestTurn: ChatTurn | null;
   messages: SessionTimelineItem[];
 };
 
@@ -29,10 +29,10 @@ function parseTranscriptCache(raw: string | null): TranscriptCache | null {
     const threadId = String(parsed?.threadId || '').trim();
     const workspace = normalizeWorkspacePath(parsed?.workspace || '');
     const threadName = String(parsed?.threadName || '');
-    const turnExecution = readSessionTurnExecution(parsed?.turnExecution);
+    const latestTurn = parseNullableChatTurn(parsed?.latestTurn, { fieldName: 'transcript cache.latestTurn' });
     const messages = Array.isArray(parsed?.messages) ? (parsed.messages as SessionTimelineItem[]) : null;
 
-    if (!threadId || !messages || !turnExecution) {
+    if (!threadId || !messages || !latestTurn) {
       return null;
     }
 
@@ -40,7 +40,7 @@ function parseTranscriptCache(raw: string | null): TranscriptCache | null {
       workspace,
       threadId,
       threadName,
-      turnExecution,
+      latestTurn,
       messages,
     };
   } catch {
@@ -60,7 +60,7 @@ export function loadBootstrapTranscriptCache(): TranscriptCache | null {
   const scope = readBootstrapScope();
   const cache = loadTranscriptCache(scope.threadId);
 
-  if (!cache || !isSessionExecutionTerminal(cache.turnExecution)) {
+  if (!cache || !isChatTurnTerminal(cache.latestTurn)) {
     return null;
   }
 
@@ -77,8 +77,8 @@ export function persistTranscriptCache(cache: TranscriptCache) {
     return;
   }
 
-  const turnExecution = serializeSessionTurnExecution(cache.turnExecution, {
-    fieldName: 'transcript cache',
+  const latestTurn = serializeChatTurn(cache.latestTurn, {
+    fieldName: 'transcript cache.latestTurn',
   });
 
   persistSessionStorageValue(
@@ -87,7 +87,7 @@ export function persistTranscriptCache(cache: TranscriptCache) {
       workspace: normalizeWorkspacePath(cache.workspace),
       threadId,
       threadName: String(cache.threadName || ''),
-      turnExecution,
+      latestTurn,
       messages: cache.messages,
     }),
   );

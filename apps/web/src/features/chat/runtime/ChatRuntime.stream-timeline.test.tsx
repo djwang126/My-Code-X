@@ -149,10 +149,7 @@ function createSessionResponse({
     session: {
       workspace,
       threadId,
-      turnExecution: {
-        activeTurnId: null,
-        turnLifecycle: 'idle',
-      },
+      latestTurn: null,
       lastUpdatedAt: '2026-04-03T12:34:56.000Z',
     },
     conversation: {
@@ -234,10 +231,14 @@ describe('ChatRuntime', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-live',
-            turnExecution: {
-              activeTurnId: 'turn-live',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-live',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -270,9 +271,13 @@ describe('ChatRuntime', () => {
 
     stream?.emit('snapshot', {
       threadId: 'thread-live',
-      turnExecution: {
-        activeTurnId: 'turn-live',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-live',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       messages: [
         createUserMessage('user:turn-live', 'status?', 'thread-live', 'turn-live'),
@@ -305,9 +310,13 @@ describe('ChatRuntime', () => {
 
     stream?.emit('turn_completed', {
       threadId: 'thread-live',
-      turnExecution: {
-        activeTurnId: 'turn-live',
-        turnLifecycle: 'completed',
+      latestTurn: {
+        id: 'turn-live',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     });
 
@@ -325,10 +334,14 @@ describe('ChatRuntime', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-live-batched',
-            turnExecution: {
-              activeTurnId: 'turn-live-batched',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-live-batched',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -406,10 +419,14 @@ describe('ChatRuntime', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-special-live',
-            turnExecution: {
-              activeTurnId: 'turn-special-live',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-special-live',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -445,9 +462,13 @@ describe('ChatRuntime', () => {
 
     MockEventSource.instances[0]?.emit('snapshot', {
       threadId: 'thread-special-live',
-      turnExecution: {
-        activeTurnId: 'turn-special-live',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-special-live',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       messages: [
         {
@@ -493,10 +514,14 @@ describe('ChatRuntime', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-issue-8',
-            turnExecution: {
-              activeTurnId: 'turn-issue-8',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-issue-8',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-04T12:34:56.000Z',
           },
           conversation: {
@@ -642,10 +667,14 @@ describe('ChatRuntime', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-live-updated',
-            turnExecution: {
-              activeTurnId: 'turn-live-updated',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-live-updated',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {

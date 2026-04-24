@@ -66,9 +66,13 @@ test('sendMessage starts a thread and turn for a new slot session with explicit 
 
   assert.deepEqual(result, {
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'running',
+    turn: {
+      id: 'turn-1',
+      status: 'inProgress',
+      error: null,
+      startedAt: null,
+      completedAt: null,
+      durationMs: null,
     },
   });
 
@@ -77,9 +81,13 @@ test('sendMessage starts a thread and turn for a new slot session with explicit 
     viewerId: 'viewer-1',
     workspace: 'D:/workspaces/My-Code-X',
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'running',
+    latestTurn: {
+      id: 'turn-1',
+      status: 'inProgress',
+      error: null,
+      startedAt: null,
+      completedAt: null,
+      durationMs: null,
     },
     collaborationModeKind: 'plan',
     threadName: '',
@@ -189,9 +197,13 @@ test('sendMessage reuses the existing thread for the same slot', async () => {
 
   assert.deepEqual(result, {
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-2',
-      turnLifecycle: 'running',
+    turn: {
+      id: 'turn-2',
+      status: 'inProgress',
+      error: null,
+      startedAt: null,
+      completedAt: null,
+      durationMs: null,
     },
   });
 });

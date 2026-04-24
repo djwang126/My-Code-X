@@ -14,10 +14,7 @@ test('sendMessage resumes the provided thread when the slot has no in-memory run
         calls.push({ method: 'resumeThread', threadId });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           messages: [],
         };
       },
@@ -43,10 +40,14 @@ test('sendMessage resumes the provided thread when the slot has no in-memory run
 
   assert.deepEqual(result, {
     threadId: 'thread-9',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'running',
-    },
+    latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
   });
 });
 
@@ -61,10 +62,14 @@ test('hydrateSession resumes an unknown thread and returns restored transcript s
         calls.push({ method: 'resumeThread', threadId });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: 'turn-9',
-            turnLifecycle: 'completed',
-          },
+          latestTurn: {
+        id: 'turn-9',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           collaborationModeKind: 'plan',
           messages: [
             {
@@ -105,10 +110,14 @@ test('hydrateSession resumes an unknown thread and returns restored transcript s
     viewerId: 'viewer-1',
     workspace: '',
     threadId: 'thread-9',
-    turnExecution: {
-      activeTurnId: 'turn-9',
-      turnLifecycle: 'completed',
-    },
+    latestTurn: {
+        id: 'turn-9',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
     collaborationModeKind: 'plan',
     threadName: '',
     threadStatus: null,
@@ -150,10 +159,14 @@ test('hydrateSession keeps special, empty reasoning, and fallback transcript ite
         calls.push({ method: 'resumeThread', threadId });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: 'turn-10',
-            turnLifecycle: 'completed',
-          },
+          latestTurn: {
+        id: 'turn-10',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [
             {
               id: 'plan-1',
@@ -230,7 +243,7 @@ test('hydrateSession keeps special, empty reasoning, and fallback transcript ite
   ]);
 });
 
-test('hydrateSession fails explicitly when resumeThread omits turnExecution.turnLifecycle', async () => {
+test('hydrateSession fails explicitly when resumeThread omits latestTurn?.status', async () => {
   const service = createChatService({
     codexGateway: {
       async startThread() {
@@ -239,8 +252,8 @@ test('hydrateSession fails explicitly when resumeThread omits turnExecution.turn
       async resumeThread({ threadId }) {
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: null,
+          latestTurn: {
+            turnId: null,
           },
           messages: [],
         };
@@ -257,11 +270,11 @@ test('hydrateSession fails explicitly when resumeThread omits turnExecution.turn
       service.hydrateSession({
         viewerId: 'viewer-1',
         slotId: 'tab-1',
-        threadId: 'thread-missing-lifecycle',
+        threadId: 'thread-missing-state',
       }),
     error =>
       error instanceof Error &&
       error.message ===
-        'resumeResult.turnExecution.turnLifecycle must be one of idle, running, interrupting, completed, interrupted, or failed.',
+        'resumeResult.latestTurn?.status must be one of idle, running, interrupting, completed, interrupted, or failed.',
   );
 });

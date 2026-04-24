@@ -6,7 +6,7 @@ import {
   createAssistantMessage,
   createUserMessage,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -14,7 +14,7 @@ import {
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime transcript rehydration live continuation', () => {
   it('continues the same in-progress transcript with live events after visibility rehydration', async () => {
@@ -34,10 +34,14 @@ describe('ChatRuntime transcript rehydration live continuation', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-live-return',
-            turnExecution: {
-              activeTurnId: 'turn-live-return',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-live-return',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: requestCount === 1 ? '2026-04-03T12:34:56.000Z' : '2026-04-03T12:35:56.000Z',
           },
           conversation: {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { parseSessionTurnExecution } from '@my-code-x/contracts';
+import { parseChatTurn } from '@my-code-x/contracts';
 
 import {
   getBootstrapIdentity,
@@ -25,11 +25,18 @@ function setSlotUrl(slotId?: string) {
   window.history.replaceState({}, '', `/${search}`);
 }
 
-function createTurnExecution(
-  activeTurnId: string | null,
-  turnLifecycle: 'idle' | 'running' | 'interrupting' | 'completed' | 'interrupted' | 'failed',
+function createChatTurn(
+  turnId: string,
+  status: 'inProgress' | 'completed' | 'interrupted' | 'failed',
 ) {
-  return parseSessionTurnExecution({ activeTurnId, turnLifecycle });
+  return parseChatTurn({
+    id: turnId,
+    status: status,
+    error: null,
+    startedAt: null,
+    completedAt: null,
+    durationMs: null,
+  });
 }
 
 describe('session persistence', () => {
@@ -202,7 +209,7 @@ describe('session persistence', () => {
       workspace: 'D:/workspaces/My-Code-X',
       threadId: 'thread-ready',
       threadName: 'Ready thread',
-      turnExecution: createTurnExecution('turn-ready', 'completed'),
+      latestTurn: createChatTurn('turn-ready', 'completed'),
       messages: [],
     });
 
@@ -210,7 +217,7 @@ describe('session persistence', () => {
       workspace: 'D:/workspaces/My-Code-X',
       threadId: 'thread-ready',
       threadName: 'Ready thread',
-      turnExecution: createTurnExecution('turn-ready', 'completed'),
+      latestTurn: createChatTurn('turn-ready', 'completed'),
       messages: [],
     });
 
@@ -228,7 +235,7 @@ describe('session persistence', () => {
       workspace: 'D:/workspaces/My-Code-X',
       threadId: 'thread-ready',
       threadName: 'Interrupted thread',
-      turnExecution: createTurnExecution('turn-interrupted', 'interrupted'),
+      latestTurn: createChatTurn('turn-interrupted', 'interrupted'),
       messages: [],
     });
 
@@ -236,7 +243,7 @@ describe('session persistence', () => {
       workspace: 'D:/workspaces/My-Code-X',
       threadId: 'thread-ready',
       threadName: 'Interrupted thread',
-      turnExecution: createTurnExecution('turn-interrupted', 'interrupted'),
+      latestTurn: createChatTurn('turn-interrupted', 'interrupted'),
       messages: [],
     });
   });
@@ -250,14 +257,14 @@ describe('session persistence', () => {
       workspace: 'D:/workspaces/My-Code-X',
       threadId: 'thread-ready',
       threadName: 'Running thread',
-      turnExecution: createTurnExecution('turn-running', 'running'),
+      latestTurn: createChatTurn('turn-running', 'inProgress'),
       messages: [],
     });
 
     expect(loadTranscriptCache('thread-ready')).toMatchObject({
       threadId: 'thread-ready',
-      turnExecution: {
-        turnLifecycle: 'running',
+      latestTurn: {
+        status: 'inProgress',
       },
     });
     expect(loadBootstrapTranscriptCache()).toBeNull();
@@ -268,7 +275,7 @@ describe('session persistence', () => {
       workspace: 'D:/workspaces/My-Code-X',
       threadId: 'thread-ready',
       threadName: 'Failed thread',
-      turnExecution: createTurnExecution('turn-failed', 'failed'),
+      latestTurn: createChatTurn('turn-failed', 'failed'),
       messages: [],
     });
 
@@ -276,7 +283,7 @@ describe('session persistence', () => {
       workspace: 'D:/workspaces/My-Code-X',
       threadId: 'thread-ready',
       threadName: 'Failed thread',
-      turnExecution: createTurnExecution('turn-failed', 'failed'),
+      latestTurn: createChatTurn('turn-failed', 'failed'),
       messages: [],
     });
   });
@@ -286,7 +293,7 @@ describe('session persistence', () => {
       workspace: 'D:/workspaces/My-Code-X',
       threadId: 'thread-ready',
       threadName: 'Ready thread',
-      turnExecution: createTurnExecution('turn-ready', 'completed'),
+      latestTurn: createChatTurn('turn-ready', 'completed'),
       messages: [],
     });
 
@@ -295,3 +302,5 @@ describe('session persistence', () => {
     expect(loadTranscriptCache('thread-ready')).toBeNull();
   });
 });
+
+

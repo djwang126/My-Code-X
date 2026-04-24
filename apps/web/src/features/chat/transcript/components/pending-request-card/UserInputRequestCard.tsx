@@ -30,24 +30,24 @@ function createUserInputAnswers({
   }, {});
 }
 
-function isRequestStale({ request, turnExecution, currentThreadId = '' }: PendingRequestCardProps) {
-  const activeTurnId = turnExecution?.activeTurnId ?? '';
+function isRequestStale({ request, latestTurn, currentThreadId = '' }: PendingRequestCardProps) {
+  const activeChatTurnId = latestTurn?.id ?? '';
 
   return Boolean(
     request.threadId &&
       currentThreadId &&
       request.threadId === currentThreadId &&
       request.turnId &&
-      activeTurnId &&
-      request.turnId !== activeTurnId,
+      activeChatTurnId &&
+      request.turnId !== activeChatTurnId,
   );
 }
 
 export function UserInputRequestCard(props: PendingRequestCardProps) {
-  const { request, onRequestResponse, turnExecution, currentThreadId = '' } = props;
+  const { request, onRequestResponse, latestTurn, currentThreadId = '' } = props;
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [otherAnswers, setOtherAnswers] = useState<Record<string, string>>({});
-  const stale = isRequestStale({ request, turnExecution, currentThreadId });
+  const stale = isRequestStale({ request, latestTurn, currentThreadId });
   const submitting = request.submitState === 'submitting' || stale;
   const questions = request.questions ?? [];
 

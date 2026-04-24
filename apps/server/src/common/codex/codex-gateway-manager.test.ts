@@ -77,8 +77,8 @@ function createFakeGateway(name) {
       calls.push({ method: 'resumeThread', input });
       return {
         threadId: input.threadId,
-        activeTurnId: null,
-        turnLifecycle: 'completed',
+        turnId: null,
+        status: 'completed',
         messages: [],
         notices: [],
         pendingRequests: [],
@@ -262,8 +262,8 @@ test('createCodexGatewayManager does not close the gateway while a gateway reque
   const clock = createFakeClock();
   const resumeDeferred = createDeferred<{
     threadId: string;
-    activeTurnId: null;
-    turnLifecycle: string;
+    turnId: null;
+    status: string;
     messages: unknown[];
     notices: unknown[];
     pendingRequests: unknown[];
@@ -299,8 +299,8 @@ test('createCodexGatewayManager does not close the gateway while a gateway reque
 
   resumeDeferred.resolve({
     threadId: 'thr-1',
-    activeTurnId: null,
-    turnLifecycle: 'completed',
+    turnId: null,
+    status: 'completed',
     messages: [],
     notices: [],
     pendingRequests: [],
@@ -313,8 +313,8 @@ test('createCodexGatewayManager can close the gateway after an in-flight request
   const clock = createFakeClock();
   const resumeDeferred = createDeferred<{
     threadId: string;
-    activeTurnId: null;
-    turnLifecycle: string;
+    turnId: null;
+    status: string;
     messages: unknown[];
     notices: unknown[];
     pendingRequests: unknown[];
@@ -347,8 +347,8 @@ test('createCodexGatewayManager can close the gateway after an in-flight request
   clock.advanceBy(100);
   resumeDeferred.resolve({
     threadId: 'thr-1',
-    activeTurnId: null,
-    turnLifecycle: 'completed',
+    turnId: null,
+    status: 'completed',
     messages: [],
     notices: [],
     pendingRequests: [],

@@ -1,7 +1,6 @@
 import { act, renderHook } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import { createIdleSessionTurnExecution } from '@my-code-x/contracts';
 import { SessionApiError } from '../../../shared/lib/app-api-client';
 import { useChatPageControllerState } from './useChatPageControllerState';
 import { useChatPageSessionActions } from './useChatPageSessionActions';
@@ -37,7 +36,7 @@ describe('useChatPageSessionActions error routing', () => {
           serverInstanceId: 'server-1',
           statusMessage: 'Session synced',
           errorMessage: '',
-          turnExecution: createIdleSessionTurnExecution(),
+          latestTurn: null,
           threadName: '',
           threadStatusText: '',
           tokenUsageText: '',
@@ -99,7 +98,7 @@ describe('useChatPageSessionActions error routing', () => {
           serverInstanceId: 'server-1',
           statusMessage: 'Session synced',
           errorMessage: '',
-          turnExecution: createIdleSessionTurnExecution(),
+          latestTurn: null,
           threadName: '',
           threadStatusText: '',
           tokenUsageText: '',
@@ -138,3 +137,4 @@ describe('useChatPageSessionActions error routing', () => {
     });
   });
 });
+

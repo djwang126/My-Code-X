@@ -1,10 +1,11 @@
 import { createAutoThreadName } from '../thread/thread-name.js';
 import { createUserMessage } from '../shared/chat-session-state.js';
-import { canRuntimeSend, markRuntimeTurnRunning } from '../shared/chat-turn-lifecycle.js';
+import { applyRuntimeChatTurn, canRuntimeSend } from '../shared/chat-turn-state.js';
 import { normalizeMessageContent, extractMessagePreviewText } from './chat-message-content.js';
 import type { MessageContentItem } from './chat-message-content.js';
 import { createHttpError } from '../../../common/errors/http-error.js';
-import { serializeSessionTurnExecution } from '@my-code-x/contracts';
+import { serializeChatTurn, type ChatTurn } from '@my-code-x/contracts';
+import { normalizeCodexTurnStarted } from '../../../common/codex/normalize-codex-turn.js';
 import type { CodexGatewayLike, RuntimeSettings } from '../../../common/codex/codex-types.js';
 import type { ChatEventEmitter, ChatSessionRegistry, ChatSessionState } from '../shared/chat-types.js';
 
@@ -64,31 +65,52 @@ export function createChatMessageService({
   function applyStartedTurn(
     runtime: ChatSessionState,
     {
-      turnId,
+      turn,
       text,
       content,
       collaborationModeKind,
     }: {
-      turnId: string;
+      turn: ChatTurn;
       text: string;
       content?: MessageContentItem[];
       collaborationModeKind?: string;
     },
   ) {
-    markRuntimeTurnRunning(runtime, turnId);
+    applyRuntimeChatTurn(runtime, turn);
     if (collaborationModeKind) {
       runtime.collaborationModeKind = collaborationModeKind;
     }
     runtime.messages.push(
       createUserMessage({
         threadId: runtime.threadId,
-        turnId,
+        turnId: turn.id,
         text,
         content,
       }),
     );
     runtime.lastError = null;
     runtime.lastUpdatedAt = now();
+  }
+
+  function normalizeStartedTurn(startedTurn: Record<string, unknown>, runtime: ChatSessionState) {
+    const rawTurn =
+      startedTurn && typeof startedTurn.turn === 'object' && startedTurn.turn
+        ? startedTurn.turn as Record<string, unknown>
+        : {
+            id: String(startedTurn?.turnId || ''),
+            status: 'inProgress',
+            error: null,
+            startedAt: null,
+            completedAt: null,
+            durationMs: null,
+          };
+
+    return normalizeCodexTurnStarted({
+      turn: rawTurn,
+      threadId: runtime.threadId,
+      source: 'turn_start_response',
+      fieldName: 'turn start response.turn',
+    });
   }
 
   async function maybeAutoNameThread(runtime: ChatSessionState, text: string) {
@@ -156,6 +178,7 @@ export function createChatMessageService({
       runtimeSettings: effectiveRuntimeSettings,
       collaborationModeKind: effectiveCollaborationModeKind,
     });
+    const turn = normalizeStartedTurn(startedTurn as Record<string, unknown>, runtime);
     if (typeof attachmentService?.markAttachmentsReferenced === 'function') {
       await attachmentService.markAttachmentsReferenced({
         content: normalizedContent,
@@ -164,7 +187,7 @@ export function createChatMessageService({
     }
 
     applyStartedTurn(runtime, {
-      turnId: startedTurn.turnId,
+      turn,
       text: previewText,
       content: displayContent as MessageContentItem[],
       collaborationModeKind: effectiveCollaborationModeKind,
@@ -178,17 +201,17 @@ export function createChatMessageService({
       {
         type: 'turn_started',
         threadId: runtime.threadId,
-        turnExecution: serializeSessionTurnExecution(runtime.turnExecution, {
-          fieldName: 'chat message started event.turnExecution',
+        turn: serializeChatTurn(runtime.latestTurn, {
+          fieldName: 'chat message started event.turn',
         }),
       },
     );
 
     return {
       threadId: runtime.threadId,
-      turnExecution: {
-        ...runtime.turnExecution,
-      },
+      turn: serializeChatTurn(runtime.latestTurn, {
+        fieldName: 'chat message accepted turn',
+      }),
     };
   }
 
@@ -196,3 +219,4 @@ export function createChatMessageService({
     sendMessage,
   };
 }
+

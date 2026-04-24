@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { parseSessionPayload } from './parse-session-bootstrap';
 
 describe('parseSessionPayload', () => {
-  it('parses canonical turn execution fields from a bootstrap payload', () => {
+  it('parses canonical chat turn fields from a bootstrap payload', () => {
     const payload = parseSessionPayload({
       server: {
         ok: true,
@@ -17,10 +17,14 @@ describe('parseSessionPayload', () => {
       session: {
         workspace: 'D:/workspaces/My-Code-X',
         threadId: 'thread-1',
-        turnExecution: {
-          activeTurnId: 'turn-1',
-          turnLifecycle: 'interrupted',
-        },
+        latestTurn: {
+        id: 'turn-1',
+        status: 'interrupted',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         lastUpdatedAt: '2026-04-20T10:00:00.000Z',
       },
       conversation: {
@@ -33,12 +37,12 @@ describe('parseSessionPayload', () => {
       options: {},
     });
 
-    expect(payload.session.turnExecution.activeTurnId).toBe('turn-1');
-    expect(payload.session.turnExecution.turnLifecycle).toBe('interrupted');
+    expect(payload.session.latestTurn?.id).toBe('turn-1');
+    expect(payload.session.latestTurn?.status).toBe('interrupted');
     expect(payload.viewer.slotId).toBe('slot-1');
   });
 
-  it('fails explicitly when bootstrap payloads send a blank activeTurnId string', () => {
+  it('fails explicitly when bootstrap payloads send a blank turnId string', () => {
     expect(() =>
       parseSessionPayload({
         server: {
@@ -53,10 +57,14 @@ describe('parseSessionPayload', () => {
         session: {
           workspace: 'D:/workspaces/My-Code-X',
           threadId: 'thread-1',
-          turnExecution: {
-            activeTurnId: '   ',
-            turnLifecycle: 'completed',
-          },
+          latestTurn: {
+        id: '   ',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           lastUpdatedAt: '2026-04-20T10:00:00.000Z',
         },
         conversation: {
@@ -68,11 +76,11 @@ describe('parseSessionPayload', () => {
         preferences: {},
         options: {},
       }),
-    ).toThrowError('session payload.session.turnExecution.activeTurnId must be a non-empty string or null.');
+    ).toThrowError('session payload.session.latestTurn.id must be a non-empty string.');
   });
 
-  it('fails explicitly when bootstrap payloads omit session.turnExecution', () => {
-    expect(() =>
+  it('parses omitted session.latestTurn as no active chat turn', () => {
+    expect(
       parseSessionPayload({
         server: {
           ok: true,
@@ -96,7 +104,7 @@ describe('parseSessionPayload', () => {
         },
         preferences: {},
         options: {},
-      }),
-    ).toThrowError('session payload.session.turnExecution must be an object.');
+      }).session.latestTurn,
+    ).toBeNull();
   });
 });

@@ -1,4 +1,3 @@
-import { parseSessionTurnExecution } from '@my-code-x/contracts';
 import { createSessionState } from '../shared/chat-session-state.js';
 import { createThreadBootstrapState, readAppliedThreadRuntimeOverrides, } from '../thread/thread-bootstrap-policy.js';
 import type { CodexGatewayLike, PromptOverrideResolver, RuntimeSettings } from '../../../common/codex/codex-types.js';
@@ -130,9 +129,7 @@ export function createChatSessionRecovery({ attachmentService, codexGateway, log
             slotId,
             workspace,
             threadId,
-            turnExecution: parseSessionTurnExecution(resumeResult.turnExecution, {
-                fieldName: 'resumeResult.turnExecution',
-            }),
+            latestTurn: resumeResult.latestTurn ?? null,
             collaborationModeKind: resumeResult.collaborationModeKind,
             appliedThreadRuntimeOverrides: conflictingRuntime?.appliedThreadRuntimeOverrides,
             threadName: resumeResult.threadName ?? '',

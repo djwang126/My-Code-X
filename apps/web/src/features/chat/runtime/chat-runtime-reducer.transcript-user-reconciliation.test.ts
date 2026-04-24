@@ -13,10 +13,14 @@ describe('chatRuntimeReducer transcript user reconciliation', () => {
         session: {
           ...bootstrapPayload.session,
           threadId: 'thread-2',
-          turnExecution: {
-            activeTurnId: 'turn-2',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-2',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         },
         conversation: {
           messages: [
@@ -89,10 +93,14 @@ describe('chatRuntimeReducer transcript user reconciliation', () => {
         session: {
           ...bootstrapPayload.session,
           threadId: 'thread-3',
-          turnExecution: {
-            activeTurnId: 'turn-3',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-3',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         },
         conversation: {
           messages: [

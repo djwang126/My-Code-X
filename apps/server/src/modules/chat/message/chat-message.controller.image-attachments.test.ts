@@ -16,10 +16,14 @@ test('POST /api/v2/chat/message accepts structured content with attachment refer
         calls.push(payload);
         return {
           threadId: 'thread-9',
-          turnExecution: {
-            activeTurnId: 'turn-9',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-9',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         };
       },
     },

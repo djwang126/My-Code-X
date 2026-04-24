@@ -82,9 +82,13 @@ test('generic special item updates are persisted into runtime state and emitted 
     {
       type: 'turn_started',
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     },
     {
@@ -184,9 +188,13 @@ test('canonical Codex user message updates reconcile the optimistic user row ins
     {
       type: 'turn_started',
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     },
     {

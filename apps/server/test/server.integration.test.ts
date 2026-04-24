@@ -190,10 +190,14 @@ test('real runtime startup forwards configured dynamic tools on thread/start', a
       assert.equal(sendResponse.status, 200);
       assert.deepEqual(await sendResponse.json(), {
         threadId: 'thr-dynamic-tools',
-        turnExecution: {
-          activeTurnId: 'turn-stream',
-          turnLifecycle: 'running',
-        },
+        latestTurn: {
+        id: 'turn-stream',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         stream: {
           url: '/api/v2/chat/events?slotId=tab-dynamic&threadId=thr-dynamic-tools',
         },
@@ -216,8 +220,8 @@ test('real runtime startup can restore an existing thread through thread/resume'
 
       const payload = await response.json();
       assert.equal(payload.session.threadId, 'thr-resume');
-      assert.equal(payload.session.turnExecution.activeTurnId, 'turn-restored');
-      assert.equal(payload.session.turnExecution.turnLifecycle, 'completed');
+      assert.equal(payload.session.latestTurn?.id, 'turn-restored');
+      assert.equal(payload.session.latestTurn?.status, 'completed');
       assert.deepEqual(payload.conversation.messages, [
         createUserTimelineMessage({
           threadId: 'thr-resume',
@@ -767,10 +771,14 @@ test('real runtime startup forwards the selected workspace as a plain Windows cw
       assert.equal(response.status, 200);
       assert.deepEqual(await response.json(), {
         threadId: 'thr-resume',
-        turnExecution: {
-          activeTurnId: 'turn-stream',
-          turnLifecycle: 'running',
-        },
+        latestTurn: {
+        id: 'turn-stream',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         stream: {
           url: '/api/v2/chat/events?slotId=tab-plain-turn&threadId=thr-resume',
         },

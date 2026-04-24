@@ -14,7 +14,7 @@ import type { ChatPageProps } from '../types';
 
 type ChatPageConversationProps = {
   chatToasts: ChatToastItem[];
-  turnExecution: ChatPageProps['turnExecution'];
+  latestTurn: ChatPageProps['latestTurn'];
   threadId: string;
   fallbackPendingRequests: NonNullable<ChatPageProps['pendingRequests']>;
   hasWorkspace: boolean;
@@ -103,7 +103,7 @@ export function ChatPageConversation(props: ChatPageConversationProps) {
         renderMessageAction={renderMessageAction}
         showProposedPlanAction={props.showProposedPlanAction}
         transcriptSectionRef={props.transcriptSectionRef}
-        turnExecution={props.turnExecution}
+        latestTurn={props.latestTurn}
       />
 
       {props.visibleTodoList ? (

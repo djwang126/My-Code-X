@@ -283,9 +283,13 @@ describe('ChatPageLayout workspace actions', () => {
   it('still opens the workspace sidebar when switching is blocked so the user can inspect workspace context', async () => {
     const user = userEvent.setup();
     const { container } = renderChatPage({
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       workspaceSwitchReason: 'Finish the active turn before switching workspaces.',
     });

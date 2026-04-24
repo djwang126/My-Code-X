@@ -1,6 +1,6 @@
 import type { ChatInterruptAcceptedPayload, ChatMessageAcceptedPayload } from '../../session-types';
 import { readRequiredBoolean, readRequiredRecord, readRequiredString } from './readers';
-import { parseStreamingTurnExecution } from './turn-execution';
+import { parsePayloadChatTurnInProgress, parsePayloadNullableChatTurn } from './chat-turn';
 
 export function parseChatMessageAcceptedPayload(value: unknown): ChatMessageAcceptedPayload {
   const record = readRequiredRecord(value, 'chat message accepted payload');
@@ -8,7 +8,7 @@ export function parseChatMessageAcceptedPayload(value: unknown): ChatMessageAcce
 
   return {
     threadId: readRequiredString(record.threadId, 'chat message accepted payload.threadId'),
-    turnExecution: parseStreamingTurnExecution(record.turnExecution, 'chat message accepted payload.turnExecution'),
+    turn: parsePayloadChatTurnInProgress(record.turn, 'chat message accepted payload.turn'),
     stream: {
       url: readRequiredString(stream.url, 'chat message accepted payload.stream.url'),
     },
@@ -21,6 +21,6 @@ export function parseChatInterruptAcceptedPayload(value: unknown): ChatInterrupt
   return {
     ok: readRequiredBoolean(record.ok, 'chat interrupt accepted payload.ok'),
     threadId: readRequiredString(record.threadId, 'chat interrupt accepted payload.threadId'),
-    turnExecution: parseStreamingTurnExecution(record.turnExecution, 'chat interrupt accepted payload.turnExecution'),
+    turn: parsePayloadNullableChatTurn(record.turn, 'chat interrupt accepted payload.turn'),
   };
 }

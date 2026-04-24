@@ -5,14 +5,14 @@ import {
   HttpResponse,
   MockEventSource,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime transcript user reconciliation', () => {
   it('applies reconciled user message content onto the existing accepted row instead of appending a duplicate row', async () => {
@@ -25,10 +25,14 @@ describe('ChatRuntime transcript user reconciliation', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-user-reconcile',
-            turnExecution: {
-              activeTurnId: 'turn-user-reconcile',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-user-reconcile',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {

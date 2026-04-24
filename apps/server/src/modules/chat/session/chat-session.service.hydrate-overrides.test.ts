@@ -20,10 +20,7 @@ test('hydrateSession takeover preserves the applied prompt override state for th
         calls.push({ method: 'resumeThread', threadId, baseInstructions, runtimeSettings });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           messages: [],
         };
       },
@@ -108,10 +105,7 @@ test('hydrateSession restores thread prompt override metadata for resumed tabs',
       async resumeThread({ threadId }) {
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           messages: [],
         };
       },
@@ -156,10 +150,7 @@ test('hydrateSession prefers thread prompt override metadata over stale runtime 
       async resumeThread({ threadId }) {
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           messages: [],
         };
       },

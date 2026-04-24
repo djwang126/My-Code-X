@@ -70,10 +70,7 @@ test('sendMessage does not auto-name resumed threads or overwrite an existing th
         calls.push({ method: 'resumeThread', threadId });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           threadName: 'Existing title',
           messages: [],
         };
@@ -149,10 +146,14 @@ test('sendMessage keeps the turn flowing when auto-naming fails and logs through
 
   assert.deepEqual(result, {
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'running',
-    },
+    latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
   });
   assert.equal(service.getSessionState({ slotId: 'tab-1', threadId: 'thread-1' })?.threadName, '');
   assert.deepEqual(warnings, ['[chat-runtime-service] failed to auto-name chat thread thread-1: rename failed']);

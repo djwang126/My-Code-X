@@ -4,7 +4,7 @@ import {
   HttpResponse,
   MockEventSource,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -12,7 +12,7 @@ import {
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime stop turn', () => {
   it('switches the send button to Stop while a turn is running and interrupts the active turn when clicked', async () => {
@@ -27,10 +27,14 @@ describe('ChatRuntime stop turn', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-running',
-            turnExecution: {
-              activeTurnId: 'turn-running',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-running',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {
@@ -48,10 +52,14 @@ describe('ChatRuntime stop turn', () => {
         return HttpResponse.json({
           ok: true,
           threadId: 'thread-running',
-          turnExecution: {
-            activeTurnId: 'turn-running',
-            turnLifecycle: 'interrupting',
-          },
+          latestTurn: {
+        id: 'turn-running',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         });
       }),
     );

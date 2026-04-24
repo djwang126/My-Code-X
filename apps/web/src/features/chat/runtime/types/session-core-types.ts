@@ -1,36 +1,26 @@
 import type {
+  ChatTurn,
   SessionError,
-  SessionActiveTurnExecutionState,
-  SessionStreamingTurnLifecycle,
-  SessionTerminalTurnLifecycle,
-  SessionTurnExecutionState,
   SessionThreadStatus,
 } from '@my-code-x/contracts';
 
 export type {
   AppRestartAcceptedPayload,
+  ChatTurn,
+  ChatTurnStatus,
   ReviewStartAcceptedPayload,
   ReviewStartTarget,
   SessionCodexErrorInfo,
   SessionError,
-  SessionActiveTurnExecutionState,
-  SessionTerminalTurnLifecycle,
-  SessionStreamingTurnLifecycle,
-  SessionTurnExecutionState,
-  SessionTurnLifecycle,
   SessionThreadStatus,
   ThreadCompactAcceptedPayload,
   ThreadForkAcceptedPayload,
   ThreadRollbackAcceptedPayload,
 } from '@my-code-x/contracts';
 
-export type SessionStreamingTurnExecutionState = SessionActiveTurnExecutionState & {
-  turnLifecycle: SessionStreamingTurnLifecycle;
-};
+export type ChatTurnInProgress = ChatTurn & { status: 'inProgress' };
 
-export type SessionTerminalTurnExecutionState = SessionActiveTurnExecutionState & {
-  turnLifecycle: SessionTerminalTurnLifecycle;
-};
+export type ChatTurnTerminal = ChatTurn & { status: 'completed' | 'interrupted' | 'failed' };
 
 export type SessionNotice = {
   id: string;
@@ -49,7 +39,7 @@ export type SessionPayload = {
   session: {
     workspace: string;
     threadId: string;
-    turnExecution: SessionTurnExecutionState;
+    latestTurn: ChatTurn | null;
     collaborationModeKind?: string | null;
     promptOverride?: string | null;
     lastUpdatedAt: string;
@@ -69,13 +59,13 @@ export type SessionPayload = {
 
 export type ChatMessageAcceptedPayload = {
   threadId: string;
-  turnExecution: SessionStreamingTurnExecutionState;
+  turn: ChatTurnInProgress;
   stream: { url: string };
 };
 
 export type ChatInterruptAcceptedPayload = {
   ok: boolean;
   threadId: string;
-  turnExecution: SessionStreamingTurnExecutionState;
+  turn: ChatTurn | null;
 };
 

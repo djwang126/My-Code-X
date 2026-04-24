@@ -20,10 +20,7 @@ test('sendMessage reapplies explicit thread-scoped model config overrides before
         calls.push({ method: 'resumeThread', threadId, runtimeSettings });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           messages: [],
         };
       },
@@ -95,10 +92,7 @@ test('sendMessage reapplies prompt override preferences before continuing an exi
         calls.push({ method: 'resumeThread', threadId, baseInstructions });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           messages: [],
         };
       },

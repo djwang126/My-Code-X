@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseSessionTurnExecution } from '@my-code-x/contracts';
+import { parseChatTurn } from '@my-code-x/contracts';
 
 import { deriveChatInteractionState } from './interaction-state';
 import type {
@@ -9,10 +9,10 @@ import type {
 } from './page-state-types';
 import { createInitialChatPageUiState } from './ui-reducer';
 
-type SessionSnapshotOverrides = Partial<Omit<ChatPageSessionSnapshot, 'turnExecution'>> & {
-  turnExecution?: ChatPageSessionSnapshot['turnExecution'];
-  turnLifecycle?: ChatPageSessionSnapshot['turnExecution']['turnLifecycle'];
-  activeTurnId?: ChatPageSessionSnapshot['turnExecution']['activeTurnId'];
+type SessionSnapshotOverrides = Partial<Omit<ChatPageSessionSnapshot, 'latestTurn'>> & {
+  latestTurn?: ChatPageSessionSnapshot['latestTurn'];
+  turnStatus?: 'idle' | 'inProgress' | 'completed' | 'interrupted' | 'failed';
+  turnId?: string;
 };
 
 type ChatPageStateSnapshotOverrides = {
@@ -23,9 +23,9 @@ type ChatPageStateSnapshotOverrides = {
 
 function buildSessionSnapshot(overrides: SessionSnapshotOverrides = {}): ChatPageSessionSnapshot {
   const {
-    activeTurnId,
-    turnExecution,
-    turnLifecycle = 'idle',
+    turnId,
+    latestTurn,
+    turnStatus = 'idle',
     ...rest
   } = overrides;
 
@@ -33,12 +33,18 @@ function buildSessionSnapshot(overrides: SessionSnapshotOverrides = {}): ChatPag
     phase: 'ready',
     workspace: 'D:/workspaces/my-code-x',
     threadId: 'thread-1',
-    turnExecution:
-      turnExecution ??
-      parseSessionTurnExecution({
-        activeTurnId: activeTurnId ?? (turnLifecycle === 'idle' ? null : 'turn-1'),
-        turnLifecycle,
-      }),
+    latestTurn:
+      latestTurn ??
+      turnStatus === 'idle'
+        ? null
+        : parseChatTurn({
+            id: turnId ?? 'turn-1',
+            status: turnStatus,
+            error: null,
+            startedAt: null,
+            completedAt: null,
+            durationMs: null,
+          }),
     pendingRequests: [],
     ...rest,
   };
@@ -112,7 +118,7 @@ describe('deriveChatInteractionState', () => {
 
   it('treats restart as overriding ordinary ready and running states', () => {
     const state = buildState({
-      session: { turnLifecycle: 'running' },
+      session: { turnStatus: 'inProgress' },
       operations: { restart: 'pending' },
     });
 
@@ -122,7 +128,7 @@ describe('deriveChatInteractionState', () => {
   it('treats unresolved pending requests as awaiting-requests instead of running', () => {
     const state = buildState({
       session: {
-        turnLifecycle: 'running',
+        turnStatus: 'inProgress',
         pendingRequests: [
           {
             id: 'req-1',
@@ -144,8 +150,9 @@ describe('deriveChatInteractionState', () => {
   it('reports interrupting as its own interaction state while the active turn is stopping', () => {
     const state = buildState({
       session: {
-        turnLifecycle: 'interrupting',
+        turnStatus: 'inProgress',
       },
+      operations: { interrupt: 'pending' },
     });
 
     expect(deriveChatInteractionState(state)).toBe('interrupting');
@@ -153,16 +160,16 @@ describe('deriveChatInteractionState', () => {
 
   it('treats send-in-flight as running even before stream metadata catches up', () => {
     const state = buildState({
-      session: { turnLifecycle: 'idle' },
+      session: { turnStatus: 'inProgress' },
       operations: { send: 'pending' },
     });
 
     expect(deriveChatInteractionState(state)).toBe('running');
   });
 
-  it('treats a ready session with running lifecycle as running', () => {
+  it('treats a ready session with running state as running', () => {
     const state = buildState({
-      session: { turnLifecycle: 'running' },
+      session: { turnStatus: 'inProgress' },
     });
 
     expect(deriveChatInteractionState(state)).toBe('running');

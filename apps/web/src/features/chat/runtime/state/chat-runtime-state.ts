@@ -1,8 +1,6 @@
-import { createIdleSessionTurnExecution } from '@my-code-x/contracts';
-
 import type {
+  ChatTurn,
   ChatMessageAcceptedPayload,
-  SessionTurnExecutionState,
   SessionError,
   SessionNotice,
   SessionPayload,
@@ -27,7 +25,8 @@ import { readBootstrapScope } from '../../../session/scope';
 export interface ChatRuntimeState {
   workspace: string;
   threadId: string;
-  turnExecution: SessionTurnExecutionState;
+  latestTurn: ChatTurn | null;
+  operations: RuntimeOperationState;
   threadName: string;
   threadStatus: NonNullable<SessionPayload['session']['threadStatus']> | null;
   threadStatusText: string;
@@ -42,6 +41,11 @@ export interface ChatRuntimeState {
   streamRevision: number;
   preferences: SessionPayload['preferences'];
   options: SessionPayload['options'];
+}
+
+export interface RuntimeOperationState {
+  send: 'idle' | 'pending';
+  interrupt: 'idle' | 'pending';
 }
 
 export type ChatRuntimeAction =
@@ -62,7 +66,10 @@ export type ChatRuntimeAction =
   | { type: 'request/submission-started'; requestId: string }
   | { type: 'request/submission-failed'; requestId: string; errorMessage: string }
   | { type: 'preferences/updated'; preferences: SessionPayload['preferences'] }
+  | { type: 'send/requested' }
   | { type: 'interrupt/succeeded'; payload: import('../session-types').ChatInterruptAcceptedPayload }
+  | { type: 'interrupt/requested' }
+  | { type: 'interrupt/failed'; errorMessage: string }
   | { type: 'send/succeeded'; payload: ChatMessageAcceptedPayload; acceptedText: string }
   | { type: 'send/failed'; errorMessage: string };
 
@@ -70,7 +77,11 @@ export function createBaseChatRuntimeState(): ChatRuntimeState {
   return {
     workspace: '',
     threadId: '',
-    turnExecution: createIdleSessionTurnExecution(),
+    latestTurn: null,
+    operations: {
+      send: 'idle',
+      interrupt: 'idle',
+    },
     threadName: '',
     threadStatus: null,
     threadStatusText: '',
@@ -104,7 +115,7 @@ export function createInitialChatRuntimeState(): ChatRuntimeState {
     ...createBaseChatRuntimeState(),
     workspace: cache.workspace,
     threadId: cache.threadId,
-    turnExecution: cache.turnExecution,
+    latestTurn: cache.latestTurn,
     threadName: cache.threadName,
     messages: cache.messages,
   };

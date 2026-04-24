@@ -25,7 +25,7 @@ import {
   readRequiredRecord,
   readRequiredString,
 } from './readers';
-import { parseTurnExecution } from './turn-execution';
+import { parsePayloadNullableChatTurn } from './chat-turn';
 
 const pendingRequestKinds = new Set([
   'command_approval',
@@ -226,12 +226,12 @@ export function readSessionPendingRequest(value: unknown, fieldName: string): Se
 
 export function readSessionRecord(value: unknown, fieldName: string): SessionPayload['session'] {
   const record = readRequiredRecord(value, fieldName);
-  const turnExecution = parseTurnExecution(record.turnExecution, `${fieldName}.turnExecution`);
+  const latestTurn = parsePayloadNullableChatTurn(record.latestTurn, `${fieldName}.latestTurn`);
 
   return {
     workspace: readRequiredString(record.workspace, `${fieldName}.workspace`),
     threadId: readRequiredString(record.threadId, `${fieldName}.threadId`),
-    turnExecution,
+    latestTurn,
     collaborationModeKind: readOptionalNullableString(record.collaborationModeKind, `${fieldName}.collaborationModeKind`),
     promptOverride: readOptionalNullableString(record.promptOverride, `${fieldName}.promptOverride`),
     lastUpdatedAt: readRequiredString(record.lastUpdatedAt, `${fieldName}.lastUpdatedAt`),

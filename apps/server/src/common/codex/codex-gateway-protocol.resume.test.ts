@@ -60,9 +60,9 @@ test('normalizeResumeThreadResult preserves typed special items, user content, a
   });
 
   assert.equal(normalized.threadId, 'thread-1');
-  assert.deepEqual(normalized.turnExecution, {
-    activeTurnId: 'turn-2',
-    turnLifecycle: 'running',
+  assert.deepEqual(normalized.latestTurn, {
+    turnId: 'turn-2',
+    status: 'inProgress',
   });
   assert.deepEqual(normalized.messages, [
     {

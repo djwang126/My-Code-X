@@ -20,10 +20,7 @@ test('sendMessage clears a previously applied prompt override by resuming the th
         calls.push({ method: 'resumeThread', threadId, baseInstructions });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           messages: [],
         };
       },
@@ -100,10 +97,7 @@ test('sendMessage does not resume the thread when the selected prompt override i
         calls.push({ method: 'resumeThread', threadId, baseInstructions });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: null,
-            turnLifecycle: 'idle',
-          },
+          latestTurn: null,
           messages: [],
         };
       },

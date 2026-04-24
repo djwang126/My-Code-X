@@ -7,15 +7,11 @@ import {
   upsertSessionNotice,
 } from '../shared/chat-session-state.js';
 import {
-  markRuntimeTurnCompleted,
-  markRuntimeTurnFailed,
-  markRuntimeTurnInterrupted,
-  markRuntimeTurnStreaming,
-} from '../shared/chat-turn-lifecycle.js';
-import { serializeSessionTurnExecution } from '@my-code-x/contracts';
+  applyRuntimeChatTurn,
+} from '../shared/chat-turn-state.js';
+import { serializeChatTurn } from '@my-code-x/contracts';
 import { cloneCodexRuntimeError } from '../../../common/codex/codex-runtime-error.js';
 import { applyTimelineItemDelta, getAssistantMessage } from './chat-event-applier.timeline.js';
-import { parseCodexTerminalTurnLifecycle } from '../../../common/codex/derive-codex-turn-lifecycle.js';
 import type { ChatEventEmitter, ChatSessionRegistry, ChatSessionState } from '../shared/chat-types.js';
 import type { LooseRecord } from '../../../common/codex/codex-types.js';
 
@@ -23,8 +19,8 @@ function emitRuntimeEvent(runtime: ChatSessionState, emitter: ChatEventEmitter, 
   emitter.emitEvent({ slotId: runtime.slotId, threadId: runtime.threadId }, payload);
 }
 
-function createPublicTurnExecution(runtime: ChatSessionState, fieldName: string) {
-  return serializeSessionTurnExecution(runtime.turnExecution, {
+function createPublicLatestTurn(runtime: ChatSessionState, fieldName: string) {
+  return serializeChatTurn(runtime.latestTurn, {
     fieldName,
   });
 }
@@ -39,7 +35,6 @@ function applyAgentMessageDelta(runtime: ChatSessionState, event: LooseRecord, n
     id: message.id,
     text: message.text,
   };
-  markRuntimeTurnStreaming(runtime, event.turnId);
   runtime.lastUpdatedAt = now();
   emitRuntimeEvent(runtime, emitter, {
     type: 'assistant_delta',
@@ -52,12 +47,16 @@ function applyAgentMessageDelta(runtime: ChatSessionState, event: LooseRecord, n
 }
 
 function applyTurnStarted(runtime: ChatSessionState, event: LooseRecord, now: () => string, emitter: ChatEventEmitter) {
-  markRuntimeTurnStreaming(runtime, event.turnId ?? runtime.turnExecution.activeTurnId);
+  if (event.turn?.status !== 'inProgress') {
+    throw new Error('turn started event.turn.status must be inProgress.');
+  }
+
+  applyRuntimeChatTurn(runtime, event.turn);
   runtime.lastUpdatedAt = now();
   emitRuntimeEvent(runtime, emitter, {
     type: 'turn_started',
     threadId: runtime.threadId,
-    turnExecution: createPublicTurnExecution(runtime, 'turn started event.turnExecution'),
+    turn: createPublicLatestTurn(runtime, 'turn started event.turn'),
   });
 }
 
@@ -85,16 +84,12 @@ function applyItemCompleted(runtime: ChatSessionState, event: LooseRecord, now: 
 function applyTimelineItemUpdated(runtime: ChatSessionState, event: LooseRecord, now: () => string, emitter: ChatEventEmitter) {
   const reconciledItem = reconcileOptimisticUserMessage(runtime.messages, event.item);
   upsertSessionItem(runtime.messages, reconciledItem);
-  if (reconciledItem.state === 'streaming') {
-    markRuntimeTurnStreaming(runtime, event.turnId ?? runtime.turnExecution.activeTurnId);
-  }
   runtime.lastUpdatedAt = now();
   emitter.emitTimelineItemUpdated(runtime, reconciledItem);
 }
 
 function applyTimelineItemDeltaEvent(runtime: ChatSessionState, event: LooseRecord, now: () => string, emitter: ChatEventEmitter) {
   const item = applyTimelineItemDelta(runtime, event as LooseRecord & { itemId: string; itemType: string });
-  markRuntimeTurnStreaming(runtime, event.turnId ?? runtime.turnExecution.activeTurnId);
   runtime.lastUpdatedAt = now();
   emitter.emitTimelineItemUpdated(runtime, item);
 }
@@ -143,28 +138,21 @@ function applyPendingRequestResolved(
 }
 
 function applyTurnCompleted(runtime: ChatSessionState, event: LooseRecord, now: () => string, emitter: ChatEventEmitter) {
-  const turnLifecycle = parseCodexTerminalTurnLifecycle(event.turn.status, {
-    fieldName: 'turn completed event.turn.status',
-  });
-
-  switch (turnLifecycle) {
-    case 'completed':
-      markRuntimeTurnCompleted(runtime, event.turn.id);
-      break;
-    case 'interrupted':
-      markRuntimeTurnInterrupted(runtime, event.turn.id);
-      break;
-    case 'failed':
-      markRuntimeTurnFailed(runtime, event.turn.id);
-      break;
+  if (
+    event.turn?.status !== 'completed' &&
+    event.turn?.status !== 'interrupted' &&
+    event.turn?.status !== 'failed'
+  ) {
+    throw new Error('turn completed event.turn.status must be completed, interrupted, or failed.');
   }
 
+  applyRuntimeChatTurn(runtime, event.turn);
   runtime.lastError = cloneCodexRuntimeError(event.turn.error);
   runtime.lastUpdatedAt = now();
   emitRuntimeEvent(runtime, emitter, {
     type: 'turn_completed',
     threadId: runtime.threadId,
-    turnExecution: createPublicTurnExecution(runtime, 'turn completed event.turnExecution'),
+    turn: createPublicLatestTurn(runtime, 'turn completed event.turn'),
     error: cloneCodexRuntimeError(runtime.lastError),
   });
 }
@@ -180,7 +168,15 @@ function applyError(runtime: ChatSessionState, event: LooseRecord, now: () => st
   });
 }
 
-const EVENT_APPLIERS: Record<string, (...args: any[]) => void> = {
+type GatewayEventApplier = (
+  runtime: ChatSessionState,
+  event: LooseRecord,
+  now: () => string,
+  emitter: ChatEventEmitter,
+  registry: ChatSessionRegistry,
+) => void;
+
+const EVENT_APPLIERS: Record<string, GatewayEventApplier> = {
   agent_message_delta: applyAgentMessageDelta,
   turn_started: applyTurnStarted,
   item_completed: applyItemCompleted,
@@ -207,3 +203,4 @@ export function applyGatewayEventToRuntime(
 
   applyEvent(runtime, event, now, emitter, registry);
 }
+

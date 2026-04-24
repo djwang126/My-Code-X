@@ -21,7 +21,7 @@ export function getAssistantMessage(runtime: ChatSessionState, itemId: string): 
     text: '',
     state: 'streaming',
     threadId: runtime.threadId,
-    turnId: runtime.turnExecution.activeTurnId,
+    turnId: runtime.latestTurn?.id ?? null,
     raw: {
       type: 'agentMessage',
       id: itemId,
@@ -44,7 +44,7 @@ function ensureSpecialRuntimeItem(
 
   const item = createSessionSpecialItem({
     threadId: runtime.threadId,
-    turnId: turnId ?? runtime.turnExecution.activeTurnId,
+    turnId: turnId ?? runtime.latestTurn?.id ?? null,
     itemId,
     itemType,
   });

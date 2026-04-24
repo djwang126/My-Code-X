@@ -1,5 +1,5 @@
 import { readOptionalCollaborationModeKind } from '../../../../shared/lib/collaboration-mode';
-import type { ChatRuntimeAction, ChatRuntimeState } from './chat-runtime-state';
+import type { ChatRuntimeAction, ChatRuntimeState, RuntimeOperationState } from './chat-runtime-state';
 import { createBaseChatRuntimeState, withResolvedStreamThreadId } from './chat-runtime-state';
 import {
   normalizeNotices,
@@ -20,23 +20,33 @@ import {
   withPreferencesSessionRuntimeMetadata,
 } from './session-stream-updaters';
 import { applyConversationScopedTurnError, getSharedErrorMessage } from './session-error-routing';
-import {
-  createStreamingExecution,
-  createTurnStartedExecution,
-  isTurnExecutionTerminal,
-} from './session-turn-lifecycle';
+import { applyChatTurn, isChatTurnStateTerminal } from './chat-turn-state';
+
+function withOperation(
+  operations: RuntimeOperationState,
+  nextOperation: Partial<RuntimeOperationState>,
+): RuntimeOperationState {
+  return {
+    ...operations,
+    ...nextOperation,
+  };
+}
 
 export function chatRuntimeReducer(state: ChatRuntimeState, action: ChatRuntimeAction): ChatRuntimeState {
   switch (action.type) {
     case 'bootstrap/reset':
       if (
-        isTurnExecutionTerminal(state.turnExecution) &&
+        isChatTurnStateTerminal(state.latestTurn) &&
         state.threadId === action.threadId &&
         state.workspace === action.workspace &&
         state.messages.length > 0
       ) {
         return {
           ...state,
+          operations: {
+            send: 'idle',
+            interrupt: 'idle',
+          },
           statusMessage: 'Loading session…',
           errorMessage: '',
           errorDetail: null,
@@ -62,7 +72,14 @@ export function chatRuntimeReducer(state: ChatRuntimeState, action: ChatRuntimeA
       );
 
       return withResolvedStreamThreadId(state, action.payload.threadId, {
-        turnExecution: action.payload.turnExecution,
+        latestTurn: applyChatTurn(action.payload.latestTurn, 'session stream snapshot.latestTurn'),
+        operations:
+          action.payload.latestTurn?.status === 'inProgress'
+            ? state.operations
+            : {
+                send: 'idle',
+                interrupt: 'idle',
+              },
         messages: normalizedMessages,
         threadName: action.payload.threadName ?? state.threadName,
         threadStatus: action.payload.threadStatus ?? null,
@@ -105,27 +122,14 @@ export function chatRuntimeReducer(state: ChatRuntimeState, action: ChatRuntimeA
         errorDetail: null,
       });
     case 'stream/timeline-item-updated': {
-      const nextTurnExecution =
-        action.payload.item.state === 'streaming'
-          ? createStreamingExecution({
-              turnExecution: state.turnExecution,
-              turnId: action.payload.turnId,
-            })
-          : null;
       return withResolvedStreamThreadId(state, action.payload.threadId, {
-        ...(nextTurnExecution ? { turnExecution: nextTurnExecution } : {}),
         messages: upsertMessage(state.messages, reconcileTimelineItem(state.messages, action.payload.item)),
         errorMessage: '',
         errorDetail: null,
       });
     }
     case 'stream/timeline-item-delta': {
-      const nextTurnExecution = createStreamingExecution({
-        turnExecution: state.turnExecution,
-        turnId: action.payload.turnId,
-      });
       return withResolvedStreamThreadId(state, action.payload.threadId, {
-        turnExecution: nextTurnExecution,
         messages: applyTimelineItemDelta(state.messages, action.payload),
         errorMessage: '',
         errorDetail: null,
@@ -136,12 +140,7 @@ export function chatRuntimeReducer(state: ChatRuntimeState, action: ChatRuntimeA
         return state;
       }
 
-      const nextTurnExecution = createStreamingExecution({
-        turnExecution: state.turnExecution,
-        turnId: action.latestPayload.turnId,
-      });
       return withResolvedStreamThreadId(state, action.latestPayload.threadId, {
-        turnExecution: nextTurnExecution,
         messages: applyAssistantDeltas(state.messages, action.payloads),
         errorMessage: '',
         errorDetail: null,
@@ -149,7 +148,11 @@ export function chatRuntimeReducer(state: ChatRuntimeState, action: ChatRuntimeA
     }
     case 'stream/turn-started':
       return withResolvedStreamThreadId(state, action.payload.threadId, {
-        turnExecution: action.payload.turnExecution,
+        latestTurn: applyChatTurn(action.payload.turn, 'session stream turn started.turn'),
+        operations: {
+          send: 'idle',
+          interrupt: 'idle',
+        },
         errorMessage: '',
         errorDetail: null,
       });
@@ -161,7 +164,11 @@ export function chatRuntimeReducer(state: ChatRuntimeState, action: ChatRuntimeA
       });
     case 'stream/turn-completed':
       return withResolvedStreamThreadId(state, action.payload.threadId, {
-        turnExecution: action.payload.turnExecution,
+        latestTurn: applyChatTurn(action.payload.turn, 'session stream turn completed.turn'),
+        operations: {
+          send: 'idle',
+          interrupt: 'idle',
+        },
         errorMessage: getSharedErrorMessage(action.payload.error),
         errorDetail: action.payload.error,
         messages: applyConversationScopedTurnError(state.messages, action.payload.error),
@@ -192,36 +199,57 @@ export function chatRuntimeReducer(state: ChatRuntimeState, action: ChatRuntimeA
         ...state,
         preferences: action.preferences,
       };
-    case 'interrupt/succeeded': {
-      const nextTurnExecution = createTurnStartedExecution({
-        turnId: action.payload.turnExecution.activeTurnId,
-        turnLifecycle: action.payload.turnExecution.turnLifecycle,
-      });
+    case 'send/requested':
       return {
         ...state,
-        turnExecution: nextTurnExecution,
+        operations: withOperation(state.operations, { send: 'pending' }),
+        errorMessage: '',
+        errorDetail: null,
+      };
+    case 'interrupt/requested':
+      return {
+        ...state,
+        operations: withOperation(state.operations, { interrupt: 'pending' }),
+        errorMessage: '',
+        errorDetail: null,
+      };
+    case 'interrupt/succeeded': {
+      return {
+        ...state,
+        operations:
+          state.latestTurn?.status === 'inProgress'
+            ? withOperation(state.operations, { interrupt: 'pending' })
+            : withOperation(state.operations, { interrupt: 'idle' }),
         errorMessage: '',
         errorDetail: null,
       };
     }
+    case 'interrupt/failed': {
+      return {
+        ...state,
+        operations: withOperation(state.operations, { interrupt: 'idle' }),
+        errorMessage: action.errorMessage,
+        errorDetail: null,
+      };
+    }
     case 'send/succeeded': {
-      const nextTurnExecution = createTurnStartedExecution({
-        turnId: action.payload.turnExecution.activeTurnId,
-        turnLifecycle: action.payload.turnExecution.turnLifecycle,
-      });
       return {
         ...state,
         threadId: action.payload.threadId,
-        turnExecution: nextTurnExecution,
+        latestTurn: applyChatTurn(action.payload.turn, 'chat message accepted payload.turn'),
+        operations: {
+          send: 'idle',
+          interrupt: 'idle',
+        },
         messages: upsertMessage(state.messages, {
-          id: createCanonicalUserMessageId({ turnId: action.payload.turnExecution.activeTurnId }),
+          id: createCanonicalUserMessageId({ turnId: action.payload.turn.id }),
           kind: 'message',
           itemType: 'userMessage',
           role: 'user',
           text: action.acceptedText,
           state: 'complete',
           threadId: action.payload.threadId,
-          turnId: action.payload.turnExecution.activeTurnId,
+          turnId: action.payload.turn.id,
         }),
         streamUrl: action.payload.stream.url,
         streamRevision: state.streamRevision + 1,
@@ -232,6 +260,7 @@ export function chatRuntimeReducer(state: ChatRuntimeState, action: ChatRuntimeA
     case 'send/failed':
       return {
         ...state,
+        operations: withOperation(state.operations, { send: 'idle' }),
         errorMessage: action.errorMessage,
         errorDetail: null,
       };

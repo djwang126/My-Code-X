@@ -5,14 +5,14 @@ import {
   MockEventSource,
   createUserMessage,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime transcript fallback items', () => {
   it('keeps unknown live timeline items visible through fallback rows instead of dropping them', async () => {
@@ -25,10 +25,14 @@ describe('ChatRuntime transcript fallback items', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-fallback-live',
-            turnExecution: {
-              activeTurnId: 'turn-fallback-live',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-fallback-live',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {

@@ -36,8 +36,8 @@ describe('createSessionEventHandlers', () => {
       new MessageEvent('snapshot', {
         data: JSON.stringify({
           threadId: 'thread-live',
-          turnExecution: {
-            activeTurnId: null,
+          latestTurn: {
+            turnId: null,
           },
           messages: [],
         }),

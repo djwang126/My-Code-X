@@ -5,14 +5,14 @@ import {
   MockEventSource,
   createUserMessage,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime transcript timeline deltas', () => {
   it('applies consecutive live timeline_item_delta events in place for an existing special row', async () => {
@@ -25,10 +25,14 @@ describe('ChatRuntime transcript timeline deltas', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-delta-live',
-            turnExecution: {
-              activeTurnId: 'turn-delta-live',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-delta-live',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },
           conversation: {

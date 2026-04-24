@@ -22,10 +22,7 @@ function createHarness({
     slotId: 'tab-1',
     workspace: 'D:/workspaces/My-Code-X',
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: null,
-      turnLifecycle: 'idle',
-    },
+    latestTurn: null,
     now,
   });
 

@@ -157,10 +157,7 @@ function createSessionResponse({
     session: {
       workspace,
       threadId,
-      turnExecution: {
-        activeTurnId: null,
-        turnLifecycle: 'idle',
-      },
+      latestTurn: null,
       lastUpdatedAt: '2026-04-03T12:34:56.000Z',
     },
     conversation: {
@@ -242,10 +239,14 @@ describe('ChatRuntime', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-live-meta',
-            turnExecution: {
-              activeTurnId: 'turn-live-meta',
-              turnLifecycle: 'running',
-            },
+            latestTurn: {
+        id: 'turn-live-meta',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
             threadName: '',
             threadStatusText: '',

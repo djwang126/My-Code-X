@@ -13,10 +13,14 @@ test('threadless request submit failures recover on the new owner runtime after 
       async resumeThread({ threadId }) {
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: 'turn-1',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [],
           pendingRequests: [],
         };

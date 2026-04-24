@@ -6,7 +6,7 @@ import {
   createAssistantMessage,
   createUserMessage,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -14,7 +14,7 @@ import {
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime transcript rehydration', () => {
   it('keeps the latest resumed user message in chronological order when bootstrap payload ids repeat', async () => {
@@ -31,10 +31,14 @@ describe('ChatRuntime transcript rehydration', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-duplicate-user-order',
-            turnExecution: {
-              activeTurnId: 'turn-latest',
-              turnLifecycle: 'completed',
-            },
+            latestTurn: {
+        id: 'turn-latest',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:40:56.000Z',
           },
           conversation: {
@@ -91,10 +95,14 @@ describe('ChatRuntime transcript rehydration', () => {
             session: {
               workspace: 'D:/workspace/example-app',
               threadId: 'thread-returning',
-              turnExecution: {
-                activeTurnId: 'turn-running',
-                turnLifecycle: 'running',
-              },
+              latestTurn: {
+        id: 'turn-running',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
               lastUpdatedAt: '2026-04-03T12:34:56.000Z',
             },
             conversation: {
@@ -126,10 +134,14 @@ describe('ChatRuntime transcript rehydration', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-returning',
-            turnExecution: {
-              activeTurnId: 'turn-running',
-              turnLifecycle: 'completed',
-            },
+            latestTurn: {
+        id: 'turn-running',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
             lastUpdatedAt: '2026-04-03T12:40:56.000Z',
           },
           conversation: {
@@ -180,9 +192,9 @@ describe('ChatRuntime transcript rehydration', () => {
           session: {
             workspace: 'D:/workspace/example-app',
             threadId: 'thread-completed-on-return',
-            turnExecution: {
-              activeTurnId: 'turn-completed-on-return',
-              turnLifecycle: requestCount === 1 ? 'running' : 'completed',
+            latestTurn: {
+              turnId: 'turn-completed-on-return',
+              status: requestCount === 1 ? 'inProgress' : 'completed',
             },
             lastUpdatedAt: '2026-04-03T12:34:56.000Z',
           },

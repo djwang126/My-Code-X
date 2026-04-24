@@ -21,10 +21,14 @@ const bootstrapPayload = {
   session: {
     workspace: 'D:/workspaces/sample',
     threadId: 'thread-1',
-    turnExecution: {
-      activeTurnId: 'turn-1',
-      turnLifecycle: 'running',
-    },
+    latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
     lastUpdatedAt: '2026-04-03T12:34:56.000Z',
     threadName: '',
     threadStatusText: '',
@@ -79,10 +83,7 @@ describe('chat runtime reducer bootstrap', () => {
     expect(initialState).toMatchObject({
       workspace: 'D:/workspaces/sample',
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: null,
-        turnLifecycle: 'idle',
-      },
+      latestTurn: null,
       threadName: '',
       threadStatus: null,
       threadStatusText: '',
@@ -109,8 +110,8 @@ describe('chat runtime reducer bootstrap', () => {
 
     expect(next.workspace).toBe('D:/workspaces/sample');
     expect(next.threadId).toBe('thread-1');
-    expect(next.turnExecution.activeTurnId).toBe('turn-1');
-    expect(next.turnExecution.turnLifecycle).toBe('running');
+    expect(next.latestTurn?.id).toBe('turn-1');
+    expect(next.latestTurn?.status).toBe('running');
     expect(readRuntimeSettings(next.preferences)?.collaborationModeKind).toBe('default');
     expect(next.messages).toEqual(bootstrapPayload.conversation.messages);
     expect(next.streamUrl).toBe('/api/v2/chat/events?slotId=tab-9&threadId=thread-1');
@@ -189,10 +190,7 @@ describe('chat runtime reducer bootstrap', () => {
     expect(next).toMatchObject({
       workspace: 'D:/workspaces/other',
       threadId: 'thread-2',
-      turnExecution: {
-        activeTurnId: null,
-        turnLifecycle: 'idle',
-      },
+      latestTurn: null,
       threadName: '',
       threadStatusText: '',
       tokenUsageText: '',
@@ -213,9 +211,9 @@ describe('chat runtime reducer bootstrap', () => {
         ...bootstrapPayload,
         session: {
           ...bootstrapPayload.session,
-          turnExecution: {
-            ...bootstrapPayload.session.turnExecution,
-            turnLifecycle: 'completed',
+          latestTurn: {
+            ...bootstrapPayload.session.latestTurn,
+            status: 'completed',
           },
           threadName: 'Cached thread',
         },
@@ -231,8 +229,8 @@ describe('chat runtime reducer bootstrap', () => {
     expect(next).toMatchObject({
       workspace: 'D:/workspaces/sample',
       threadId: 'thread-1',
-      turnExecution: expect.objectContaining({
-        turnLifecycle: 'completed',
+      latestTurn: expect.objectContaining({
+        status: 'completed',
       }),
       threadName: 'Cached thread',
       messages: bootstrapPayload.conversation.messages,

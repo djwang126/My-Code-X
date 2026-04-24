@@ -641,9 +641,13 @@ describe('ChatPageLayout pending requests', () => {
 
     renderChatPage({
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-2',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-2',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
       pendingRequests: [
         {

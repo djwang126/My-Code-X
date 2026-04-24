@@ -1,4 +1,3 @@
-import { createIdleSessionTurnExecution } from '@my-code-x/contracts';
 import type { RuntimeSettings } from '../../../common/codex/codex-types.js';
 import { assertSessionContextMatches, cloneSessionState, createSessionState, resolveSessionWorkspace, } from '../shared/chat-session-state.js';
 interface EnsureLoadedThreadRuntimeInput {
@@ -52,7 +51,7 @@ export function createHydrateSession({ now, registry, sessionRecovery }: any) {
                 slotId,
                 workspace,
                 threadId,
-                turnExecution: createIdleSessionTurnExecution(),
+                latestTurn: null,
                 now,
             });
             if (runtimeBySlot && !runtimeBySlot.threadId) {

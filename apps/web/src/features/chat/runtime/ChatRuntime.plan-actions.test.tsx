@@ -4,7 +4,7 @@ import {
   HttpResponse,
   MockEventSource,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -13,21 +13,21 @@ import {
   waitFor,
 } from './test/chatRuntimeTestHarness';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 function createPlanSessionPayload({
   viewerId,
   slotId,
   threadId,
   turnId,
-  turnLifecycle,
+  status,
   messages = [],
 }: {
   viewerId: string | null;
   slotId: string | null;
   threadId: string;
   turnId: string;
-  turnLifecycle: 'running' | 'completed';
+  status: 'inProgress' | 'completed';
   messages?: Array<Record<string, unknown>>;
 }) {
   return HttpResponse.json({
@@ -36,9 +36,9 @@ function createPlanSessionPayload({
     session: {
       workspace: 'D:/workspace/example-app',
       threadId,
-      turnExecution: {
-        activeTurnId: turnId,
-        turnLifecycle,
+      latestTurn: {
+        turnId: turnId,
+        status,
       },
       collaborationModeKind: 'plan',
       lastUpdatedAt: '2026-04-03T12:34:56.000Z',
@@ -96,10 +96,14 @@ function emitCompletedPlan(threadId: string, turnId: string, planId = 'plan-1') 
   });
   MockEventSource.instances.at(-1)?.emit('turn_completed', {
     threadId,
-    turnExecution: {
-      activeTurnId: turnId,
-      turnLifecycle: 'completed',
-    },
+    latestTurn: {
+        id: turnId,
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
   });
 }
 
@@ -114,15 +118,15 @@ describe('ChatRuntime plan actions', () => {
           slotId: new URL(request.url).searchParams.get('slotId'),
           threadId: 'thread-plan',
           turnId: 'turn-ready',
-          turnLifecycle: 'running',
+          status: 'inProgress',
         })),
       http.post('/api/v2/chat/message', async ({ request }) => {
         sendBodies.push((await request.json()) as Record<string, unknown>);
         return HttpResponse.json({
           threadId: 'thread-plan',
-          turnExecution: {
-            activeTurnId: `turn-${sendBodies.length}`,
-            turnLifecycle: 'running',
+          latestTurn: {
+            turnId: `turn-${sendBodies.length}`,
+            status: 'inProgress',
           },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-plan&threadId=thread-plan',
@@ -170,7 +174,7 @@ describe('ChatRuntime plan actions', () => {
           slotId: new URL(request.url).searchParams.get('slotId'),
           threadId: 'thread-plan-failure',
           turnId: 'turn-ready',
-          turnLifecycle: 'running',
+          status: 'inProgress',
         })),
       http.post('/api/v2/chat/message', () =>
         new HttpResponse('failed to start implementation turn', {
@@ -215,7 +219,7 @@ describe('ChatRuntime plan actions', () => {
             slotId: url.searchParams.get('slotId'),
             threadId: 'thread-plan-return',
             turnId: 'turn-plan-return',
-            turnLifecycle: 'running',
+            status: 'inProgress',
           });
         }
 
@@ -224,7 +228,7 @@ describe('ChatRuntime plan actions', () => {
           slotId: url.searchParams.get('slotId'),
           threadId: 'thread-plan-return',
           turnId: 'turn-plan-return',
-          turnLifecycle: 'completed',
+          status: 'completed',
           messages: [
             {
               id: 'user:turn-plan-return',

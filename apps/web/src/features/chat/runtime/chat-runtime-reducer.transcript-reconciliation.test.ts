@@ -16,10 +16,14 @@ describe('chatRuntimeReducer transcript reconciliation', () => {
         type: 'stream/snapshot',
         payload: {
           threadId: 'thread-1',
-          turnExecution: {
-            activeTurnId: 'turn-1',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [
             {
               id: 'user:turn-1',
@@ -46,8 +50,8 @@ describe('chatRuntimeReducer transcript reconciliation', () => {
       },
     );
 
-    expect(next.turnExecution.activeTurnId).toBe('turn-1');
-    expect(next.turnExecution.turnLifecycle).toBe('running');
+    expect(next.latestTurn?.id).toBe('turn-1');
+    expect(next.latestTurn?.status).toBe('running');
     expect(next.messages[1]?.text).toBe('new partial');
   });
 
@@ -67,10 +71,14 @@ describe('chatRuntimeReducer transcript reconciliation', () => {
       type: 'stream/snapshot',
       payload: {
         threadId: 'thread-1',
-        turnExecution: {
-          activeTurnId: 'turn-1',
-          turnLifecycle: 'running',
-        },
+        latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         promptOverride: 'normal',
         messages: bootstrapPayload.conversation.messages,
       },
@@ -99,10 +107,14 @@ describe('chatRuntimeReducer transcript reconciliation', () => {
       type: 'stream/snapshot',
       payload: {
         threadId: 'thread-1',
-        turnExecution: {
-          activeTurnId: 'turn-1',
-          turnLifecycle: 'completed',
-        },
+        latestTurn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         collaborationModeKind: null,
         messages: bootstrapPayload.conversation.messages,
       },
@@ -127,10 +139,14 @@ describe('chatRuntimeReducer transcript reconciliation', () => {
       type: 'stream/snapshot',
       payload: {
         threadId: 'thread-1',
-        turnExecution: {
-          activeTurnId: 'turn-1',
-          turnLifecycle: 'completed',
-        },
+        latestTurn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         promptOverride: null,
         messages: bootstrapPayload.conversation.messages,
       },
@@ -169,17 +185,21 @@ describe('chatRuntimeReducer transcript reconciliation', () => {
       type: 'stream/turn-completed',
       payload: {
         threadId: 'thread-1',
-        turnExecution: {
-          activeTurnId: 'turn-1',
-          turnLifecycle: 'completed',
-        },
+        turn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         error: null,
       },
     });
 
     expect(withDelta.messages[1]?.text).toBe('still thinking plus more');
-    expect(withDelta.turnExecution.turnLifecycle).toBe('running');
-    expect(completed.turnExecution.turnLifecycle).toBe('completed');
+    expect(withDelta.latestTurn?.status).toBe('running');
+    expect(completed.latestTurn?.status).toBe('completed');
   });
 
   it('hydrates typed special and fallback timeline rows while reconciling duplicate item ids', () => {
@@ -384,15 +404,19 @@ describe('chatRuntimeReducer transcript reconciliation', () => {
       type: 'stream/turn-completed',
       payload: {
         threadId: 'thread-1',
-        turnExecution: {
-          activeTurnId: 'turn-1',
-          turnLifecycle: 'completed',
-        },
+        turn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         error: null,
       },
     });
 
-    expect(completed.turnExecution.turnLifecycle).toBe('completed');
+    expect(completed.latestTurn?.status).toBe('completed');
     expect(completed.messages).toEqual(hydrated.messages);
   });
 
@@ -401,15 +425,19 @@ describe('chatRuntimeReducer transcript reconciliation', () => {
       type: 'stream/turn-completed',
       payload: {
         threadId: 'thread-1',
-        turnExecution: {
-          activeTurnId: 'turn-1',
-          turnLifecycle: 'completed',
-        },
+        turn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         error: null,
       },
     });
 
-    expect(completed.turnExecution.turnLifecycle).toBe('completed');
+    expect(completed.latestTurn?.status).toBe('completed');
   });
 
 });

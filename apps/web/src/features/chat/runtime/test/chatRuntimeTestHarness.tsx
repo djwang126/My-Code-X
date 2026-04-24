@@ -192,10 +192,7 @@ export function createSessionResponse({
     session: {
       workspace,
       threadId,
-      turnExecution: {
-        activeTurnId: null,
-        turnLifecycle: 'idle',
-      },
+      latestTurn: null,
       collaborationModeKind,
       lastUpdatedAt: '2026-04-03T12:34:56.000Z',
     },
@@ -251,7 +248,7 @@ export const sessionGateServer = setupServer(
   }),
 );
 
-export function registerChatRuntimeTestLifecycle() {
+export function registerChatRuntimeTestEnvironment() {
   beforeAll(() => {
     vi.stubGlobal('EventSource', MockEventSource);
     sessionGateServer.listen();

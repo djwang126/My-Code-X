@@ -4,8 +4,8 @@ import type {
   ChatPageOperationState,
 } from './page-state-types';
 import {
-  canInterruptForTurnExecution,
-  canSendForTurnExecution,
+  canInterruptForRuntimeOperation,
+  canSendForRuntimeOperation,
 } from '../../../features/chat/runtime';
 
 export type ChatPageGuardInput = {
@@ -107,14 +107,14 @@ export function deriveChatPageGuards(input: ChatPageGuardInput): ChatPageGuards 
     canSend:
       input.interactionState === 'ready-idle' &&
       input.operations.send === 'idle' &&
-      canSendForTurnExecution(input.session.turnExecution) &&
+      canSendForRuntimeOperation({ latestTurn: input.session.latestTurn, operations: input.operations }) &&
       workspacePresent &&
       draftPresent &&
       !pendingRequestsPresent,
     canInterrupt:
       input.interactionState === 'running' &&
       threadPresent &&
-      canInterruptForTurnExecution(input.session.turnExecution) &&
+      canInterruptForRuntimeOperation({ latestTurn: input.session.latestTurn, operations: input.operations }) &&
       interruptPending === 'idle',
     canRestart:
       sessionReady &&

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { isSessionExecutionTerminal } from '@my-code-x/contracts';
+import { isChatTurnTerminal } from '@my-code-x/contracts';
 
 import { clearTranscriptCache, persistTranscriptCache } from '../lib/transcript-cache-storage';
 import type { ChatRuntimeState } from '../state/chat-runtime-state';
@@ -10,17 +10,17 @@ export function useTranscriptCache(state: ChatRuntimeState) {
       return;
     }
 
-    if (isSessionExecutionTerminal(state.turnExecution)) {
+    if (isChatTurnTerminal(state.latestTurn)) {
       persistTranscriptCache({
         workspace: state.workspace,
         threadId: state.threadId,
         threadName: state.threadName,
-        turnExecution: state.turnExecution,
+        latestTurn: state.latestTurn,
         messages: state.messages,
       });
       return;
     }
 
     clearTranscriptCache(state.threadId);
-  }, [state.messages, state.threadId, state.threadName, state.turnExecution, state.workspace]);
+  }, [state.latestTurn, state.messages, state.threadId, state.threadName, state.workspace]);
 }

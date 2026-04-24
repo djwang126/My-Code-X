@@ -58,8 +58,8 @@ export function createSessionEventHandlers({
       handlePayload: payload => {
         logClientStreamDebug('snapshot_received', {
           threadId: payload.threadId,
-          activeTurnId: payload.turnExecution.activeTurnId,
-          turnLifecycle: payload.turnExecution.turnLifecycle,
+          turnId: payload.latestTurn?.id ?? null,
+          turnStatus: payload.latestTurn?.status ?? null,
           messageCount: Array.isArray(payload.messages) ? payload.messages.length : 0,
         });
         dispatch({ type: 'stream/snapshot', payload });
@@ -94,8 +94,8 @@ export function createSessionEventHandlers({
       handlePayload: (payload: SessionStreamTurnStarted) => {
         logClientStreamDebug('turn_started_received', {
           threadId: payload.threadId,
-          turnId: payload.turnExecution.activeTurnId,
-          turnLifecycle: payload.turnExecution.turnLifecycle,
+          turnId: payload.turn.id,
+          turnStatus: payload.turn.status,
         });
         dispatch({ type: 'stream/turn-started', payload });
       },
@@ -220,8 +220,8 @@ export function createSessionEventHandlers({
       handlePayload: (payload: SessionStreamTurnCompleted) => {
         logClientStreamDebug('turn_completed_received', {
           threadId: payload.threadId,
-          turnId: payload.turnExecution.activeTurnId,
-          turnLifecycle: payload.turnExecution.turnLifecycle,
+          turnId: payload.turn.id,
+          turnStatus: payload.turn.status,
         });
         dispatch({ type: 'stream/turn-completed', payload });
       },

@@ -5,7 +5,7 @@ import {
   MockEventSource,
   createSessionResponse,
   http,
-  registerChatRuntimeTestLifecycle,
+  registerChatRuntimeTestEnvironment,
   renderApp as render,
   screen,
   sessionGateServer as server,
@@ -15,7 +15,7 @@ import {
 } from './test/chatRuntimeTestHarness';
 import { within } from '@testing-library/react';
 
-registerChatRuntimeTestLifecycle();
+registerChatRuntimeTestEnvironment();
 
 describe('ChatRuntime transcript turn continuity', () => {
   it('does not render the new user message before the backend accepts the send', async () => {
@@ -59,10 +59,14 @@ describe('ChatRuntime transcript turn continuity', () => {
     completeSend(
       HttpResponse.json({
         threadId: 'thread-turn-gated',
-        turnExecution: {
-          activeTurnId: 'turn-turn-gated',
-          turnLifecycle: 'running',
-        },
+        latestTurn: {
+        id: 'turn-turn-gated',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
         stream: {
           url: '/api/v2/chat/events?slotId=tab-turn-gated&threadId=thread-turn-gated',
         },
@@ -84,10 +88,14 @@ describe('ChatRuntime transcript turn continuity', () => {
       http.post('/api/v2/chat/message', () =>
         HttpResponse.json({
           threadId: 'thread-turn-visible',
-          turnExecution: {
-            activeTurnId: 'turn-turn-visible',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-turn-visible',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-turn-visible&threadId=thread-turn-visible',
           },

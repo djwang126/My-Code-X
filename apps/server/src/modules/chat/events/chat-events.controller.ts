@@ -2,7 +2,6 @@ import { createChatEventsSnapshotPayload } from '../contracts/chat.contract.js';
 import { serializeTimelineItemForPublic } from '../contracts/timeline-item.contract.js';
 import { createHttpError } from '../../../common/errors/http-error.js';
 import { getRequestUrl, sendRouteError, sendValidationError } from '../../../common/http/route-helpers.js';
-import { serializeSessionTurnExecution } from '@my-code-x/contracts';
 const STREAM_DEBUG_ENABLED = process.env.MY_CODE_X_DEBUG_STREAM_TIMING === '1' || process.env.MY_CODE_X_DEBUG_STREAM_TIMING === 'true';
 const STREAM_HEARTBEAT_MS = Number.parseInt(process.env.MY_CODE_X_SSE_HEARTBEAT_MS || '15000', 10);
 function logStreamDebug(stage: any, details: any = {}) {
@@ -49,8 +48,8 @@ function readEventDebugTurnId(event: any) {
     if ('turnId' in event) {
         return event.turnId ?? null;
     }
-    if ('turnExecution' in event) {
-        return event.turnExecution?.activeTurnId ?? null;
+    if ('turn' in event) {
+        return event.turn?.id ?? null;
     }
     return null;
 }
@@ -79,14 +78,11 @@ export function handleChatEventsRoute(request: any, response: any, { chatService
         'Content-Encoding': 'identity',
     });
     response.flushHeaders?.();
-    const turnExecution = serializeSessionTurnExecution(runtime.turnExecution, {
-        fieldName: 'chat events route session turn execution',
-    });
     logStreamDebug('connect', {
         slotId,
         threadId,
         messageCount: Array.isArray(runtime.messages) ? runtime.messages.length : 0,
-        turnLifecycle: turnExecution.turnLifecycle,
+        turnStatus: runtime.latestTurn?.status ?? null,
     });
     const snapshotWriteOk = writeSseEvent(response, 'snapshot', createChatEventsSnapshotPayload(runtime));
     logStreamDebug('snapshot_written', {
@@ -94,7 +90,7 @@ export function handleChatEventsRoute(request: any, response: any, { chatService
         threadId,
         writeOk: snapshotWriteOk,
         messageCount: Array.isArray(runtime.messages) ? runtime.messages.length : 0,
-        turnLifecycle: turnExecution.turnLifecycle,
+        turnStatus: runtime.latestTurn?.status ?? null,
     });
     const unsubscribe = chatService.subscribe({ slotId, threadId }, (event: any) => {
         const publicEvent = serializeChatEventForPublic(event);

@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { setupServer } from 'msw/node';
 
-import { postChatMessage } from './api/session-turn-api';
+import { postChatMessage } from './api/chat-turn-api';
 
 const server = setupServer();
 
@@ -19,10 +19,14 @@ describe('postChatMessage image attachments', () => {
         requestBody = (await request.json()) as Record<string, unknown>;
         return HttpResponse.json({
           threadId: 'thread-22',
-          turnExecution: {
-            activeTurnId: 'turn-9',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-9',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           stream: {
             url: '/api/v2/chat/events?slotId=tab-5&threadId=thread-22',
           },

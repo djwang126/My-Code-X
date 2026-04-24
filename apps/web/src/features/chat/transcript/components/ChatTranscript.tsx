@@ -15,7 +15,7 @@ const previewImageStyle: CSSProperties = {
 export function ChatTranscript({
   fallbackPendingRequests,
   inlineRequestsByMessageId,
-  turnExecution,
+  latestTurn,
   currentThreadId = '',
   proposedPlanActionTurnId = null,
   showProposedPlanAction = false,
@@ -34,7 +34,6 @@ export function ChatTranscript({
 }: ChatTranscriptProps) {
   const [previewImage, setPreviewImage] = useState<TranscriptImagePreview | null>(null);
   const showMessageLevelProposedPlanAction = Boolean(showProposedPlanAction && proposedPlanActionTurnId);
-  const currentTurnExecution = turnExecution;
 
   return (
     <section
@@ -51,7 +50,7 @@ export function ChatTranscript({
               key={request.id}
               onRequestResponse={onRequestResponse}
               request={request}
-              turnExecution={currentTurnExecution}
+              latestTurn={latestTurn}
             />
           ))}
         </section>
@@ -84,7 +83,7 @@ export function ChatTranscript({
                         key={request.id}
                         onRequestResponse={onRequestResponse}
                         request={request}
-                        turnExecution={currentTurnExecution}
+                        latestTurn={latestTurn}
                       />
                     ))}
                   </section>
@@ -146,7 +145,7 @@ export function ChatTranscript({
                       key={request.id}
                       onRequestResponse={onRequestResponse}
                       request={request}
-                      turnExecution={currentTurnExecution}
+                      latestTurn={latestTurn}
                     />
                   ))}
                 </section>

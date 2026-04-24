@@ -90,9 +90,13 @@ test('threadless auth refresh requests are attached to the active slot session a
     {
       type: 'turn_started',
       threadId: 'thread-1',
-      turnExecution: {
-        activeTurnId: 'turn-1',
-        turnLifecycle: 'running',
+      latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
       },
     },
     {
@@ -139,10 +143,14 @@ test('threadless requests move to the new slot session when another slot takes o
       async resumeThread({ threadId }) {
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: 'turn-1',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [],
           pendingRequests: [],
         };

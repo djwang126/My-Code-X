@@ -15,10 +15,14 @@ test('hydrateSession allows a different slot to attach to a live in-memory threa
         calls.push({ method: 'resumeThread', threadId });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: 'turn-1',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [
             createUserTimelineMessage({ threadId, turnId: 'turn-1', text: 'hello codex' }),
             createAssistantTimelineMessage({ threadId, turnId: 'turn-1', text: 'partial reply', state: 'streaming' }),
@@ -47,7 +51,7 @@ test('hydrateSession allows a different slot to attach to a live in-memory threa
 
   assert.deepEqual(calls, [{ method: 'resumeThread', threadId: 'thread-1' }]);
   assert.equal(result.threadId, 'thread-1');
-  assert.equal(result.turnExecution.turnLifecycle, 'running');
+  assert.equal(result.latestTurn?.status, 'running');
   assert.equal(service.getSessionState({ slotId: 'slot-1', threadId: 'thread-1' }), null);
   assert.equal(service.getSessionState({ slotId: 'slot-2', threadId: 'thread-1' })?.threadId, 'thread-1');
 });
@@ -63,10 +67,14 @@ test('hydrateSession allows a different slot to take over a completed thread', a
         calls.push({ method: 'resumeThread', threadId });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: 'turn-1',
-            turnLifecycle: 'completed',
-          },
+          latestTurn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [
             createUserTimelineMessage({ threadId, turnId: 'turn-1', text: 'hello codex' }),
             createAssistantTimelineMessage({ threadId, turnId: 'turn-1', text: 'done now', state: 'complete' }),
@@ -105,7 +113,7 @@ test('hydrateSession allows a different slot to take over a completed thread', a
 
   assert.deepEqual(calls, [{ method: 'resumeThread', threadId: 'thread-1' }]);
   assert.equal(result.threadId, 'thread-1');
-  assert.equal(result.turnExecution.turnLifecycle, 'completed');
+  assert.equal(result.latestTurn?.status, 'completed');
   assert.equal(service.getSessionState({ slotId: 'slot-1', threadId: 'thread-1' }), null);
   assert.equal(service.getSessionState({ slotId: 'slot-2', threadId: 'thread-1' })?.threadId, 'thread-1');
 });
@@ -121,10 +129,14 @@ test('sendMessage lets a different slot take over a live thread but still blocks
         calls.push({ method: 'resumeThread', threadId });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: 'turn-1',
-            turnLifecycle: 'running',
-          },
+          latestTurn: {
+        id: 'turn-1',
+        status: 'inProgress',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [
             createUserTimelineMessage({ threadId, turnId: 'turn-1', text: 'hello codex' }),
             createAssistantTimelineMessage({ threadId, turnId: 'turn-1', text: 'partial reply', state: 'streaming' }),
@@ -161,7 +173,7 @@ test('sendMessage lets a different slot take over a live thread but still blocks
     { method: 'resumeThread', threadId: 'thread-1' },
   ]);
   assert.equal(service.getSessionState({ slotId: 'slot-1', threadId: 'thread-1' }), null);
-  assert.equal(service.getSessionState({ slotId: 'slot-2', threadId: 'thread-1' })?.turnExecution.turnLifecycle, 'running');
+  assert.equal(service.getSessionState({ slotId: 'slot-2', threadId: 'thread-1' })?.latestTurn?.status, 'running');
 });
 
 test('sendMessage allows a different slot to continue a completed thread', async () => {
@@ -175,10 +187,14 @@ test('sendMessage allows a different slot to continue a completed thread', async
         calls.push({ method: 'resumeThread', threadId });
         return {
           threadId,
-          turnExecution: {
-            activeTurnId: 'turn-1',
-            turnLifecycle: 'completed',
-          },
+          latestTurn: {
+        id: 'turn-1',
+        status: 'completed',
+        error: null,
+        startedAt: null,
+        completedAt: null,
+        durationMs: null,
+      },
           messages: [
             createUserTimelineMessage({ threadId, turnId: 'turn-1', text: 'hello codex' }),
             createAssistantTimelineMessage({ threadId, turnId: 'turn-1', text: 'done now', state: 'complete' }),
@@ -223,7 +239,7 @@ test('sendMessage allows a different slot to continue a completed thread', async
     { method: 'startTurn', threadId: 'thread-1', text: 'follow up' },
   ]);
   assert.equal(result.threadId, 'thread-1');
-  assert.equal(result.turnExecution.activeTurnId, 'turn-2');
+  assert.equal(result.latestTurn?.id, 'turn-2');
   assert.equal(service.getSessionState({ slotId: 'slot-1', threadId: 'thread-1' }), null);
-  assert.equal(service.getSessionState({ slotId: 'slot-2', threadId: 'thread-1' })?.turnExecution.activeTurnId, 'turn-2');
+  assert.equal(service.getSessionState({ slotId: 'slot-2', threadId: 'thread-1' })?.latestTurn?.id, 'turn-2');
 });
