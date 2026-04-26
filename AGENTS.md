@@ -13,7 +13,6 @@ Codex sessions/past chats lives in ~/.codex/sessions/{YYYY}/{MM}/{DD}/rollout-{t
 ## core code principles
 
 - follow guidance of the mighty Rob Pike to design code and data structure.
-- no code should exceed 300 lines unless there is a strong reason
 - one file should do one job/responsibility
 - one folder should represent one responsibility
 - feature code should stay inside the feature unless it is clearly reused

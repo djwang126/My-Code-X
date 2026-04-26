@@ -6,6 +6,7 @@
   "workspaces": [
     "apps/web",
     "apps/server",
+    "apps/server-new",
     "packages/contracts",
     "packages/utils"
   ],
@@ -49,7 +50,10 @@
     "screenshot:mobile": "node scripts/screenshot-mobile.mjs",
     "compat:schema:snapshot": "node scripts/codex-upstream-compat.mjs snapshot-schema",
     "compat:schema:check": "node scripts/codex-upstream-compat.mjs check-schema",
-    "compat:report": "node scripts/codex-upstream-compat.mjs report"
+    "compat:report": "node scripts/codex-upstream-compat.mjs report",
+    "typecheck:server-new": "npm run typecheck --workspace @my-code-x/server-new",
+    "test:server-new": "npm run test --workspace @my-code-x/server-new",
+    "lint:server-new": "npm run lint --workspace @my-code-x/server-new"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
