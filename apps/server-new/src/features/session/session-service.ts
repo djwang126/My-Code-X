@@ -1,7 +1,6 @@
-import { createInitialSessionState } from './session-state.js';
+import { applySessionDomainEvent, createInitialSessionState } from './session-state.js';
 import type { SessionCommand, SessionDomainEvent, SessionRuntimeEvent, SessionSnapshot } from './session-events.js';
 import type { SessionDependencies } from './session-ports.js';
-import type { SessionState } from './session-state.js';
 
 export interface SessionService {
   open(input: SessionCommand): Promise<SessionSnapshot>;
@@ -11,12 +10,27 @@ export interface SessionService {
 }
 
 function interpretSessionRuntimeEvent(event: SessionRuntimeEvent): SessionDomainEvent {
-  return event;
-}
+  switch (event.kind) {
+    case 'runtime-input-requested':
+      return {
+        kind: 'session-input-requested',
+        requestId: event.requestId,
+        threadId: event.threadId,
+        prompt: event.prompt,
+      };
 
-function applySessionDomainEvent(input: { state: SessionState; event: SessionDomainEvent }): SessionState {
-  void input.state;
-  return input.event;
+    case 'runtime-error':
+      return {
+        kind: 'session-runtime-failed',
+        message: event.error.message,
+      };
+
+    case 'runtime-system-notice':
+      return {
+        kind: 'session-notice-received',
+        message: event.message,
+      };
+  }
 }
 
 export function createSessionService(dependencies: SessionDependencies): SessionService {
@@ -24,7 +38,7 @@ export function createSessionService(dependencies: SessionDependencies): Session
 
   return {
     async open(input: SessionCommand): Promise<SessionSnapshot> {
-      await dependencies.runtime.send(input);
+      state = { ...state, sessionId: input.sessionId };
       return state;
     },
 

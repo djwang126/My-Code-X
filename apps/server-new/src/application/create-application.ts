@@ -4,6 +4,17 @@ import type { SessionCommand, SessionService, SessionSnapshot } from '../feature
 import type { ThreadCommand, ThreadService, ThreadSnapshot } from '../features/thread/index.js';
 import type { WorkspaceCommand, WorkspaceService, WorkspaceSnapshot } from '../features/workspace/index.js';
 
+export type ApplicationAppControlCommand = AppControlCommand;
+export type ApplicationAppControlResult = AppControlResult;
+export type ApplicationChatCommand = ChatCommand;
+export type ApplicationChatSnapshot = ChatSnapshot;
+export type ApplicationSessionCommand = SessionCommand;
+export type ApplicationSessionSnapshot = SessionSnapshot;
+export type ApplicationThreadCommand = ThreadCommand;
+export type ApplicationThreadSnapshot = ThreadSnapshot;
+export type ApplicationWorkspaceCommand = WorkspaceCommand;
+export type ApplicationWorkspaceSnapshot = WorkspaceSnapshot;
+
 export interface ApplicationInput {
   appControl: AppControlService;
   chat: ChatService;
@@ -13,32 +24,32 @@ export interface ApplicationInput {
 }
 
 export interface ApplicationService {
-  runAppControl(input: AppControlCommand): Promise<AppControlResult>;
-  runChat(input: ChatCommand): Promise<ChatSnapshot>;
-  runSession(input: SessionCommand): Promise<SessionSnapshot>;
-  runThread(input: ThreadCommand): Promise<ThreadSnapshot>;
-  runWorkspace(input: WorkspaceCommand): Promise<WorkspaceSnapshot>;
+  runAppControl(input: ApplicationAppControlCommand): Promise<ApplicationAppControlResult>;
+  runChat(input: ApplicationChatCommand): Promise<ApplicationChatSnapshot>;
+  runSession(input: ApplicationSessionCommand): Promise<ApplicationSessionSnapshot>;
+  runThread(input: ApplicationThreadCommand): Promise<ApplicationThreadSnapshot>;
+  runWorkspace(input: ApplicationWorkspaceCommand): Promise<ApplicationWorkspaceSnapshot>;
 }
 
 export function createApplication(input: ApplicationInput): ApplicationService {
   return {
-    runAppControl(command: AppControlCommand): Promise<AppControlResult> {
+    runAppControl(command: ApplicationAppControlCommand): Promise<ApplicationAppControlResult> {
       return input.appControl.restart(command);
     },
 
-    runChat(command: ChatCommand): Promise<ChatSnapshot> {
+    runChat(command: ApplicationChatCommand): Promise<ApplicationChatSnapshot> {
       return input.chat.send(command);
     },
 
-    runSession(command: SessionCommand): Promise<SessionSnapshot> {
+    runSession(command: ApplicationSessionCommand): Promise<ApplicationSessionSnapshot> {
       return input.session.open(command);
     },
 
-    runThread(command: ThreadCommand): Promise<ThreadSnapshot> {
+    runThread(command: ApplicationThreadCommand): Promise<ApplicationThreadSnapshot> {
       return input.thread.start(command);
     },
 
-    runWorkspace(command: WorkspaceCommand): Promise<WorkspaceSnapshot> {
+    runWorkspace(command: ApplicationWorkspaceCommand): Promise<ApplicationWorkspaceSnapshot> {
       return input.workspace.inspect(command);
     },
   };

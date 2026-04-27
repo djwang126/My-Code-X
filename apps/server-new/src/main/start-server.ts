@@ -6,7 +6,7 @@ export interface StartedServer {
 }
 
 export async function startServer(): Promise<StartedServer> {
-  const composition = createAppComposition();
+  const composition = await createAppComposition();
   registerShutdown(composition);
 
   return {

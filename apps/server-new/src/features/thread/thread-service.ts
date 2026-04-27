@@ -1,7 +1,7 @@
-import { createInitialThreadState } from './thread-state.js';
+import { applyThreadDomainEvent, createInitialThreadState } from './thread-state.js';
 import type { ThreadCommand, ThreadDomainEvent, ThreadRuntimeEvent, ThreadSnapshot } from './thread-events.js';
 import type { ThreadDependencies } from './thread-ports.js';
-import type { ThreadState } from './thread-state.js';
+import type { RuntimeCommand } from '../../ports/index.js';
 
 export interface ThreadService {
   start(input: ThreadCommand): Promise<ThreadSnapshot>;
@@ -9,13 +9,41 @@ export interface ThreadService {
   snapshot(): ThreadSnapshot;
 }
 
-function interpretThreadRuntimeEvent(event: ThreadRuntimeEvent): ThreadDomainEvent {
-  return event;
+function toRuntimeCommand(command: ThreadCommand): RuntimeCommand {
+  switch (command.kind) {
+    case 'create-thread':
+      return {
+        kind: 'start-thread',
+        workspace: command.workspace,
+        runtimeSettings: command.runtimeSettings,
+        baseInstructions: command.baseInstructions,
+      };
+
+    case 'open-thread':
+      return {
+        kind: 'resume-thread',
+        threadId: command.threadId,
+        workspace: command.workspace,
+        runtimeSettings: command.runtimeSettings,
+        baseInstructions: command.baseInstructions,
+      };
+
+    case 'list-workspace-threads':
+      return {
+        kind: 'list-threads',
+        workspace: command.workspace,
+        limit: command.limit,
+        archived: command.archived,
+      };
+  }
 }
 
-function applyThreadDomainEvent(input: { state: ThreadState; event: ThreadDomainEvent }): ThreadState {
-  void input.state;
-  return input.event;
+function interpretThreadRuntimeEvent(event: ThreadRuntimeEvent): ThreadDomainEvent {
+  return {
+    kind: 'thread-turn-attached',
+    threadId: event.threadId,
+    turnId: event.turnId,
+  };
 }
 
 export function createThreadService(dependencies: ThreadDependencies): ThreadService {
@@ -23,7 +51,16 @@ export function createThreadService(dependencies: ThreadDependencies): ThreadSer
 
   return {
     async start(input: ThreadCommand): Promise<ThreadSnapshot> {
-      await dependencies.runtime.send(input);
+      const result = await dependencies.runtime.send(toRuntimeCommand(input));
+
+      if (result.kind === 'thread-started' || result.kind === 'thread-resumed') {
+        state = applyThreadDomainEvent({ state, event: { kind: 'thread-started', threadId: result.threadId } });
+      }
+
+      if (result.kind === 'threads-listed') {
+        state = applyThreadDomainEvent({ state, event: { kind: 'threads-listed', threads: result.threads } });
+      }
+
       return state;
     },
 
