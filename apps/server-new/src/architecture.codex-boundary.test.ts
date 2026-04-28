@@ -112,14 +112,44 @@ test('codex adapter public entrypoint does not export transport, protocol, or no
   assert.deepEqual(matches, []);
 });
 
-test('codex adapter implementation does not mention chat/session ownership or HTTP boundary concepts', async () => {
+test('codex adapter implementation does not mention conversation/session ownership or HTTP boundary concepts', async () => {
   const sourceFiles = (await readSourceFiles([path.join('adapters', 'codex')])).filter(
     sourceFile => !sourceFile.relativePath.endsWith('.test.ts'),
   );
   const matches = findForbiddenMatches(
     sourceFiles,
-    /\b(viewerId|slotId|ChatSession|chat session|HttpRequest|HttpResponse|controller)\b/g,
+    /\b(viewerId|slotId|ConversationSession|conversation session|HttpRequest|HttpResponse|controller)\b/g,
   );
+
+  assert.deepEqual(matches, []);
+});
+
+test('frontend contracts do not expose adapter or transport vocabulary', async () => {
+  const sourceFiles = await readSourceFiles(['contracts']);
+  const matches = findForbiddenMatches(
+    sourceFiles,
+    /\b(Codex|method|params|jsonrpc|deltaField|raw|item\/agentMessage|thread\/realtime\/error)\b/g,
+  );
+
+  assert.deepEqual(matches, []);
+});
+
+test('client input boundary does not predeclare runtime command fields', async () => {
+  const sourceFiles = await readSourceFiles(['http', 'application']);
+  const matches = findForbiddenMatches(
+    sourceFiles,
+    /\b(RuntimeContentItem|RuntimeSettings|runtimeSettings|sandboxMode|reasoningEffort|approvalPolicy|promptOverride|baseInstructions|imagePath)\b/g,
+  );
+
+  assert.deepEqual(matches, []);
+});
+
+test('thread public state does not export runtime thread records', async () => {
+  const sourceFiles = await readSourceFiles([path.join('features', 'thread')]);
+  const publicSourceFiles = sourceFiles.filter(
+    sourceFile => sourceFile.relativePath.endsWith('thread-events.ts') || sourceFile.relativePath.endsWith('index.ts'),
+  );
+  const matches = findForbiddenMatches(publicSourceFiles, /\bRuntimeThread\b/g);
 
   assert.deepEqual(matches, []);
 });

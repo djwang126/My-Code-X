@@ -1,7 +1,7 @@
 import { applyThreadDomainEvent, createInitialThreadState } from './thread-state.js';
-import type { ThreadCommand, ThreadDomainEvent, ThreadRuntimeEvent, ThreadSnapshot } from './thread-events.js';
+import type { ThreadCommand, ThreadDomainEvent, ThreadRuntimeEvent, ThreadSnapshot, ThreadSummary } from './thread-events.js';
 import type { ThreadDependencies } from './thread-ports.js';
-import type { RuntimeCommand } from '../../ports/index.js';
+import type { RuntimeCommand, RuntimeThread } from '../../ports/index.js';
 
 export interface ThreadService {
   start(input: ThreadCommand): Promise<ThreadSnapshot>;
@@ -58,7 +58,10 @@ export function createThreadService(dependencies: ThreadDependencies): ThreadSer
       }
 
       if (result.kind === 'threads-listed') {
-        state = applyThreadDomainEvent({ state, event: { kind: 'threads-listed', threads: result.threads } });
+        state = applyThreadDomainEvent({
+          state,
+          event: { kind: 'threads-listed', threads: result.threads.map(mapRuntimeThreadSummary) },
+        });
       }
 
       return state;
@@ -73,5 +76,14 @@ export function createThreadService(dependencies: ThreadDependencies): ThreadSer
     snapshot(): ThreadSnapshot {
       return state;
     },
+  };
+}
+
+function mapRuntimeThreadSummary(thread: RuntimeThread): ThreadSummary {
+  return {
+    threadId: thread.threadId,
+    title: thread.title,
+    workspace: thread.workspace,
+    updatedAt: thread.updatedAt,
   };
 }

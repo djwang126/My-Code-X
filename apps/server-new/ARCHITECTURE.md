@@ -7,12 +7,14 @@ runtime payloads, and migration details are introduced.
 ## Core lifecycle split
 
 ```text
-session lifetime != thread lifetime != chat execution lifetime
+session lifetime != thread lifetime != turn lifetime != conversation timeline != runtime request lifetime
 ```
 
 - `features/session` owns live interaction context lifetime.
 - `features/thread` owns durable conversation-line management.
-- `features/chat` owns execution of one chat exchange.
+- `features/turn` owns one active execution lifecycle.
+- `features/conversation` owns the client-visible timeline.
+- `features/runtime-request` owns runtime requests waiting on user input.
 
 These lifecycles may be coordinated, but they are not owned by one broad service.
 
@@ -44,8 +46,28 @@ application results into HTTP output. They do not coordinate feature services.
 
 Cross-feature use-case orchestration.
 
-If a flow needs session, thread, chat, workspace, or app-control together, that
-coordination belongs here.
+If a flow needs session, thread, turn, conversation, runtime requests, workspace,
+or app-control together, that coordination belongs here.
+
+Application receives client intent and coordinates features. It must not make
+HTTP input mirror runtime command fields. Runtime command details are introduced
+inside the use case only when the real behavior is migrated.
+
+### `contracts`
+
+Frontend-facing product contracts.
+
+Contracts describe client actions, snapshots, events, action results, timeline
+items, pending interactions, and turn views. They must not expose adapter,
+transport, or raw runtime protocol vocabulary.
+
+### `presenter`
+
+Frontend-facing projection.
+
+Presenters convert feature-owned state and domain events into `contracts`
+shapes. They are the only layer that should decide how domain state appears to
+the client.
 
 ### `features/*`
 
@@ -59,7 +81,7 @@ belongs in `application`.
 Concrete implementations of external or process-local capabilities.
 
 `adapters/codex` turns the external Codex process/protocol into a `RuntimePort`.
-It must not know about chat, session, thread, HTTP, or application use cases.
+It must not know about conversation, session, thread, HTTP, or application use cases.
 
 ### `ports`
 
@@ -71,8 +93,8 @@ Ports let features depend on capabilities without depending on concrete adapters
 
 Pure project-wide building blocks only.
 
-If a file knows a business lifecycle such as session, thread, chat, workspace,
-app-control, or Codex, it does not belong in `shared`.
+If a file knows a business lifecycle such as session, thread, turn, conversation,
+runtime request, workspace, app-control, or Codex, it does not belong in `shared`.
 
 ## Import rules
 
@@ -88,13 +110,24 @@ main -> ports
 main -> shared
 
 http -> application
+http -> contracts
 http -> shared
 http -> http
 
 application -> features/*
+application -> contracts
 application -> ports
+application -> presenter
 application -> shared
 application -> application
+
+contracts -> contracts
+contracts -> shared
+
+presenter -> presenter
+presenter -> contracts
+presenter -> features/*
+presenter -> shared
 
 features/<name> -> features/<same-name>
 features/<name> -> ports
@@ -146,9 +179,13 @@ The owner of a lifecycle owns the state for that lifecycle.
 ```text
 session state -> features/session
 thread state  -> features/thread
-chat state    -> features/chat
+turn state    -> features/turn
+timeline state -> features/conversation
+pending runtime input state -> features/runtime-request
 runtime process/protocol -> adapters/codex
 request/response mapping -> http
+client-facing contracts -> contracts
+frontend projection -> presenter
 cross-feature orchestration -> application
 startup wiring -> main
 ```
@@ -176,11 +213,17 @@ runtime event -> feature interpretation -> domain event -> state update -> event
 
 Concrete event fields can be introduced later. The separation of names and
 direction exists now so raw runtime payloads do not leak through the application.
+The skeleton intentionally does not yet project runtime output into conversation
+items or runtime input requests into client controls. Those mappings must be
+migrated with the real feature behavior and focused tests.
 
 ## Public API rules
 
 - Package root exports startup-facing API only.
 - HTTP depends on application use cases, not feature services.
-- Application depends on feature public APIs.
+- Application depends on feature public APIs, contracts, and presenters.
 - Feature public APIs do not expose internal state.
 - Adapters implement ports and do not import features.
+- Client action input does not predeclare runtime command fields.
+- Placeholder use cases throw `SkeletonMigrationPendingError` rather than
+  returning fake product behavior.

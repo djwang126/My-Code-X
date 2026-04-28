@@ -1,4 +1,4 @@
-import type { RuntimeSettings, RuntimeThread, RuntimeTurnStartedEvent } from '../../ports/index.js';
+import type { RuntimeSettings, RuntimeTurnStartedEvent } from '../../ports/index.js';
 
 export type ThreadCommand = CreateThreadCommand | OpenThreadCommand | ListWorkspaceThreadsCommand;
 
@@ -41,11 +41,18 @@ export interface ThreadTurnAttachedEvent {
 
 export interface ThreadsListedEvent {
   readonly kind: 'threads-listed';
-  readonly threads: readonly RuntimeThread[];
+  readonly threads: readonly ThreadSummary[];
 }
 
 export interface ThreadSnapshot {
   readonly currentThreadId: string | null;
   readonly activeTurnId: string | null;
-  readonly threads: readonly RuntimeThread[];
+  readonly threads: readonly ThreadSummary[];
+}
+
+export interface ThreadSummary {
+  readonly threadId: string;
+  readonly title: string | null;
+  readonly workspace: string | null;
+  readonly updatedAt: string | null;
 }

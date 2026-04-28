@@ -2,10 +2,11 @@ import { createCodexRuntime } from '../adapters/codex/index.js';
 import { createEventBus } from '../adapters/memory/index.js';
 import { createApplication, createRuntimeEventCoordinator } from '../application/index.js';
 import { loadConfig } from '../config/index.js';
-import { createAppControlService } from '../features/app-control/index.js';
-import { createChatService } from '../features/chat/index.js';
+import { createConversationService } from '../features/conversation/index.js';
+import { createRuntimeRequestService } from '../features/runtime-request/index.js';
 import { createSessionService } from '../features/session/index.js';
 import { createThreadService } from '../features/thread/index.js';
+import { createTurnService } from '../features/turn/index.js';
 import { createWorkspaceService } from '../features/workspace/index.js';
 import { createHttpApp } from '../http/index.js';
 import type { HttpHandler } from '../http/index.js';
@@ -21,13 +22,15 @@ export async function createAppComposition(): Promise<AppComposition> {
   const runtime = await createCodexRuntime({ options: config.codex });
   const session = createSessionService({ events });
   const thread = createThreadService({ runtime, events });
-  const chat = createChatService({ runtime, events });
+  const conversation = createConversationService({ events });
+  const runtimeRequests = createRuntimeRequestService({ events });
+  const turn = createTurnService({ events });
   const workspace = createWorkspaceService();
-  const appControl = createAppControlService();
-  const application = createApplication({ appControl, chat, session, thread, workspace });
-  const runtimeEvents = createRuntimeEventCoordinator({ chat, session, thread });
+  const application = createApplication({ conversation, runtime, runtimeRequests, session, thread, turn, workspace });
+  const runtimeEvents = createRuntimeEventCoordinator({ session, thread, turn });
   const unsubscribeRuntimeEvents = runtime.subscribe(runtimeEvents.receive);
   const http = createHttpApp({ application });
+
 
   return {
     http,
@@ -39,3 +42,4 @@ export async function createAppComposition(): Promise<AppComposition> {
     },
   };
 }
+

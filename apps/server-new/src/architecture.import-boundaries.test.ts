@@ -1,4 +1,4 @@
-﻿import assert from 'node:assert/strict';
+import assert from 'node:assert/strict';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -23,15 +23,19 @@ const importPattern = /^import\s+(?:type\s+)?(?:[^'";]+?\s+from\s+)?['"]([^'"]+)
 const allowedBoundaryImports: Record<string, readonly string[]> = {
   'adapters/codex': ['adapters/codex', 'ports', 'shared'],
   'adapters/memory': ['adapters/memory', 'ports', 'shared'],
-  application: ['application', 'features/*', 'ports', 'shared'],
+  application: ['application', 'contracts', 'features/*', 'ports', 'presenter', 'shared'],
   config: ['config', 'shared'],
+  contracts: ['contracts', 'shared'],
   'features/app-control': ['features/app-control', 'ports', 'shared'],
-  'features/chat': ['features/chat', 'ports', 'shared'],
+  'features/conversation': ['features/conversation', 'ports', 'shared'],
+  'features/runtime-request': ['features/runtime-request', 'ports', 'shared'],
   'features/session': ['features/session', 'ports', 'shared'],
   'features/thread': ['features/thread', 'ports', 'shared'],
+  'features/turn': ['features/turn', 'ports', 'shared'],
   'features/workspace': ['features/workspace', 'ports', 'shared'],
-  http: ['http', 'application', 'shared'],
+  http: ['http', 'application', 'contracts', 'shared'],
   main: ['main', 'config', 'http', 'application', 'features/*', 'adapters/*', 'ports', 'shared'],
+  presenter: ['presenter', 'contracts', 'features/*', 'shared'],
   ports: ['ports', 'shared'],
   shared: ['shared'],
   root: ['main'],

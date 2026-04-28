@@ -2,48 +2,22 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import { createRuntimeEventCoordinator } from './runtime-event-coordinator.js';
-import type { ChatService } from '../features/chat/index.js';
 import type { SessionService } from '../features/session/index.js';
 import type { ThreadService } from '../features/thread/index.js';
+import type { TurnCommand, TurnService } from '../features/turn/index.js';
 import type { RuntimeEvent } from '../ports/index.js';
 
 interface CoordinatorFixture {
-  readonly chatEvents: readonly RuntimeEvent[];
   readonly sessionEvents: readonly RuntimeEvent[];
   readonly threadEvents: readonly RuntimeEvent[];
+  readonly turnCommands: readonly TurnCommand[];
   readonly coordinator: ReturnType<typeof createRuntimeEventCoordinator>;
 }
 
 function createCoordinatorFixture(): CoordinatorFixture {
-  const chatEvents: RuntimeEvent[] = [];
   const sessionEvents: RuntimeEvent[] = [];
   const threadEvents: RuntimeEvent[] = [];
-
-  const chat: ChatService = {
-    async send() {
-      return {
-        activeTurnId: null,
-        lastError: null,
-        latestText: '',
-        status: 'idle',
-        threadId: null,
-      };
-    },
-
-    receiveRuntimeEvent(event) {
-      chatEvents.push(event);
-    },
-
-    snapshot() {
-      return {
-        activeTurnId: null,
-        lastError: null,
-        latestText: '',
-        status: 'idle',
-        threadId: null,
-      };
-    },
-  };
+  const turnCommands: TurnCommand[] = [];
 
   const session: SessionService = {
     async open() {
@@ -93,16 +67,32 @@ function createCoordinatorFixture(): CoordinatorFixture {
     },
   };
 
+  const turn: TurnService = {
+    apply(input) {
+      turnCommands.push(input);
+      return input.kind === 'reset-turn'
+        ? { lifecycle: 'idle', activeTurnId: null }
+        : { lifecycle: 'starting', activeTurnId: input.turnId };
+    },
+
+    snapshot() {
+      return {
+        lifecycle: 'idle',
+        activeTurnId: null,
+      };
+    },
+  };
+
   return {
-    chatEvents,
-    coordinator: createRuntimeEventCoordinator({ chat, session, thread }),
+    coordinator: createRuntimeEventCoordinator({ session, thread, turn }),
     sessionEvents,
     threadEvents,
+    turnCommands,
   };
 }
 
 describe('createRuntimeEventCoordinator', () => {
-  test('routes runtime-turn-started events to chat and thread only', () => {
+  test('routes runtime-turn-started events to thread and turn', () => {
     const fixture = createCoordinatorFixture();
     const event: RuntimeEvent = {
       kind: 'runtime-turn-started',
@@ -112,12 +102,12 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.chatEvents, [event]);
     assert.deepEqual(fixture.threadEvents, [event]);
+    assert.deepEqual(fixture.turnCommands, [{ kind: 'start-turn', turnId: 'turn-1' }]);
     assert.deepEqual(fixture.sessionEvents, []);
   });
 
-  test('routes runtime-output-updated events to chat only', () => {
+  test('leaves runtime-output-updated projection to the conversation migration', () => {
     const fixture = createCoordinatorFixture();
     const event: RuntimeEvent = {
       itemId: 'item-1',
@@ -130,12 +120,12 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.chatEvents, [event]);
     assert.deepEqual(fixture.threadEvents, []);
     assert.deepEqual(fixture.sessionEvents, []);
+    assert.deepEqual(fixture.turnCommands, []);
   });
 
-  test('routes runtime-turn-completed events to chat only', () => {
+  test('routes runtime-turn-completed events to turn only', () => {
     const fixture = createCoordinatorFixture();
     const event: RuntimeEvent = {
       error: null,
@@ -147,12 +137,11 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.chatEvents, [event]);
-    assert.deepEqual(fixture.threadEvents, []);
+    assert.deepEqual(fixture.turnCommands, [{ kind: 'finish-turn', turnId: 'turn-1', outcome: 'completed' }]);
     assert.deepEqual(fixture.sessionEvents, []);
   });
 
-  test('routes runtime-input-requested events to chat and session only', () => {
+  test('routes runtime-input-requested events to session only until interaction migration', () => {
     const fixture = createCoordinatorFixture();
     const event: RuntimeEvent = {
       inputKind: 'approval',
@@ -165,12 +154,12 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.chatEvents, [event]);
     assert.deepEqual(fixture.sessionEvents, [event]);
     assert.deepEqual(fixture.threadEvents, []);
+    assert.deepEqual(fixture.turnCommands, []);
   });
 
-  test('routes runtime-error events to session only', () => {
+  test('routes runtime-error events to session and turn when a turn is present', () => {
     const fixture = createCoordinatorFixture();
     const event: RuntimeEvent = {
       error: {
@@ -185,7 +174,7 @@ describe('createRuntimeEventCoordinator', () => {
     fixture.coordinator.receive(event);
 
     assert.deepEqual(fixture.sessionEvents, [event]);
-    assert.deepEqual(fixture.chatEvents, []);
+    assert.deepEqual(fixture.turnCommands, [{ kind: 'finish-turn', turnId: 'turn-1', outcome: 'failed' }]);
     assert.deepEqual(fixture.threadEvents, []);
   });
 
@@ -201,7 +190,7 @@ describe('createRuntimeEventCoordinator', () => {
     fixture.coordinator.receive(event);
 
     assert.deepEqual(fixture.sessionEvents, [event]);
-    assert.deepEqual(fixture.chatEvents, []);
     assert.deepEqual(fixture.threadEvents, []);
+    assert.deepEqual(fixture.turnCommands, []);
   });
 });

@@ -1,56 +1,62 @@
-import type { AppControlCommand, AppControlResult, AppControlService } from '../features/app-control/index.js';
-import type { ChatCommand, ChatService, ChatSnapshot } from '../features/chat/index.js';
-import type { SessionCommand, SessionService, SessionSnapshot } from '../features/session/index.js';
-import type { ThreadCommand, ThreadService, ThreadSnapshot } from '../features/thread/index.js';
-import type { WorkspaceCommand, WorkspaceService, WorkspaceSnapshot } from '../features/workspace/index.js';
+import type { ClientActionResult, ClientSnapshot } from '../contracts/index.js';
+import type { ConversationService } from '../features/conversation/index.js';
+import type { RuntimeRequestService } from '../features/runtime-request/index.js';
+import type { SessionService } from '../features/session/index.js';
+import type { ThreadService } from '../features/thread/index.js';
+import type { TurnService } from '../features/turn/index.js';
+import type { WorkspaceService } from '../features/workspace/index.js';
+import type { RuntimePort } from '../ports/index.js';
+import { interruptClientTurn, type InterruptClientTurnInput } from './interrupt-client-turn.js';
+import { openClient, type OpenClientInput } from './open-client.js';
+import { respondClientInteraction, type RespondClientInteractionInput } from './respond-client-interaction.js';
+import { resumeClientThread, type ResumeClientThreadInput } from './resume-client-thread.js';
+import { sendClientMessage, type SendClientMessageInput } from './send-client-message.js';
 
-export type ApplicationAppControlCommand = AppControlCommand;
-export type ApplicationAppControlResult = AppControlResult;
-export type ApplicationChatCommand = ChatCommand;
-export type ApplicationChatSnapshot = ChatSnapshot;
-export type ApplicationSessionCommand = SessionCommand;
-export type ApplicationSessionSnapshot = SessionSnapshot;
-export type ApplicationThreadCommand = ThreadCommand;
-export type ApplicationThreadSnapshot = ThreadSnapshot;
-export type ApplicationWorkspaceCommand = WorkspaceCommand;
-export type ApplicationWorkspaceSnapshot = WorkspaceSnapshot;
+export type ApplicationOpenClientInput = OpenClientInput;
+export type ApplicationSendClientMessageInput = SendClientMessageInput;
+export type ApplicationResumeClientThreadInput = ResumeClientThreadInput;
+export type ApplicationRespondClientInteractionInput = RespondClientInteractionInput;
+export type ApplicationInterruptClientTurnInput = InterruptClientTurnInput;
 
 export interface ApplicationInput {
-  appControl: AppControlService;
-  chat: ChatService;
-  session: SessionService;
-  thread: ThreadService;
-  workspace: WorkspaceService;
+  readonly conversation: ConversationService;
+  readonly runtime: RuntimePort;
+  readonly runtimeRequests: RuntimeRequestService;
+  readonly session: SessionService;
+  readonly thread: ThreadService;
+  readonly turn: TurnService;
+  readonly workspace: WorkspaceService;
 }
 
 export interface ApplicationService {
-  runAppControl(input: ApplicationAppControlCommand): Promise<ApplicationAppControlResult>;
-  runChat(input: ApplicationChatCommand): Promise<ApplicationChatSnapshot>;
-  runSession(input: ApplicationSessionCommand): Promise<ApplicationSessionSnapshot>;
-  runThread(input: ApplicationThreadCommand): Promise<ApplicationThreadSnapshot>;
-  runWorkspace(input: ApplicationWorkspaceCommand): Promise<ApplicationWorkspaceSnapshot>;
+  openClient(input: ApplicationOpenClientInput): Promise<ClientSnapshot>;
+  sendClientMessage(input: ApplicationSendClientMessageInput): Promise<ClientActionResult>;
+  resumeClientThread(input: ApplicationResumeClientThreadInput): Promise<ClientActionResult>;
+  respondClientInteraction(input: ApplicationRespondClientInteractionInput): Promise<ClientActionResult>;
+  interruptClientTurn(input: ApplicationInterruptClientTurnInput): Promise<ClientActionResult>;
 }
 
 export function createApplication(input: ApplicationInput): ApplicationService {
   return {
-    runAppControl(command: ApplicationAppControlCommand): Promise<ApplicationAppControlResult> {
-      return input.appControl.restart(command);
+    openClient(command: ApplicationOpenClientInput): Promise<ClientSnapshot> {
+      return openClient({ input: command, dependencies: input });
     },
 
-    runChat(command: ApplicationChatCommand): Promise<ApplicationChatSnapshot> {
-      return input.chat.send(command);
+    sendClientMessage(command: ApplicationSendClientMessageInput): Promise<ClientActionResult> {
+      return sendClientMessage({ input: command, dependencies: input });
     },
 
-    runSession(command: ApplicationSessionCommand): Promise<ApplicationSessionSnapshot> {
-      return input.session.open(command);
+    resumeClientThread(command: ApplicationResumeClientThreadInput): Promise<ClientActionResult> {
+      return resumeClientThread({ input: command, dependencies: input });
     },
 
-    runThread(command: ApplicationThreadCommand): Promise<ApplicationThreadSnapshot> {
-      return input.thread.start(command);
+    respondClientInteraction(command: ApplicationRespondClientInteractionInput): Promise<ClientActionResult> {
+      return respondClientInteraction({ input: command, dependencies: input });
     },
 
-    runWorkspace(command: ApplicationWorkspaceCommand): Promise<ApplicationWorkspaceSnapshot> {
-      return input.workspace.inspect(command);
+    interruptClientTurn(command: ApplicationInterruptClientTurnInput): Promise<ClientActionResult> {
+      return interruptClientTurn({ input: command, dependencies: input });
     },
   };
 }
+

@@ -6,15 +6,15 @@ This folder is not a feature implementation. Its purpose is to describe the inte
 
 ## Why this skeleton exists
 
-The current server grew around one large chat-centered flow. Over time, several different lifecycles became mixed together:
+The current server grew around one large exchange-centered flow. Over time, several different lifecycles became mixed together:
 
 - whether an interaction context is alive
 - how conversation lines are created and managed
-- how one actual chat exchange runs
+- how one active turn runs
 - how Codex is reached as an external runtime
 - how HTTP requests are mapped into use cases
 
-Those concerns change for different reasons. Keeping them behind one broad chat service makes startup, state ownership, recovery, thread operations, and message execution hard to reason about.
+Those concerns change for different reasons. Keeping them behind one broad exchange service makes startup, state ownership, recovery, thread operations, and message execution hard to reason about.
 
 This skeleton separates the large concepts first. Concrete fields can come later.
 
@@ -23,7 +23,7 @@ This skeleton separates the large concepts first. Concrete fields can come later
 The most important split is:
 
 ```text
-session lifetime != thread lifetime != chat execution lifetime
+session lifetime != thread lifetime != turn lifetime != conversation timeline != runtime request lifetime
 ```
 
 ### `features/session`
@@ -50,20 +50,39 @@ It answers questions like:
 - how are line-level operations represented?
 - how is conversation history or structure managed?
 
-It should be thought of as the manager of durable conversation lines. It is not the owner of whether a live session exists, and it is not the owner of one chat exchange progressing from input to output.
+It should be thought of as the manager of durable conversation lines. It is not the owner of whether a live session exists, and it is not the owner of one turn progressing from input to output.
 
-### `features/chat`
+### `features/turn`
 
-`chat` owns the execution of an actual chat exchange.
+`turn` owns the lifecycle of one active execution.
 
 It answers questions like:
 
-- how does an input become a runtime command?
-- how are runtime events applied to an in-progress exchange?
-- how does the server produce a chat snapshot or chat event?
-- when is an exchange idle, active, completed, or failed?
+- when did the current execution start?
+- is the current execution running, waiting, completed, interrupted, or failed?
+- can the client send or interrupt right now?
 
-It should be thought of as the turn/exchange executor. It does not own the whole application conversation model.
+It should be thought of as the execution lifecycle owner. It does not own the whole application conversation model.
+
+### `features/conversation`
+
+`conversation` owns the client-visible timeline.
+
+It answers questions like:
+
+- what timeline items should the client see?
+- which item changed when runtime output arrived?
+- which item has deferred details?
+
+### `features/runtime-request`
+
+`runtime-request` owns runtime requests waiting on client input.
+
+It answers questions like:
+
+- what approval, form, authentication, or tool-response interaction is open?
+- is an interaction idle, submitting, resolved, or expired?
+- what response shape should the client submit?
 
 ## Other large boundaries
 
@@ -77,13 +96,13 @@ It is responsible for turning the external Codex process/protocol into a local `
 
 `http` owns request and response mapping.
 
-It should translate HTTP input into application-level commands and translate application results back into HTTP output. It should not become the place where session, thread, chat, or cross-feature behavior is implemented.
+It should translate HTTP input into application-level commands and translate application results back into HTTP output. It should not become the place where session, thread, turn, conversation, runtime-request, or cross-feature behavior is implemented.
 
 ### `application`
 
 `application` owns cross-feature use-case orchestration.
 
-It is the place where flows that need more than one feature should live. HTTP should call application use cases instead of coordinating session, thread, chat, workspace, or app-control services itself.
+It is the place where flows that need more than one feature should live. HTTP should call application use cases instead of coordinating session, thread, turn, conversation, runtime-request, workspace, or app-control services itself.
 
 ### `main`
 
@@ -113,7 +132,7 @@ For example, the event bus implementation lives here because it has mutable proc
 
 `shared` contains pure project-wide building blocks.
 
-It should stay boring: small errors, small helpers, simple pure utilities. If a file knows a business lifecycle such as session, thread, chat, workspace, or Codex, it probably belongs outside `shared`.
+It should stay boring: small errors, small helpers, simple pure utilities. If a file knows a business lifecycle such as session, thread, turn, conversation, runtime-request, workspace, or Codex, it probably belongs outside `shared`.
 
 ## How the pieces collaborate
 
@@ -126,9 +145,10 @@ main
   creates event bus
   creates session service
   creates thread service
-  creates chat service
+  creates turn service
+  creates conversation service
+  creates runtime-request service
   creates workspace service
-  creates app-control service
   creates application use cases
   creates http app
 ```
@@ -139,16 +159,17 @@ HTTP then calls the application layer:
 http -> application
 application -> session service
 application -> thread service
-application -> chat service
+application -> turn service
+application -> conversation service
+application -> runtime-request service
 application -> workspace service
-application -> app-control service
 ```
 
 Feature services use ports for external capabilities:
 
 ```text
-session/thread/chat -> RuntimePort
-session/thread/chat -> EventBusPort
+thread/application -> RuntimePort
+session/thread/turn/conversation/runtime-request -> EventBusPort
 ```
 
 The Codex adapter implements the runtime port:
@@ -166,7 +187,9 @@ Initial ownership:
 ```text
 session state -> features/session
 thread state  -> features/thread
-chat state    -> features/chat
+turn state    -> features/turn
+timeline state -> features/conversation
+pending runtime input state -> features/runtime-request
 external runtime process/protocol -> adapters/codex
 request/response mapping -> http
 cross-feature orchestration -> application
@@ -177,23 +200,28 @@ This is the main architectural rule behind the split. It is less about directory
 
 ## Level of detail in this draft
 
-This skeleton intentionally uses `unknown` for commands, events, snapshots, states, and external payloads.
+This skeleton intentionally stops at route markers, owner modules, broad client
+contracts, and presenter boundaries.
 
-That is deliberate. At this stage, names such as concrete user identifiers, conversation identifiers, message fields, request payload fields, and Codex protocol fields are not the point. The point is to make the large boundaries and ownership model stable first.
+That is deliberate. At this stage, concrete transcript projection, pending
+interaction controls, resume hydration, and action result semantics should be
+migrated with the real feature behavior and tests. Placeholder use cases throw
+`SkeletonMigrationPendingError` instead of inventing fake runtime-to-UI behavior.
 
 ## Current status
 
 This package is a compileable architecture draft only:
 
 - no production routes
-- no real Codex transport
-- no real application flows
-- no real chat data model
+- client contract and presenter skeletons are present
+- real application flows are intentionally migration-pending placeholders
+- no real conversation data model
 - no real session data model
 - no real thread data model
 - no real workspace data model
 - root workspace integration is present
 - import-boundary test protects the intended dependency direction
+- anti-leak tests protect the client contracts from adapter vocabulary
 
 ## Architecture rules
 

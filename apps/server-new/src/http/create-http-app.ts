@@ -11,6 +11,10 @@ export function createHttpApp(input: HttpAppInput): HttpHandler {
 
   return {
     async handle(request: HttpRequest): Promise<HttpResponse> {
+      if (request.path === '/client') {
+        return routes.client.handle(request);
+      }
+
       return routes.health.handle(request);
     },
   };
