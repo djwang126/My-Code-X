@@ -2,41 +2,16 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import { createRuntimeEventCoordinator } from './runtime-event-coordinator.js';
-import type { ThreadService } from '../features/thread/index.js';
 import type { TurnCommand, TurnService } from '../features/turn/index.js';
 import type { RuntimeEvent } from '../ports/index.js';
 
 interface CoordinatorFixture {
-  readonly threadEvents: readonly RuntimeEvent[];
   readonly turnCommands: readonly TurnCommand[];
   readonly coordinator: ReturnType<typeof createRuntimeEventCoordinator>;
 }
 
 function createCoordinatorFixture(): CoordinatorFixture {
-  const threadEvents: RuntimeEvent[] = [];
   const turnCommands: TurnCommand[] = [];
-
-  const thread: ThreadService = {
-    async start() {
-      return {
-        activeTurnId: null,
-        currentThreadId: null,
-        threads: [],
-      };
-    },
-
-    receiveRuntimeEvent(event) {
-      threadEvents.push(event);
-    },
-
-    snapshot() {
-      return {
-        activeTurnId: null,
-        currentThreadId: null,
-        threads: [],
-      };
-    },
-  };
 
   const turn: TurnService = {
     apply(input) {
@@ -55,14 +30,13 @@ function createCoordinatorFixture(): CoordinatorFixture {
   };
 
   return {
-    coordinator: createRuntimeEventCoordinator({ thread, turn }),
-    threadEvents,
+    coordinator: createRuntimeEventCoordinator({ turn }),
     turnCommands,
   };
 }
 
 describe('createRuntimeEventCoordinator', () => {
-  test('routes runtime-turn-started events to thread and turn', () => {
+  test('routes runtime-turn-started events to turn only', () => {
     const fixture = createCoordinatorFixture();
     const event: RuntimeEvent = {
       kind: 'runtime-turn-started',
@@ -72,7 +46,6 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.threadEvents, [event]);
     assert.deepEqual(fixture.turnCommands, [{ kind: 'start-turn', turnId: 'turn-1' }]);
   });
 
@@ -89,7 +62,6 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.threadEvents, []);
     assert.deepEqual(fixture.turnCommands, []);
   });
 
@@ -121,7 +93,6 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.threadEvents, []);
     assert.deepEqual(fixture.turnCommands, []);
   });
 
@@ -140,7 +111,6 @@ describe('createRuntimeEventCoordinator', () => {
     fixture.coordinator.receive(event);
 
     assert.deepEqual(fixture.turnCommands, [{ kind: 'finish-turn', turnId: 'turn-1', outcome: 'failed' }]);
-    assert.deepEqual(fixture.threadEvents, []);
   });
 
   test('leaves runtime-system-notice events to notice migration', () => {
@@ -154,7 +124,6 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.threadEvents, []);
     assert.deepEqual(fixture.turnCommands, []);
   });
 });

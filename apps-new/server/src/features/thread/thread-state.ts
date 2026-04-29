@@ -1,41 +1,58 @@
-import type { ThreadDomainEvent, ThreadSnapshot } from './thread-events.js';
+import type { ThreadDomainEvent, ThreadRecord, ThreadSnapshot } from './thread-events.js';
 
 export type ThreadState = ThreadSnapshot;
 
 export function createInitialThreadState(): ThreadState {
   return {
-    currentThreadId: null,
-    activeTurnId: null,
     threads: [],
   };
+}
+
+export interface ApplyThreadDomainEventInput {
+  readonly state: ThreadState;
+  readonly event: ThreadDomainEvent;
 }
 
 export function applyThreadDomainEvent(input: ApplyThreadDomainEventInput): ThreadState {
   const { state, event } = input;
 
   switch (event.kind) {
-    case 'thread-started':
+    case 'thread-remembered':
       return {
-        ...state,
-        currentThreadId: event.threadId,
+        threads: upsertThreadRecord(state.threads, event.thread),
       };
 
-    case 'thread-turn-attached':
+    case 'threads-remembered':
       return {
-        ...state,
-        currentThreadId: event.threadId,
-        activeTurnId: event.turnId,
+        threads: upsertThreadRecords(state.threads, event.threads),
       };
 
-    case 'threads-listed':
+    case 'thread-forgotten':
       return {
-        ...state,
-        threads: event.threads,
+        threads: state.threads.filter(thread => thread.threadId !== event.threadId),
       };
   }
 }
 
-export interface ApplyThreadDomainEventInput {
-  readonly state: ThreadState;
-  readonly event: ThreadDomainEvent;
+function upsertThreadRecords(
+  threads: readonly ThreadRecord[],
+  nextThreads: readonly ThreadRecord[],
+): readonly ThreadRecord[] {
+  let result = threads;
+
+  for (const nextThread of nextThreads) {
+    result = upsertThreadRecord(result, nextThread);
+  }
+
+  return result;
+}
+
+function upsertThreadRecord(threads: readonly ThreadRecord[], nextThread: ThreadRecord): readonly ThreadRecord[] {
+  const index = threads.findIndex(thread => thread.threadId === nextThread.threadId);
+
+  if (index === -1) {
+    return [...threads, nextThread];
+  }
+
+  return threads.map((thread, threadIndex) => threadIndex === index ? nextThread : thread);
 }

@@ -2,7 +2,8 @@ import type { ClientOpenAction, ClientSnapshot } from '../contracts/index.js';
 import type { ConversationService } from '../features/conversation/index.js';
 import type { RuntimeRequestService } from '../features/runtime-request/index.js';
 import type { SlotService } from '../features/slot/index.js';
-import type { ThreadService } from '../features/thread/index.js';
+import type { ThreadActionsService } from '../features/thread-actions/index.js';
+import type { ThreadRecord, ThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
 import type { WorkspaceService } from '../features/workspace/index.js';
 import { createClientSnapshot } from '../presenter/index.js';
@@ -15,6 +16,7 @@ export interface OpenClientDependencies {
   readonly runtimeRequests: RuntimeRequestService;
   readonly slot: SlotService;
   readonly thread: ThreadService;
+  readonly threadActions: ThreadActionsService;
   readonly turn: TurnService;
   readonly workspace: WorkspaceService;
 }
@@ -35,15 +37,48 @@ export async function openClient(useCase: OpenClientUseCaseInput): Promise<Clien
     kind: 'inspect-workspace',
     workspace: useCase.input.scope.workspaceId,
   });
+  const selectedThread = await openSelectedThread({
+    threadId: slot.threadId,
+    workspace: slot.workspace,
+    thread: useCase.dependencies.thread,
+    threadActions: useCase.dependencies.threadActions,
+  });
 
   return createClientSnapshot({
     revision: 'initial',
     slot,
-    thread: useCase.dependencies.thread.snapshot(),
+    selectedThread,
     turn: useCase.dependencies.turn.snapshot(),
     conversation: useCase.dependencies.conversation.snapshot(),
     runtimeRequests: useCase.dependencies.runtimeRequests.snapshot(),
     workspace,
+  });
+}
+
+interface OpenSelectedThreadInput {
+  readonly threadId: string | null;
+  readonly workspace: string | null;
+  readonly thread: ThreadService;
+  readonly threadActions: ThreadActionsService;
+}
+
+async function openSelectedThread(input: OpenSelectedThreadInput): Promise<ThreadRecord | null> {
+  if (!input.threadId) {
+    return null;
+  }
+
+  if (!input.workspace) {
+    throw new BoundaryError('client action scope.workspaceId is required when scope.threadId is provided');
+  }
+
+  const openedThread = await input.threadActions.open({
+    threadId: input.threadId,
+    workspace: input.workspace,
+  });
+
+  return input.thread.remember({
+    kind: 'remember-thread',
+    thread: openedThread,
   });
 }
 

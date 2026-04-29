@@ -1,0 +1,66 @@
+import type {
+  CreateThreadCommand,
+  OpenThreadCommand,
+  ThreadActionResult,
+  ThreadActionsDomainEvent,
+} from './thread-actions-events.js';
+import type { ThreadActionsDependencies } from './thread-actions-ports.js';
+import { BoundaryError } from '../../shared/index.js';
+
+export interface ThreadActionsService {
+  create(input: CreateThreadCommand): Promise<ThreadActionResult>;
+  open(input: OpenThreadCommand): Promise<ThreadActionResult>;
+}
+
+function publishThreadActionEvent(dependencies: ThreadActionsDependencies, event: ThreadActionsDomainEvent) {
+  dependencies.events.publish(event);
+}
+
+export function createThreadActionsService(dependencies: ThreadActionsDependencies): ThreadActionsService {
+  return {
+    async create(input: CreateThreadCommand): Promise<ThreadActionResult> {
+      const result = await dependencies.runtime.send({
+        kind: 'start-thread',
+        workspace: input.workspace,
+        runtimeSettings: null,
+        baseInstructions: null,
+      });
+
+      if (result.kind !== 'thread-started') {
+        throw new BoundaryError('runtime did not start a thread');
+      }
+
+      const thread = {
+        threadId: result.threadId,
+        workspace: input.workspace,
+        title: null,
+        updatedAt: null,
+      };
+      publishThreadActionEvent(dependencies, { kind: 'thread-created', thread });
+      return thread;
+    },
+
+    async open(input: OpenThreadCommand): Promise<ThreadActionResult> {
+      const result = await dependencies.runtime.send({
+        kind: 'resume-thread',
+        threadId: input.threadId,
+        workspace: input.workspace,
+        runtimeSettings: null,
+        baseInstructions: null,
+      });
+
+      if (result.kind !== 'thread-resumed') {
+        throw new BoundaryError('runtime did not open the requested thread');
+      }
+
+      const thread = {
+        threadId: result.threadId,
+        workspace: input.workspace,
+        title: result.snapshot.title,
+        updatedAt: null,
+      };
+      publishThreadActionEvent(dependencies, { kind: 'thread-opened', thread });
+      return thread;
+    },
+  };
+}

@@ -2,7 +2,7 @@ import type { ClientSnapshot } from '../contracts/index.js';
 import type { ConversationSnapshot } from '../features/conversation/index.js';
 import type { RuntimeRequestSnapshot } from '../features/runtime-request/index.js';
 import type { SlotSelection } from '../features/slot/index.js';
-import type { ThreadSnapshot } from '../features/thread/index.js';
+import type { ThreadRecord } from '../features/thread/index.js';
 import type { TurnSnapshot } from '../features/turn/index.js';
 import type { WorkspaceSnapshot } from '../features/workspace/index.js';
 import { presentConversation } from './conversation-presenter.js';
@@ -12,7 +12,7 @@ import { presentTurn } from './turn-presenter.js';
 export interface CreateClientSnapshotInput {
   readonly revision: string;
   readonly slot: SlotSelection;
-  readonly thread: ThreadSnapshot;
+  readonly selectedThread: ThreadRecord | null;
   readonly turn: TurnSnapshot;
   readonly conversation: ConversationSnapshot;
   readonly runtimeRequests: RuntimeRequestSnapshot;
@@ -21,7 +21,6 @@ export interface CreateClientSnapshotInput {
 
 export function createClientSnapshot(input: CreateClientSnapshotInput): ClientSnapshot {
   const selectedThreadId = input.slot.threadId;
-  const threadReady = Boolean(selectedThreadId && input.thread.currentThreadId === selectedThreadId);
 
   return {
     app: {
@@ -37,10 +36,7 @@ export function createClientSnapshot(input: CreateClientSnapshotInput): ClientSn
     workspace: {
       status: presentWorkspaceStatus(input),
     },
-    thread: {
-      status: threadReady ? 'ready' : 'none',
-      title: null,
-    },
+    thread: presentThread(input),
     turn: presentTurn({ snapshot: input.turn }),
     conversation: {
       items: presentConversation({ snapshot: input.conversation }),
@@ -52,9 +48,23 @@ export function createClientSnapshot(input: CreateClientSnapshotInput): ClientSn
       options: {},
     },
     stream: {
-      status: threadReady ? 'available' : 'disabled',
+      status: 'disabled',
       revision: input.revision,
     },
+  };
+}
+
+function presentThread(input: CreateClientSnapshotInput): ClientSnapshot['thread'] {
+  if (input.selectedThread) {
+    return {
+      status: 'ready',
+      title: input.selectedThread.title,
+    };
+  }
+
+  return {
+    status: 'none',
+    title: null,
   };
 }
 

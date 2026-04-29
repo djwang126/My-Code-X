@@ -14,10 +14,11 @@ test('presenters create a client snapshot from feature-owned state', () => {
       workspace: 'workspace-1',
       threadId: 'thread-1',
     },
-    thread: {
-      currentThreadId: 'thread-1',
-      activeTurnId: null,
-      threads: [],
+    selectedThread: {
+      threadId: 'thread-1',
+      workspace: 'workspace-1',
+      title: 'Thread one',
+      updatedAt: null,
     },
     turn: {
       lifecycle: 'idle',
@@ -51,9 +52,10 @@ test('presenters create a client snapshot from feature-owned state', () => {
   assert.equal(snapshot.selection.workspaceId, 'workspace-1');
   assert.equal(snapshot.selection.threadId, 'thread-1');
   assert.equal(snapshot.thread.status, 'ready');
+  assert.equal(snapshot.thread.title, 'Thread one');
   assert.equal(snapshot.turn.lifecycle, 'idle');
   assert.equal(snapshot.conversation.items.length, 1);
-  assert.equal(snapshot.stream.status, 'available');
+  assert.equal(snapshot.stream.status, 'disabled');
 });
 
 test('client snapshot keeps slot selection separate from thread readiness', () => {
@@ -64,11 +66,7 @@ test('client snapshot keeps slot selection separate from thread readiness', () =
       workspace: 'workspace-1',
       threadId: 'selected-thread',
     },
-    thread: {
-      currentThreadId: null,
-      activeTurnId: null,
-      threads: [],
-    },
+    selectedThread: null,
     turn: {
       lifecycle: 'idle',
       activeTurnId: null,

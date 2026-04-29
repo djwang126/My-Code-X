@@ -7,11 +7,12 @@ runtime payloads, and migration details are introduced.
 ## Core lifecycle split
 
 ```text
-slot selection != thread lifetime != turn lifetime != conversation timeline != runtime request lifetime
+slot selection != thread metadata != thread actions != turn lifetime != conversation timeline != runtime request lifetime
 ```
 
 - `features/slot` owns client slot selection.
-- `features/thread` owns durable conversation-line management.
+- `features/thread` owns metadata for known Codex thread ids.
+- `features/thread-actions` owns operations over a Codex thread id.
 - `features/turn` owns one active execution lifecycle.
 - `features/conversation` owns the client-visible timeline.
 - `features/runtime-request` owns runtime requests waiting on user input.
@@ -178,7 +179,9 @@ The owner of a concept owns the state for that concept.
 
 ```text
 slot selection state -> features/slot
-thread state  -> features/thread
+thread metadata state -> features/thread
+thread operations -> features/thread-actions
+workspace thread history -> features/workspace
 turn state    -> features/turn
 timeline state -> features/conversation
 pending runtime input state -> features/runtime-request

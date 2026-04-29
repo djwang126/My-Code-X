@@ -1,58 +1,44 @@
-import type { RuntimeSettings, RuntimeTurnStartedEvent } from '../../ports/index.js';
+export type ThreadCommand = RememberThreadCommand | RememberThreadsCommand | ForgetThreadCommand;
 
-export type ThreadCommand = CreateThreadCommand | OpenThreadCommand | ListWorkspaceThreadsCommand;
-
-export interface CreateThreadCommand {
-  readonly kind: 'create-thread';
-  readonly workspace: string;
-  readonly runtimeSettings: RuntimeSettings | null;
-  readonly baseInstructions: string | null;
+export interface RememberThreadCommand {
+  readonly kind: 'remember-thread';
+  readonly thread: ThreadRecord;
 }
 
-export interface OpenThreadCommand {
-  readonly kind: 'open-thread';
-  readonly threadId: string;
-  readonly workspace: string;
-  readonly runtimeSettings: RuntimeSettings | null;
-  readonly baseInstructions: string | null;
+export interface RememberThreadsCommand {
+  readonly kind: 'remember-threads';
+  readonly threads: readonly ThreadRecord[];
 }
 
-export interface ListWorkspaceThreadsCommand {
-  readonly kind: 'list-workspace-threads';
-  readonly workspace: string;
-  readonly limit: number;
-  readonly archived: boolean;
-}
-
-export type ThreadRuntimeEvent = RuntimeTurnStartedEvent;
-
-export type ThreadDomainEvent = ThreadStartedEvent | ThreadTurnAttachedEvent | ThreadsListedEvent;
-
-export interface ThreadStartedEvent {
-  readonly kind: 'thread-started';
+export interface ForgetThreadCommand {
+  readonly kind: 'forget-thread';
   readonly threadId: string;
 }
 
-export interface ThreadTurnAttachedEvent {
-  readonly kind: 'thread-turn-attached';
-  readonly threadId: string;
-  readonly turnId: string;
+export type ThreadDomainEvent = ThreadRememberedEvent | ThreadsRememberedEvent | ThreadForgottenEvent;
+
+export interface ThreadRememberedEvent {
+  readonly kind: 'thread-remembered';
+  readonly thread: ThreadRecord;
 }
 
-export interface ThreadsListedEvent {
-  readonly kind: 'threads-listed';
-  readonly threads: readonly ThreadSummary[];
+export interface ThreadsRememberedEvent {
+  readonly kind: 'threads-remembered';
+  readonly threads: readonly ThreadRecord[];
+}
+
+export interface ThreadForgottenEvent {
+  readonly kind: 'thread-forgotten';
+  readonly threadId: string;
+}
+
+export interface ThreadRecord {
+  readonly threadId: string;
+  readonly workspace: string | null;
+  readonly title: string | null;
+  readonly updatedAt: string | null;
 }
 
 export interface ThreadSnapshot {
-  readonly currentThreadId: string | null;
-  readonly activeTurnId: string | null;
-  readonly threads: readonly ThreadSummary[];
-}
-
-export interface ThreadSummary {
-  readonly threadId: string;
-  readonly title: string | null;
-  readonly workspace: string | null;
-  readonly updatedAt: string | null;
+  readonly threads: readonly ThreadRecord[];
 }

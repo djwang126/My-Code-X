@@ -1,89 +1,51 @@
 import { applyThreadDomainEvent, createInitialThreadState } from './thread-state.js';
-import type { ThreadCommand, ThreadDomainEvent, ThreadRuntimeEvent, ThreadSnapshot, ThreadSummary } from './thread-events.js';
+import type {
+  ForgetThreadCommand,
+  RememberThreadCommand,
+  RememberThreadsCommand,
+  ThreadDomainEvent,
+  ThreadRecord,
+  ThreadSnapshot,
+} from './thread-events.js';
 import type { ThreadDependencies } from './thread-ports.js';
-import type { RuntimeCommand, RuntimeThread } from '../../ports/index.js';
 
 export interface ThreadService {
-  start(input: ThreadCommand): Promise<ThreadSnapshot>;
-  receiveRuntimeEvent(event: ThreadRuntimeEvent): void;
+  remember(input: RememberThreadCommand): ThreadRecord;
+  rememberMany(input: RememberThreadsCommand): ThreadSnapshot;
+  forget(input: ForgetThreadCommand): void;
+  get(threadId: string): ThreadRecord | null;
   snapshot(): ThreadSnapshot;
-}
-
-function toRuntimeCommand(command: ThreadCommand): RuntimeCommand {
-  switch (command.kind) {
-    case 'create-thread':
-      return {
-        kind: 'start-thread',
-        workspace: command.workspace,
-        runtimeSettings: command.runtimeSettings,
-        baseInstructions: command.baseInstructions,
-      };
-
-    case 'open-thread':
-      return {
-        kind: 'resume-thread',
-        threadId: command.threadId,
-        workspace: command.workspace,
-        runtimeSettings: command.runtimeSettings,
-        baseInstructions: command.baseInstructions,
-      };
-
-    case 'list-workspace-threads':
-      return {
-        kind: 'list-threads',
-        workspace: command.workspace,
-        limit: command.limit,
-        archived: command.archived,
-      };
-  }
-}
-
-function interpretThreadRuntimeEvent(event: ThreadRuntimeEvent): ThreadDomainEvent {
-  return {
-    kind: 'thread-turn-attached',
-    threadId: event.threadId,
-    turnId: event.turnId,
-  };
 }
 
 export function createThreadService(dependencies: ThreadDependencies): ThreadService {
   let state = createInitialThreadState();
 
+  function publish(event: ThreadDomainEvent) {
+    state = applyThreadDomainEvent({ state, event });
+    dependencies.events.publish(event);
+  }
+
   return {
-    async start(input: ThreadCommand): Promise<ThreadSnapshot> {
-      const result = await dependencies.runtime.send(toRuntimeCommand(input));
+    remember(input: RememberThreadCommand): ThreadRecord {
+      publish({ kind: 'thread-remembered', thread: input.thread });
+      return input.thread;
+    },
 
-      if (result.kind === 'thread-started' || result.kind === 'thread-resumed') {
-        state = applyThreadDomainEvent({ state, event: { kind: 'thread-started', threadId: result.threadId } });
-      }
-
-      if (result.kind === 'threads-listed') {
-        state = applyThreadDomainEvent({
-          state,
-          event: { kind: 'threads-listed', threads: result.threads.map(mapRuntimeThreadSummary) },
-        });
-      }
-
+    rememberMany(input: RememberThreadsCommand): ThreadSnapshot {
+      publish({ kind: 'threads-remembered', threads: input.threads });
       return state;
     },
 
-    receiveRuntimeEvent(event: ThreadRuntimeEvent) {
-      const domainEvent = interpretThreadRuntimeEvent(event);
-      state = applyThreadDomainEvent({ state, event: domainEvent });
-      dependencies.events.publish(domainEvent);
+    forget(input: ForgetThreadCommand) {
+      publish({ kind: 'thread-forgotten', threadId: input.threadId });
+    },
+
+    get(threadId: string): ThreadRecord | null {
+      return state.threads.find(thread => thread.threadId === threadId) ?? null;
     },
 
     snapshot(): ThreadSnapshot {
       return state;
     },
-  };
-}
-
-function mapRuntimeThreadSummary(thread: RuntimeThread): ThreadSummary {
-  return {
-    threadId: thread.threadId,
-    title: thread.title,
-    workspace: thread.workspace,
-    updatedAt: thread.updatedAt,
   };
 }

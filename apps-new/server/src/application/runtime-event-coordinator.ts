@@ -1,9 +1,7 @@
-import type { ThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
 import type { RuntimeEvent } from '../ports/index.js';
 
 export interface RuntimeEventCoordinatorInput {
-  readonly thread: ThreadService;
   readonly turn: TurnService;
 }
 
@@ -16,7 +14,6 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
     receive(event: RuntimeEvent) {
       switch (event.kind) {
         case 'runtime-turn-started':
-          input.thread.receiveRuntimeEvent(event);
           input.turn.apply({
             kind: 'start-turn',
             turnId: event.turnId,

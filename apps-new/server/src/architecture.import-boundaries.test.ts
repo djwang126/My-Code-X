@@ -31,6 +31,7 @@ const allowedBoundaryImports: Record<string, readonly string[]> = {
   'features/runtime-request': ['features/runtime-request', 'ports', 'shared'],
   'features/slot': ['features/slot', 'ports', 'shared'],
   'features/thread': ['features/thread', 'ports', 'shared'],
+  'features/thread-actions': ['features/thread-actions', 'ports', 'shared'],
   'features/turn': ['features/turn', 'ports', 'shared'],
   'features/workspace': ['features/workspace', 'ports', 'shared'],
   http: ['http', 'application', 'contracts', 'shared'],

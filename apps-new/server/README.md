@@ -23,7 +23,7 @@ This skeleton separates the large concepts first. Concrete fields can come later
 The most important split is:
 
 ```text
-slot selection != thread lifetime != turn lifetime != conversation timeline != runtime request lifetime
+slot selection != thread != thread actions != turn lifetime != conversation timeline != runtime request lifetime
 ```
 
 ### `features/slot`
@@ -42,18 +42,31 @@ turn.
 
 ### `features/thread`
 
-`thread` owns conversation-line management.
+`thread` owns the metadata read model for known Codex thread ids.
 
 It answers questions like:
 
-- how is a conversation line started?
-- how is an existing line resumed or selected?
-- how are line-level operations represented?
-- how is conversation history or structure managed?
+- what is this thread called?
+- which workspace is this thread associated with?
+- when was this thread last updated?
 
-It should be thought of as the manager of durable conversation lines. It is not
-the owner of a client slot selection, and it is not the owner of one turn
-progressing from input to output.
+It is not the owner of current client selection, thread operations, transcript
+state, pending requests, runtime settings, or one turn progressing from input to
+output.
+
+### `features/thread-actions`
+
+`thread-actions` owns operations over a Codex thread id.
+
+It answers questions like:
+
+- how is a new thread created?
+- how is an existing thread opened before a thread-level operation?
+- how are thread-level commands represented?
+
+It should stay mostly stateless. It is not the owner of a client slot
+selection, thread metadata, workspace thread history, transcript state, runtime
+settings, base instructions, or one turn progressing from input to output.
 
 ### `features/turn`
 
@@ -79,13 +92,7 @@ It answers questions like:
 
 ### `features/runtime-request`
 
-`runtime-request` owns runtime requests waiting on client input.
-
-It answers questions like:
-
-- what approval, form, authentication, or tool-response interaction is open?
-- is an interaction idle, submitting, resolved, or expired?
-- what response shape should the client submit?
+`runtime-request`  is out of scope for now
 
 ## Other large boundaries
 
@@ -148,6 +155,7 @@ main
   creates event bus
   creates slot service
   creates thread service
+  creates thread-actions service
   creates turn service
   creates conversation service
   creates runtime-request service
@@ -162,6 +170,7 @@ HTTP then calls the application layer:
 http -> application
 application -> slot service
 application -> thread service
+application -> thread-actions service
 application -> turn service
 application -> conversation service
 application -> runtime-request service
@@ -171,8 +180,8 @@ application -> workspace service
 Feature services use ports for external capabilities:
 
 ```text
-thread/application -> RuntimePort
-slot/thread/turn/conversation/runtime-request -> EventBusPort
+thread-actions/workspace/application -> RuntimePort
+slot/thread/thread-actions/turn/conversation/runtime-request -> EventBusPort
 ```
 
 The Codex adapter implements the runtime port:
@@ -189,7 +198,9 @@ Initial ownership:
 
 ```text
 slot selection state -> features/slot
-thread state  -> features/thread
+thread metadata state -> features/thread
+thread operations -> features/thread-actions
+workspace thread history -> features/workspace
 turn state    -> features/turn
 timeline state -> features/conversation
 pending runtime input state -> features/runtime-request
@@ -220,7 +231,8 @@ This package is a compileable architecture draft only:
 - real application flows are intentionally migration-pending placeholders
 - no real conversation data model
 - slot selection model is present
-- no real thread data model
+- thread metadata model is present
+- thread action skeleton is present
 - no real workspace data model
 - root workspace integration is present
 - import-boundary test protects the intended dependency direction
