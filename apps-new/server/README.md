@@ -1,6 +1,6 @@
 ﻿# server-new
 
-`apps/server-new` is an architecture skeleton for the next server shape.
+`apps-new/server` is an architecture skeleton for the next server shape.
 
 This folder is not a feature implementation. Its purpose is to describe the intended module boundaries before concrete data fields, endpoint contracts, Codex payloads, and migration details are introduced.
 

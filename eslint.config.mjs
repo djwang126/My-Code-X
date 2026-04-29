@@ -52,7 +52,7 @@ export default [
     },
   },
   {
-    files: ['apps/server/**/*.ts', 'apps/server-new/**/*.ts', 'packages/**/*.ts'],
+    files: ['apps/server/**/*.ts', 'apps-new/server/**/*.ts', 'packages/**/*.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -72,7 +72,7 @@ export default [
     },
   },
   {
-    files: ['apps/server/**/*.test.ts', 'apps/server-new/**/*.test.ts', 'apps/server/test-support/**/*.ts', 'packages/**/*.test.ts'],
+    files: ['apps/server/**/*.test.ts', 'apps-new/server/**/*.test.ts', 'apps/server/test-support/**/*.ts', 'packages/**/*.test.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {

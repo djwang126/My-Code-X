@@ -6,7 +6,7 @@
   "workspaces": [
     "apps/web",
     "apps/server",
-    "apps/server-new",
+    "apps-new/server",
     "packages/contracts",
     "packages/utils"
   ],
