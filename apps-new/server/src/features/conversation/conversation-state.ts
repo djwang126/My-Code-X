@@ -4,6 +4,7 @@ export type ConversationState = ConversationSnapshot;
 
 export function createInitialConversationState(): ConversationState {
   return {
+    revision: 0,
     items: [],
   };
 }
@@ -19,22 +20,14 @@ export function applyConversationDomainEvent(input: ApplyConversationDomainEvent
   switch (event.kind) {
     case 'conversation-replaced':
       return {
+        revision: state.revision + 1,
         items: event.items,
       };
 
-    case 'conversation-item-upserted':
+    case 'conversation-item-appended':
       return {
-        items: upsertConversationItem(state.items, event.item),
+        revision: state.revision + 1,
+        items: [...state.items, event.item],
       };
   }
-}
-
-function upsertConversationItem<TItem extends { readonly id: string }>(items: readonly TItem[], nextItem: TItem): readonly TItem[] {
-  const index = items.findIndex(item => item.id === nextItem.id);
-
-  if (index === -1) {
-    return [...items, nextItem];
-  }
-
-  return items.map((item, itemIndex) => (itemIndex === index ? nextItem : item));
 }

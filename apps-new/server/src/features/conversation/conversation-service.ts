@@ -15,9 +15,9 @@ function createConversationDomainEvent(command: ConversationCommand): Conversati
         items: command.items,
       };
 
-    case 'upsert-conversation-item':
+    case 'append-conversation-item':
       return {
-        kind: 'conversation-item-upserted',
+        kind: 'conversation-item-appended',
         item: command.item,
       };
   }

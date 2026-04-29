@@ -21,10 +21,10 @@ const events: EventBusPort = {
 function createOpenClientDependencies() {
   const conversation: ConversationService = {
     apply() {
-      return { items: [] };
+      return { revision: 0, items: [] };
     },
     snapshot() {
-      return { items: [] };
+      return { revision: 0, items: [] };
     },
   };
   const runtimeRequests: RuntimeRequestService = {

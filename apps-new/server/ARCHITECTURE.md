@@ -216,9 +216,11 @@ runtime event -> feature interpretation -> domain event -> state update -> event
 
 Concrete event fields can be introduced later. The separation of names and
 direction exists now so raw runtime payloads do not leak through the application.
-The skeleton intentionally does not yet project runtime output into conversation
-items or runtime input requests into client controls. Those mappings must be
-migrated with the real feature behavior and focused tests.
+The conversation skeleton intentionally stores only a revisioned timeline of
+minimal text items. It does not yet classify items, track item lifecycle, project
+runtime output into conversation items, or project runtime input requests into
+client controls. Those mappings must be migrated with the real feature behavior
+and focused tests.
 
 ## Public API rules
 

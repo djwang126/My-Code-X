@@ -87,8 +87,10 @@ It should be thought of as the execution lifecycle owner. It does not own the wh
 It answers questions like:
 
 - what timeline items should the client see?
-- which item changed when runtime output arrived?
-- which item has deferred details?
+- what revision is the timeline at?
+
+It does not classify timeline items or own turn lifecycle. Those details should
+be introduced only when real conversation behavior is migrated.
 
 ### `features/runtime-request`
 
@@ -229,7 +231,7 @@ This package is a compileable architecture draft only:
 - no production routes
 - client contract and presenter skeletons are present
 - real application flows are intentionally migration-pending placeholders
-- no real conversation data model
+- minimal conversation timeline model is present
 - slot selection model is present
 - thread metadata model is present
 - thread action skeleton is present

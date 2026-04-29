@@ -1,7 +1,7 @@
 export { createActionResult } from './create-action-result.js';
 export { createClientEvent } from './create-client-event.js';
 export { createClientSnapshot } from './create-client-snapshot.js';
-export { presentConversation, presentConversationItem, isClientConversationItemKind } from './conversation-presenter.js';
+export { presentConversation, presentConversationItem } from './conversation-presenter.js';
 export { presentPendingInteraction, presentPendingInteractions } from './pending-interaction-presenter.js';
 export { presentTurn } from './turn-presenter.js';
 export type { CreateActionResultInput } from './create-action-result.js';

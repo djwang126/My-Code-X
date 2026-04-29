@@ -3,9 +3,7 @@ export type {
   ConversationCommand,
   ConversationDomainEvent,
   ConversationItem,
-  ConversationItemKind,
-  ConversationItemLifecycle,
-  ConversationItemUpsertedEvent,
+  ConversationItemAppendedEvent,
   ConversationReplacedEvent,
   ConversationSnapshot,
 } from './conversation-events.js';

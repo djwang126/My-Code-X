@@ -29,25 +29,7 @@ export type {
   ClientWorkspaceView,
 } from './client-snapshot.js';
 export type {
-  ClientBodyEntry,
-  ClientCommandItem,
   ClientConversationItem,
-  ClientConversationItemBase,
-  ClientErrorItem,
-  ClientFileChangeItem,
-  ClientItemAction,
-  ClientItemBody,
-  ClientItemDetail,
-  ClientItemLifecycle,
-  ClientItemPlacement,
-  ClientMessageItem,
-  ClientNoticeItem,
-  ClientPlanItem,
-  ClientReasoningItem,
-  ClientReviewItem,
-  ClientStructuredBody,
-  ClientTextBody,
-  ClientToolCallItem,
 } from './conversation-item.js';
 export type {
   ApprovalInteraction,

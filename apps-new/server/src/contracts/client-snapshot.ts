@@ -40,6 +40,7 @@ export interface ClientThreadView {
 }
 
 export interface ClientConversationView {
+  readonly revision: number;
   readonly items: readonly ClientConversationItem[];
 }
 

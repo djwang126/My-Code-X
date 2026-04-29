@@ -1,54 +1,33 @@
-import type { JsonValue } from '../../shared/index.js';
-
-export type ConversationCommand = ReplaceConversationCommand | UpsertConversationItemCommand;
+export type ConversationCommand = ReplaceConversationCommand | AppendConversationItemCommand;
 
 export interface ReplaceConversationCommand {
   readonly kind: 'replace-conversation';
   readonly items: readonly ConversationItem[];
 }
 
-export interface UpsertConversationItemCommand {
-  readonly kind: 'upsert-conversation-item';
+export interface AppendConversationItemCommand {
+  readonly kind: 'append-conversation-item';
   readonly item: ConversationItem;
 }
 
-export type ConversationDomainEvent = ConversationReplacedEvent | ConversationItemUpsertedEvent;
+export type ConversationDomainEvent = ConversationReplacedEvent | ConversationItemAppendedEvent;
 
 export interface ConversationReplacedEvent {
   readonly kind: 'conversation-replaced';
   readonly items: readonly ConversationItem[];
 }
 
-export interface ConversationItemUpsertedEvent {
-  readonly kind: 'conversation-item-upserted';
+export interface ConversationItemAppendedEvent {
+  readonly kind: 'conversation-item-appended';
   readonly item: ConversationItem;
 }
 
 export interface ConversationSnapshot {
+  readonly revision: number;
   readonly items: readonly ConversationItem[];
 }
 
-export type ConversationItemKind =
-  | 'message'
-  | 'reasoning'
-  | 'plan'
-  | 'command'
-  | 'file-change'
-  | 'tool-call'
-  | 'review'
-  | 'notice'
-  | 'error';
-
-export type ConversationItemLifecycle = 'queued' | 'running' | 'waiting' | 'complete' | 'failed' | 'cancelled';
-
 export interface ConversationItem {
   readonly id: string;
-  readonly kind: ConversationItemKind;
-  readonly lifecycle: ConversationItemLifecycle;
   readonly text: string;
-  readonly role: 'user' | 'assistant' | 'system' | null;
-  readonly title: string | null;
-  readonly detailId: string | null;
-  readonly detailRevision: string | null;
-  readonly data: JsonValue;
 }

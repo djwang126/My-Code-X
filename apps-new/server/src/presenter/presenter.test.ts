@@ -25,17 +25,11 @@ test('presenters create a client snapshot from feature-owned state', () => {
       activeTurnId: null,
     },
     conversation: {
+      revision: 1,
       items: [
         {
           id: 'message-1',
-          kind: 'message',
-          lifecycle: 'complete',
           text: 'hello',
-          role: 'user',
-          title: null,
-          detailId: null,
-          detailRevision: null,
-          data: {},
         },
       ],
     },
@@ -54,6 +48,7 @@ test('presenters create a client snapshot from feature-owned state', () => {
   assert.equal(snapshot.thread.status, 'ready');
   assert.equal(snapshot.thread.title, 'Thread one');
   assert.equal(snapshot.turn.lifecycle, 'idle');
+  assert.equal(snapshot.conversation.revision, 1);
   assert.equal(snapshot.conversation.items.length, 1);
   assert.equal(snapshot.stream.status, 'disabled');
 });
@@ -72,6 +67,7 @@ test('client snapshot keeps slot selection separate from thread readiness', () =
       activeTurnId: null,
     },
     conversation: {
+      revision: 0,
       items: [],
     },
     runtimeRequests: {
@@ -88,24 +84,18 @@ test('client snapshot keeps slot selection separate from thread readiness', () =
   assert.equal(snapshot.stream.status, 'disabled');
 });
 
-test('conversation presenter hides storage shape behind client item kinds', () => {
+test('conversation presenter exposes only the skeleton timeline item shape', () => {
   const item: ConversationItem = {
-    id: 'command-1',
-    kind: 'command',
-    lifecycle: 'running',
-    text: 'npm test',
-    role: null,
-    title: 'Command',
-    detailId: 'detail-1',
-    detailRevision: 'rev-1',
-    data: {},
+    id: 'item-1',
+    text: 'hello',
   };
 
   const presented = presentConversationItem({ item });
 
-  assert.equal(presented.kind, 'command');
-  assert.equal(presented.body.kind, 'structured');
-  assert.equal(presented.detail.kind, 'deferred');
+  assert.deepEqual(presented, {
+    id: 'item-1',
+    text: 'hello',
+  });
 });
 
 test('pending interaction presenter stays explicit until controls are migrated', () => {
