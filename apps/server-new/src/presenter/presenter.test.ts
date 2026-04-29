@@ -8,14 +8,11 @@ import { SkeletonMigrationPendingError } from '../shared/index.js';
 
 test('presenters create a client snapshot from feature-owned state', () => {
   const snapshot = createClientSnapshot({
-    viewerId: 'viewer-1',
-    slotId: 'slot-1',
     revision: 'rev-1',
-    session: {
-      sessionId: 'slot-1',
-      pendingInputCount: 0,
-      lastNotice: 'ready',
-      lastError: null,
+    slot: {
+      slotId: 'slot-1',
+      workspace: 'workspace-1',
+      threadId: 'thread-1',
     },
     thread: {
       currentThreadId: 'thread-1',
@@ -50,12 +47,47 @@ test('presenters create a client snapshot from feature-owned state', () => {
     },
   });
 
-  assert.equal(snapshot.identity.viewerId, 'viewer-1');
+  assert.equal(snapshot.identity.slotId, 'slot-1');
+  assert.equal(snapshot.selection.workspaceId, 'workspace-1');
   assert.equal(snapshot.selection.threadId, 'thread-1');
+  assert.equal(snapshot.thread.status, 'ready');
   assert.equal(snapshot.turn.lifecycle, 'idle');
   assert.equal(snapshot.conversation.items.length, 1);
-  assert.equal(snapshot.notices[0]?.body, 'ready');
   assert.equal(snapshot.stream.status, 'available');
+});
+
+test('client snapshot keeps slot selection separate from thread readiness', () => {
+  const snapshot = createClientSnapshot({
+    revision: 'rev-1',
+    slot: {
+      slotId: 'slot-1',
+      workspace: 'workspace-1',
+      threadId: 'selected-thread',
+    },
+    thread: {
+      currentThreadId: null,
+      activeTurnId: null,
+      threads: [],
+    },
+    turn: {
+      lifecycle: 'idle',
+      activeTurnId: null,
+    },
+    conversation: {
+      items: [],
+    },
+    runtimeRequests: {
+      requests: [],
+    },
+    workspace: {
+      workspace: 'workspace-1',
+      available: true,
+    },
+  });
+
+  assert.equal(snapshot.selection.threadId, 'selected-thread');
+  assert.equal(snapshot.thread.status, 'none');
+  assert.equal(snapshot.stream.status, 'disabled');
 });
 
 test('conversation presenter hides storage shape behind client item kinds', () => {

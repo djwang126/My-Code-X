@@ -1,7 +1,7 @@
 import type { ClientOpenAction, ClientSnapshot } from '../contracts/index.js';
 import type { ConversationService } from '../features/conversation/index.js';
 import type { RuntimeRequestService } from '../features/runtime-request/index.js';
-import type { SessionService } from '../features/session/index.js';
+import type { SlotService } from '../features/slot/index.js';
 import type { ThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
 import type { WorkspaceService } from '../features/workspace/index.js';
@@ -13,7 +13,7 @@ export type OpenClientInput = ClientOpenAction;
 export interface OpenClientDependencies {
   readonly conversation: ConversationService;
   readonly runtimeRequests: RuntimeRequestService;
-  readonly session: SessionService;
+  readonly slot: SlotService;
   readonly thread: ThreadService;
   readonly turn: TurnService;
   readonly workspace: WorkspaceService;
@@ -25,11 +25,11 @@ export interface OpenClientUseCaseInput {
 }
 
 export async function openClient(useCase: OpenClientUseCaseInput): Promise<ClientSnapshot> {
-  const viewerId = readRequiredScopeValue(useCase.input.scope.viewerId, 'viewerId');
   const slotId = readRequiredScopeValue(useCase.input.scope.slotId, 'slotId');
-  const session = await useCase.dependencies.session.open({
-    kind: 'open-session',
-    sessionId: slotId,
+  const slot = useCase.dependencies.slot.open({
+    slotId,
+    workspace: useCase.input.scope.workspaceId,
+    threadId: useCase.input.scope.threadId,
   });
   const workspace = await useCase.dependencies.workspace.inspect({
     kind: 'inspect-workspace',
@@ -37,10 +37,8 @@ export async function openClient(useCase: OpenClientUseCaseInput): Promise<Clien
   });
 
   return createClientSnapshot({
-    viewerId,
-    slotId,
     revision: 'initial',
-    session,
+    slot,
     thread: useCase.dependencies.thread.snapshot(),
     turn: useCase.dependencies.turn.snapshot(),
     conversation: useCase.dependencies.conversation.snapshot(),

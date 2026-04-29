@@ -1,7 +1,7 @@
 import type { ClientSnapshot } from '../contracts/index.js';
 import type { ConversationSnapshot } from '../features/conversation/index.js';
 import type { RuntimeRequestSnapshot } from '../features/runtime-request/index.js';
-import type { SessionSnapshot } from '../features/session/index.js';
+import type { SlotSelection } from '../features/slot/index.js';
 import type { ThreadSnapshot } from '../features/thread/index.js';
 import type { TurnSnapshot } from '../features/turn/index.js';
 import type { WorkspaceSnapshot } from '../features/workspace/index.js';
@@ -10,10 +10,8 @@ import { presentPendingInteractions } from './pending-interaction-presenter.js';
 import { presentTurn } from './turn-presenter.js';
 
 export interface CreateClientSnapshotInput {
-  readonly viewerId: string;
-  readonly slotId: string;
   readonly revision: string;
-  readonly session: SessionSnapshot;
+  readonly slot: SlotSelection;
   readonly thread: ThreadSnapshot;
   readonly turn: TurnSnapshot;
   readonly conversation: ConversationSnapshot;
@@ -22,28 +20,25 @@ export interface CreateClientSnapshotInput {
 }
 
 export function createClientSnapshot(input: CreateClientSnapshotInput): ClientSnapshot {
-  const threadId = input.thread.currentThreadId;
+  const selectedThreadId = input.slot.threadId;
+  const threadReady = Boolean(selectedThreadId && input.thread.currentThreadId === selectedThreadId);
 
   return {
     app: {
       status: 'ready',
     },
     identity: {
-      viewerId: input.viewerId,
-      slotId: input.slotId,
+      slotId: input.slot.slotId,
     },
     selection: {
-      workspaceId: input.workspace.workspace,
-      threadId,
-    },
-    session: {
-      status: input.session.lastError ? 'failed' : 'ready',
+      workspaceId: input.slot.workspace,
+      threadId: selectedThreadId,
     },
     workspace: {
-      status: input.workspace.workspace ? 'selected' : 'none',
+      status: presentWorkspaceStatus(input),
     },
     thread: {
-      status: threadId ? 'ready' : 'none',
+      status: threadReady ? 'ready' : 'none',
       title: null,
     },
     turn: presentTurn({ snapshot: input.turn }),
@@ -51,23 +46,22 @@ export function createClientSnapshot(input: CreateClientSnapshotInput): ClientSn
       items: presentConversation({ snapshot: input.conversation }),
     },
     pendingInteractions: presentPendingInteractions({ snapshot: input.runtimeRequests }),
-    notices: input.session.lastNotice
-      ? [
-          {
-            id: 'session-notice',
-            level: 'info',
-            title: 'Session notice',
-            body: input.session.lastNotice,
-          },
-        ]
-      : [],
+    notices: [],
     capabilities: {
       actions: [],
       options: {},
     },
     stream: {
-      status: threadId ? 'available' : 'disabled',
+      status: threadReady ? 'available' : 'disabled',
       revision: input.revision,
     },
   };
+}
+
+function presentWorkspaceStatus(input: CreateClientSnapshotInput): ClientSnapshot['workspace']['status'] {
+  if (!input.slot.workspace) {
+    return 'none';
+  }
+
+  return input.workspace.available ? 'selected' : 'unavailable';
 }

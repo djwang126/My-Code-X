@@ -75,7 +75,6 @@ function readClientActionScope(body: JsonObject): ClientActionScope {
   const scope = readOptionalObject(body, 'scope') ?? {};
 
   return {
-    viewerId: readOptionalString(scope, 'viewerId'),
     slotId: readOptionalString(scope, 'slotId'),
     workspaceId: readOptionalString(scope, 'workspaceId'),
     threadId: readOptionalString(scope, 'threadId'),

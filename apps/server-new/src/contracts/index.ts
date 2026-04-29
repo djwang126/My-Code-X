@@ -23,7 +23,6 @@ export type {
   ClientIdentityView,
   ClientNoticeView,
   ClientSelectionView,
-  ClientSessionView,
   ClientSnapshot,
   ClientStreamView,
   ClientThreadView,

@@ -1,7 +1,7 @@
 import type { ClientActionResult, ClientSnapshot } from '../contracts/index.js';
 import type { ConversationService } from '../features/conversation/index.js';
 import type { RuntimeRequestService } from '../features/runtime-request/index.js';
-import type { SessionService } from '../features/session/index.js';
+import type { SlotService } from '../features/slot/index.js';
 import type { ThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
 import type { WorkspaceService } from '../features/workspace/index.js';
@@ -22,7 +22,7 @@ export interface ApplicationInput {
   readonly conversation: ConversationService;
   readonly runtime: RuntimePort;
   readonly runtimeRequests: RuntimeRequestService;
-  readonly session: SessionService;
+  readonly slot: SlotService;
   readonly thread: ThreadService;
   readonly turn: TurnService;
   readonly workspace: WorkspaceService;

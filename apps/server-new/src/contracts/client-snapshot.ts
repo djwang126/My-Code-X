@@ -7,7 +7,6 @@ export interface ClientSnapshot {
   readonly app: ClientAppView;
   readonly identity: ClientIdentityView;
   readonly selection: ClientSelectionView;
-  readonly session: ClientSessionView;
   readonly workspace: ClientWorkspaceView;
   readonly thread: ClientThreadView;
   readonly turn: ClientTurnView;
@@ -23,17 +22,12 @@ export interface ClientAppView {
 }
 
 export interface ClientIdentityView {
-  readonly viewerId: string;
   readonly slotId: string;
 }
 
 export interface ClientSelectionView {
   readonly workspaceId: string | null;
   readonly threadId: string | null;
-}
-
-export interface ClientSessionView {
-  readonly status: 'opening' | 'ready' | 'closing' | 'closed' | 'failed';
 }
 
 export interface ClientWorkspaceView {

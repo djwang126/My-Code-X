@@ -23,21 +23,22 @@ This skeleton separates the large concepts first. Concrete fields can come later
 The most important split is:
 
 ```text
-session lifetime != thread lifetime != turn lifetime != conversation timeline != runtime request lifetime
+slot selection != thread lifetime != turn lifetime != conversation timeline != runtime request lifetime
 ```
 
-### `features/session`
+### `features/slot`
 
-`session` owns the lifetime of a live interaction context.
+`slot` owns the client's current selection.
 
 It answers questions like:
 
-- is there an active interaction context?
-- should that context be kept alive, restored, or closed?
-- what runtime-facing resources belong to that live context?
-- how does the rest of the server observe session-level changes?
+- which workspace did this client slot select?
+- which thread did this client slot select?
+- what routing key should application use for this client?
 
-It should be thought of as the container for liveness and continuity. It is not the owner of thread operations, and it is not the executor of a model response.
+It should stay small. It is not the owner of runtime attachment, thread
+recovery, thread operations, transcript state, pending requests, or one model
+turn.
 
 ### `features/thread`
 
@@ -50,7 +51,9 @@ It answers questions like:
 - how are line-level operations represented?
 - how is conversation history or structure managed?
 
-It should be thought of as the manager of durable conversation lines. It is not the owner of whether a live session exists, and it is not the owner of one turn progressing from input to output.
+It should be thought of as the manager of durable conversation lines. It is not
+the owner of a client slot selection, and it is not the owner of one turn
+progressing from input to output.
 
 ### `features/turn`
 
@@ -96,13 +99,13 @@ It is responsible for turning the external Codex process/protocol into a local `
 
 `http` owns request and response mapping.
 
-It should translate HTTP input into application-level commands and translate application results back into HTTP output. It should not become the place where session, thread, turn, conversation, runtime-request, or cross-feature behavior is implemented.
+It should translate HTTP input into application-level commands and translate application results back into HTTP output. It should not become the place where slot, thread, turn, conversation, runtime-request, or cross-feature behavior is implemented.
 
 ### `application`
 
 `application` owns cross-feature use-case orchestration.
 
-It is the place where flows that need more than one feature should live. HTTP should call application use cases instead of coordinating session, thread, turn, conversation, runtime-request, workspace, or app-control services itself.
+It is the place where flows that need more than one feature should live. HTTP should call application use cases instead of coordinating slot, thread, turn, conversation, runtime-request, workspace, or app-control services itself.
 
 ### `main`
 
@@ -132,7 +135,7 @@ For example, the event bus implementation lives here because it has mutable proc
 
 `shared` contains pure project-wide building blocks.
 
-It should stay boring: small errors, small helpers, simple pure utilities. If a file knows a business lifecycle such as session, thread, turn, conversation, runtime-request, workspace, or Codex, it probably belongs outside `shared`.
+It should stay boring: small errors, small helpers, simple pure utilities. If a file knows a business lifecycle such as slot, thread, turn, conversation, runtime-request, workspace, or Codex, it probably belongs outside `shared`.
 
 ## How the pieces collaborate
 
@@ -143,7 +146,7 @@ main
   creates config
   creates runtime adapter
   creates event bus
-  creates session service
+  creates slot service
   creates thread service
   creates turn service
   creates conversation service
@@ -157,7 +160,7 @@ HTTP then calls the application layer:
 
 ```text
 http -> application
-application -> session service
+application -> slot service
 application -> thread service
 application -> turn service
 application -> conversation service
@@ -169,7 +172,7 @@ Feature services use ports for external capabilities:
 
 ```text
 thread/application -> RuntimePort
-session/thread/turn/conversation/runtime-request -> EventBusPort
+slot/thread/turn/conversation/runtime-request -> EventBusPort
 ```
 
 The Codex adapter implements the runtime port:
@@ -180,12 +183,12 @@ adapters/codex -> RuntimePort
 
 ## Data ownership principle
 
-The owner of a lifecycle owns the state for that lifecycle.
+The owner of a concept owns the state for that concept.
 
 Initial ownership:
 
 ```text
-session state -> features/session
+slot selection state -> features/slot
 thread state  -> features/thread
 turn state    -> features/turn
 timeline state -> features/conversation
@@ -216,7 +219,7 @@ This package is a compileable architecture draft only:
 - client contract and presenter skeletons are present
 - real application flows are intentionally migration-pending placeholders
 - no real conversation data model
-- no real session data model
+- slot selection model is present
 - no real thread data model
 - no real workspace data model
 - root workspace integration is present

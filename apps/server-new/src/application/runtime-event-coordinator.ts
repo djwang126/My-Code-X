@@ -1,10 +1,8 @@
-import type { SessionService } from '../features/session/index.js';
 import type { ThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
 import type { RuntimeEvent } from '../ports/index.js';
 
 export interface RuntimeEventCoordinatorInput {
-  readonly session: SessionService;
   readonly thread: ThreadService;
   readonly turn: TurnService;
 }
@@ -39,12 +37,10 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
           return;
 
         case 'runtime-input-requested':
-          input.session.receiveRuntimeEvent(event);
           // Runtime request interaction semantics are migrated separately.
           return;
 
         case 'runtime-error':
-          input.session.receiveRuntimeEvent(event);
           if (event.turnId) {
             input.turn.apply({
               kind: 'finish-turn',
@@ -55,7 +51,6 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
           return;
 
         case 'runtime-system-notice':
-          input.session.receiveRuntimeEvent(event);
           return;
       }
     },

@@ -29,7 +29,7 @@ const allowedBoundaryImports: Record<string, readonly string[]> = {
   'features/app-control': ['features/app-control', 'ports', 'shared'],
   'features/conversation': ['features/conversation', 'ports', 'shared'],
   'features/runtime-request': ['features/runtime-request', 'ports', 'shared'],
-  'features/session': ['features/session', 'ports', 'shared'],
+  'features/slot': ['features/slot', 'ports', 'shared'],
   'features/thread': ['features/thread', 'ports', 'shared'],
   'features/turn': ['features/turn', 'ports', 'shared'],
   'features/workspace': ['features/workspace', 'ports', 'shared'],

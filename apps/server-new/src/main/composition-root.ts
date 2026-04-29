@@ -4,7 +4,7 @@ import { createApplication, createRuntimeEventCoordinator } from '../application
 import { loadConfig } from '../config/index.js';
 import { createConversationService } from '../features/conversation/index.js';
 import { createRuntimeRequestService } from '../features/runtime-request/index.js';
-import { createSessionService } from '../features/session/index.js';
+import { createSlotService } from '../features/slot/index.js';
 import { createThreadService } from '../features/thread/index.js';
 import { createTurnService } from '../features/turn/index.js';
 import { createWorkspaceService } from '../features/workspace/index.js';
@@ -20,14 +20,14 @@ export async function createAppComposition(): Promise<AppComposition> {
   const config = loadConfig();
   const events = createEventBus();
   const runtime = await createCodexRuntime({ options: config.codex });
-  const session = createSessionService({ events });
+  const slot = createSlotService({ events });
   const thread = createThreadService({ runtime, events });
   const conversation = createConversationService({ events });
   const runtimeRequests = createRuntimeRequestService({ events });
   const turn = createTurnService({ events });
   const workspace = createWorkspaceService();
-  const application = createApplication({ conversation, runtime, runtimeRequests, session, thread, turn, workspace });
-  const runtimeEvents = createRuntimeEventCoordinator({ session, thread, turn });
+  const application = createApplication({ conversation, runtime, runtimeRequests, slot, thread, turn, workspace });
+  const runtimeEvents = createRuntimeEventCoordinator({ thread, turn });
   const unsubscribeRuntimeEvents = runtime.subscribe(runtimeEvents.receive);
   const http = createHttpApp({ application });
 
@@ -37,7 +37,6 @@ export async function createAppComposition(): Promise<AppComposition> {
 
     async close() {
       unsubscribeRuntimeEvents();
-      await session.close();
       await runtime.close();
     },
   };

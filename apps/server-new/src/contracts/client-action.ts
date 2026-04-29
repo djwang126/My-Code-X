@@ -8,7 +8,6 @@ export type ClientAction =
   | ClientInterruptTurnAction;
 
 export interface ClientActionScope {
-  readonly viewerId: string | null;
   readonly slotId: string | null;
   readonly workspaceId: string | null;
   readonly threadId: string | null;

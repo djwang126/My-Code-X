@@ -7,16 +7,16 @@ runtime payloads, and migration details are introduced.
 ## Core lifecycle split
 
 ```text
-session lifetime != thread lifetime != turn lifetime != conversation timeline != runtime request lifetime
+slot selection != thread lifetime != turn lifetime != conversation timeline != runtime request lifetime
 ```
 
-- `features/session` owns live interaction context lifetime.
+- `features/slot` owns client slot selection.
 - `features/thread` owns durable conversation-line management.
 - `features/turn` owns one active execution lifecycle.
 - `features/conversation` owns the client-visible timeline.
 - `features/runtime-request` owns runtime requests waiting on user input.
 
-These lifecycles may be coordinated, but they are not owned by one broad service.
+These concepts may be coordinated, but they are not owned by one broad service.
 
 ## Module responsibilities
 
@@ -46,7 +46,7 @@ application results into HTTP output. They do not coordinate feature services.
 
 Cross-feature use-case orchestration.
 
-If a flow needs session, thread, turn, conversation, runtime requests, workspace,
+If a flow needs slot, thread, turn, conversation, runtime requests, workspace,
 or app-control together, that coordination belongs here.
 
 Application receives client intent and coordinates features. It must not make
@@ -71,7 +71,7 @@ the client.
 
 ### `features/*`
 
-Each feature owns one business lifecycle and its state.
+Each feature owns one business concept and its state.
 
 Feature modules do not import other feature modules. Cross-feature coordination
 belongs in `application`.
@@ -81,7 +81,7 @@ belongs in `application`.
 Concrete implementations of external or process-local capabilities.
 
 `adapters/codex` turns the external Codex process/protocol into a `RuntimePort`.
-It must not know about conversation, session, thread, HTTP, or application use cases.
+It must not know about conversation, slot, thread, HTTP, or application use cases.
 
 ### `ports`
 
@@ -93,7 +93,7 @@ Ports let features depend on capabilities without depending on concrete adapters
 
 Pure project-wide building blocks only.
 
-If a file knows a business lifecycle such as session, thread, turn, conversation,
+If a file knows a business lifecycle such as slot, thread, turn, conversation,
 runtime request, workspace, app-control, or Codex, it does not belong in `shared`.
 
 ## Import rules
@@ -174,10 +174,10 @@ The import-boundary test enforces these rules.
 
 ## State ownership rules
 
-The owner of a lifecycle owns the state for that lifecycle.
+The owner of a concept owns the state for that concept.
 
 ```text
-session state -> features/session
+slot selection state -> features/slot
 thread state  -> features/thread
 turn state    -> features/turn
 timeline state -> features/conversation

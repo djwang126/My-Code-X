@@ -112,13 +112,13 @@ test('codex adapter public entrypoint does not export transport, protocol, or no
   assert.deepEqual(matches, []);
 });
 
-test('codex adapter implementation does not mention conversation/session ownership or HTTP boundary concepts', async () => {
+test('codex adapter implementation does not mention conversation/slot ownership or HTTP boundary concepts', async () => {
   const sourceFiles = (await readSourceFiles([path.join('adapters', 'codex')])).filter(
     sourceFile => !sourceFile.relativePath.endsWith('.test.ts'),
   );
   const matches = findForbiddenMatches(
     sourceFiles,
-    /\b(viewerId|slotId|ConversationSession|conversation session|HttpRequest|HttpResponse|controller)\b/g,
+    /\b(slotId|HttpRequest|HttpResponse|controller)\b/g,
   );
 
   assert.deepEqual(matches, []);
