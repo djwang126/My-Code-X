@@ -1,50 +1,70 @@
-export type TurnCommand = StartTurnCommand | MarkTurnWaitingCommand | FinishTurnCommand | ResetTurnCommand;
+export type TurnCommand = TurnStartedCommand | TurnCompletedCommand | ClearTurnCommand;
 
-export interface StartTurnCommand {
-  readonly kind: 'start-turn';
+export interface TurnStartedCommand {
+  readonly kind: 'turn-started';
+  readonly threadId: string;
   readonly turnId: string;
+  readonly startedAt: number | null;
 }
 
-export interface MarkTurnWaitingCommand {
-  readonly kind: 'mark-turn-waiting';
+export interface TurnCompletedCommand {
+  readonly kind: 'turn-completed';
+  readonly threadId: string;
   readonly turnId: string;
+  readonly status: TurnTerminalStatus;
+  readonly error: TurnError | null;
+  readonly completedAt: number | null;
+  readonly durationMs: number | null;
 }
 
-export interface FinishTurnCommand {
-  readonly kind: 'finish-turn';
-  readonly turnId: string;
-  readonly outcome: TurnTerminalOutcome;
+export interface ClearTurnCommand {
+  readonly kind: 'clear-turn';
+  readonly threadId: string;
 }
 
-export interface ResetTurnCommand {
-  readonly kind: 'reset-turn';
-}
-
-export type TurnDomainEvent = TurnStartedEvent | TurnWaitingEvent | TurnFinishedEvent | TurnResetEvent;
+export type TurnDomainEvent = TurnStartedEvent | TurnCompletedEvent | TurnClearedEvent;
 
 export interface TurnStartedEvent {
   readonly kind: 'turn-started';
+  readonly threadId: string;
   readonly turnId: string;
+  readonly startedAt: number | null;
 }
 
-export interface TurnWaitingEvent {
-  readonly kind: 'turn-waiting';
+export interface TurnCompletedEvent {
+  readonly kind: 'turn-completed';
+  readonly threadId: string;
   readonly turnId: string;
+  readonly status: TurnTerminalStatus;
+  readonly error: TurnError | null;
+  readonly completedAt: number | null;
+  readonly durationMs: number | null;
 }
 
-export interface TurnFinishedEvent {
-  readonly kind: 'turn-finished';
+export interface TurnClearedEvent {
+  readonly kind: 'turn-cleared';
+  readonly threadId: string;
+}
+
+export type TurnStatus = 'inProgress' | TurnTerminalStatus;
+
+export type TurnTerminalStatus = 'completed' | 'failed' | 'interrupted';
+
+export interface TurnError {
+  readonly message: string;
+  readonly code: string | null;
+}
+
+export interface TurnRecord {
+  readonly threadId: string;
   readonly turnId: string;
-  readonly outcome: TurnTerminalOutcome;
+  readonly status: TurnStatus;
+  readonly error: TurnError | null;
+  readonly startedAt: number | null;
+  readonly completedAt: number | null;
+  readonly durationMs: number | null;
 }
 
-export interface TurnResetEvent {
-  readonly kind: 'turn-reset';
+export interface TurnSnapshot {
+  readonly current: TurnRecord | null;
 }
-
-export type TurnTerminalOutcome = 'completed' | 'failed' | 'interrupted';
-
-export type TurnSnapshot =
-  | { readonly lifecycle: 'idle'; readonly activeTurnId: null }
-  | { readonly lifecycle: 'starting' | 'streaming' | 'waiting-for-input'; readonly activeTurnId: string }
-  | { readonly lifecycle: 'completed' | 'failed' | 'interrupted'; readonly activeTurnId: string };

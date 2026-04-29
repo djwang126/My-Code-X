@@ -15,8 +15,10 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
       switch (event.kind) {
         case 'runtime-turn-started':
           input.turn.apply({
-            kind: 'start-turn',
+            kind: 'turn-started',
+            threadId: event.threadId,
             turnId: event.turnId,
+            startedAt: null,
           });
           return;
 
@@ -27,9 +29,13 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
 
         case 'runtime-turn-completed':
           input.turn.apply({
-            kind: 'finish-turn',
+            kind: 'turn-completed',
+            threadId: event.threadId,
             turnId: event.turnId,
-            outcome: event.status,
+            status: event.status,
+            error: event.error,
+            completedAt: null,
+            durationMs: null,
           });
           return;
 
@@ -38,11 +44,15 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
           return;
 
         case 'runtime-error':
-          if (event.turnId) {
+          if (event.threadId && event.turnId) {
             input.turn.apply({
-              kind: 'finish-turn',
+              kind: 'turn-completed',
+              threadId: event.threadId,
               turnId: event.turnId,
-              outcome: 'failed',
+              status: 'failed',
+              error: event.error,
+              completedAt: null,
+              durationMs: null,
             });
           }
           return;

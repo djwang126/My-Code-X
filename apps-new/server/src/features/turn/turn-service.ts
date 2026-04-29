@@ -9,28 +9,29 @@ export interface TurnService {
 
 function createTurnDomainEvent(command: TurnCommand): TurnDomainEvent {
   switch (command.kind) {
-    case 'start-turn':
+    case 'turn-started':
       return {
         kind: 'turn-started',
+        threadId: command.threadId,
         turnId: command.turnId,
+        startedAt: command.startedAt,
       };
 
-    case 'mark-turn-waiting':
+    case 'turn-completed':
       return {
-        kind: 'turn-waiting',
+        kind: 'turn-completed',
+        threadId: command.threadId,
         turnId: command.turnId,
+        status: command.status,
+        error: command.error,
+        completedAt: command.completedAt,
+        durationMs: command.durationMs,
       };
 
-    case 'finish-turn':
+    case 'clear-turn':
       return {
-        kind: 'turn-finished',
-        turnId: command.turnId,
-        outcome: command.outcome,
-      };
-
-    case 'reset-turn':
-      return {
-        kind: 'turn-reset',
+        kind: 'turn-cleared',
+        threadId: command.threadId,
       };
   }
 }

@@ -16,15 +16,12 @@ function createCoordinatorFixture(): CoordinatorFixture {
   const turn: TurnService = {
     apply(input) {
       turnCommands.push(input);
-      return input.kind === 'reset-turn'
-        ? { lifecycle: 'idle', activeTurnId: null }
-        : { lifecycle: 'starting', activeTurnId: input.turnId };
+      return { current: null };
     },
 
     snapshot() {
       return {
-        lifecycle: 'idle',
-        activeTurnId: null,
+        current: null,
       };
     },
   };
@@ -46,7 +43,9 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.turnCommands, [{ kind: 'start-turn', turnId: 'turn-1' }]);
+    assert.deepEqual(fixture.turnCommands, [
+      { kind: 'turn-started', threadId: 'thread-1', turnId: 'turn-1', startedAt: null },
+    ]);
   });
 
   test('leaves runtime-output-updated projection to the conversation migration', () => {
@@ -77,7 +76,17 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.turnCommands, [{ kind: 'finish-turn', turnId: 'turn-1', outcome: 'completed' }]);
+    assert.deepEqual(fixture.turnCommands, [
+      {
+        completedAt: null,
+        durationMs: null,
+        error: null,
+        kind: 'turn-completed',
+        status: 'completed',
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+      },
+    ]);
   });
 
   test('leaves runtime-input-requested events to the runtime-request migration', () => {
@@ -110,7 +119,20 @@ describe('createRuntimeEventCoordinator', () => {
 
     fixture.coordinator.receive(event);
 
-    assert.deepEqual(fixture.turnCommands, [{ kind: 'finish-turn', turnId: 'turn-1', outcome: 'failed' }]);
+    assert.deepEqual(fixture.turnCommands, [
+      {
+        completedAt: null,
+        durationMs: null,
+        error: {
+          code: 'RUNTIME_FAILED',
+          message: 'Runtime failed',
+        },
+        kind: 'turn-completed',
+        status: 'failed',
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+      },
+    ]);
   });
 
   test('leaves runtime-system-notice events to notice migration', () => {

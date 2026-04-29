@@ -47,6 +47,8 @@ export type {
   ToolResponseInteraction,
 } from './pending-interaction.js';
 export type {
-  ClientTurnLifecycle,
+  ClientTurnError,
+  ClientTurnRecord,
+  ClientTurnStatus,
   ClientTurnView,
 } from './turn-view.js';

@@ -21,8 +21,7 @@ test('presenters create a client snapshot from feature-owned state', () => {
       updatedAt: null,
     },
     turn: {
-      lifecycle: 'idle',
-      activeTurnId: null,
+      current: null,
     },
     conversation: {
       revision: 1,
@@ -47,7 +46,7 @@ test('presenters create a client snapshot from feature-owned state', () => {
   assert.equal(snapshot.selection.threadId, 'thread-1');
   assert.equal(snapshot.thread.status, 'ready');
   assert.equal(snapshot.thread.title, 'Thread one');
-  assert.equal(snapshot.turn.lifecycle, 'idle');
+  assert.equal(snapshot.turn.current, null);
   assert.equal(snapshot.conversation.revision, 1);
   assert.equal(snapshot.conversation.items.length, 1);
   assert.equal(snapshot.stream.status, 'disabled');
@@ -63,8 +62,7 @@ test('client snapshot keeps slot selection separate from thread readiness', () =
     },
     selectedThread: null,
     turn: {
-      lifecycle: 'idle',
-      activeTurnId: null,
+      current: null,
     },
     conversation: {
       revision: 0,
@@ -115,12 +113,28 @@ test('pending interaction presenter stays explicit until controls are migrated',
   );
 });
 
-test('turn presenter centralizes client send and interrupt affordances', () => {
-  assert.deepEqual(presentTurn({ snapshot: { lifecycle: 'streaming', activeTurnId: 'turn-1' } }), {
-    lifecycle: 'streaming',
-    active: true,
-    canSend: false,
-    canInterrupt: true,
-    visibleStatus: 'Running',
+test('turn presenter exposes the native turn snapshot shape', () => {
+  assert.deepEqual(presentTurn({
+    snapshot: {
+      current: {
+        completedAt: null,
+        durationMs: null,
+        error: null,
+        startedAt: null,
+        status: 'inProgress',
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+      },
+    },
+  }), {
+    current: {
+      completedAt: null,
+      durationMs: null,
+      error: null,
+      startedAt: null,
+      status: 'inProgress',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+    },
   });
 });

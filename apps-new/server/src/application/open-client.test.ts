@@ -38,14 +38,12 @@ function createOpenClientDependencies() {
   const turn: TurnService = {
     apply() {
       return {
-        activeTurnId: null,
-        lifecycle: 'idle',
+        current: null,
       };
     },
     snapshot() {
       return {
-        activeTurnId: null,
-        lifecycle: 'idle',
+        current: null,
       };
     },
   };

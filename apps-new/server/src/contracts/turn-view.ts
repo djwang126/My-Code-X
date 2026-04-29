@@ -1,7 +1,20 @@
-export type ClientTurnLifecycle = 'idle' | 'starting' | 'streaming' | 'waiting-for-input' | 'completed' | 'failed' | 'interrupted';
+export type ClientTurnStatus = 'inProgress' | 'completed' | 'failed' | 'interrupted';
 
-export type ClientTurnView =
-  | { readonly lifecycle: 'idle'; readonly active: false; readonly canSend: true; readonly canInterrupt: false; readonly visibleStatus: string }
-  | { readonly lifecycle: 'starting' | 'streaming'; readonly active: true; readonly canSend: false; readonly canInterrupt: true; readonly visibleStatus: string }
-  | { readonly lifecycle: 'waiting-for-input'; readonly active: true; readonly canSend: false; readonly canInterrupt: true; readonly visibleStatus: string }
-  | { readonly lifecycle: 'completed' | 'failed' | 'interrupted'; readonly active: false; readonly canSend: true; readonly canInterrupt: false; readonly visibleStatus: string };
+export interface ClientTurnError {
+  readonly message: string;
+  readonly code: string | null;
+}
+
+export interface ClientTurnRecord {
+  readonly threadId: string;
+  readonly turnId: string;
+  readonly status: ClientTurnStatus;
+  readonly error: ClientTurnError | null;
+  readonly startedAt: number | null;
+  readonly completedAt: number | null;
+  readonly durationMs: number | null;
+}
+
+export interface ClientTurnView {
+  readonly current: ClientTurnRecord | null;
+}

@@ -4,8 +4,7 @@ export type TurnState = TurnSnapshot;
 
 export function createInitialTurnState(): TurnState {
   return {
-    lifecycle: 'idle',
-    activeTurnId: null,
+    current: null,
   };
 }
 
@@ -20,23 +19,31 @@ export function applyTurnDomainEvent(input: ApplyTurnDomainEventInput): TurnStat
   switch (event.kind) {
     case 'turn-started':
       return {
-        lifecycle: 'starting',
-        activeTurnId: event.turnId,
+        current: {
+          threadId: event.threadId,
+          turnId: event.turnId,
+          status: 'inProgress',
+          error: null,
+          startedAt: event.startedAt,
+          completedAt: null,
+          durationMs: null,
+        },
       };
 
-    case 'turn-waiting':
+    case 'turn-completed':
       return {
-        lifecycle: 'waiting-for-input',
-        activeTurnId: event.turnId,
+        current: {
+          threadId: event.threadId,
+          turnId: event.turnId,
+          status: event.status,
+          error: event.error,
+          startedAt: input.state.current?.turnId === event.turnId ? input.state.current.startedAt : null,
+          completedAt: event.completedAt,
+          durationMs: event.durationMs,
+        },
       };
 
-    case 'turn-finished':
-      return {
-        lifecycle: event.outcome,
-        activeTurnId: event.turnId,
-      };
-
-    case 'turn-reset':
+    case 'turn-cleared':
       return createInitialTurnState();
   }
 }
