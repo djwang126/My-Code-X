@@ -24,6 +24,13 @@ const nodeTestGlobals = {
   fetch: 'readonly',
 };
 
+const browserGlobals = {
+  console: 'readonly',
+  document: 'readonly',
+  window: 'readonly',
+  URLSearchParams: 'readonly',
+};
+
 export default [
   {
     ignores: ['.worktrees/**', 'worktrees/**', 'apps/web/**', 'node_modules/**', '**/dist/**', 'output/**'],
@@ -52,7 +59,7 @@ export default [
     },
   },
   {
-    files: ['apps/server/**/*.ts', 'apps-new/server/**/*.ts', 'packages/**/*.ts'],
+    files: ['apps/server/**/*.ts', 'apps-new/server/**/*.ts', 'apps-new/contracts/**/*.ts', 'packages/**/*.ts'],
     languageOptions: {
       parser: tseslint.parser,
       parserOptions: {
@@ -60,6 +67,30 @@ export default [
         sourceType: 'module',
       },
       globals: nodeGlobals,
+    },
+    plugins: {
+      '@typescript-eslint': tseslint.plugin,
+    },
+    rules: {
+      ...tseslint.configs.recommended.rules,
+      'no-unused-vars': 'off',
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+      'no-console': 'off',
+    },
+  },
+
+  {
+    files: ['apps-new/web/**/*.ts', 'apps-new/web/**/*.tsx', 'apps-new/web/vite.config.ts'],
+    languageOptions: {
+      parser: tseslint.parser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      globals: browserGlobals,
     },
     plugins: {
       '@typescript-eslint': tseslint.plugin,

@@ -7,6 +7,8 @@
     "apps/web",
     "apps/server",
     "apps-new/server",
+    "apps-new/contracts",
+    "apps-new/web",
     "packages/contracts",
     "packages/utils"
   ],
@@ -53,7 +55,13 @@
     "compat:report": "node scripts/codex-upstream-compat.mjs report",
     "typecheck:server-new": "npm run typecheck --workspace @my-code-x/server-new",
     "test:server-new": "npm run test --workspace @my-code-x/server-new",
-    "lint:server-new": "npm run lint --workspace @my-code-x/server-new"
+    "lint:server-new": "npm run lint --workspace @my-code-x/server-new",
+    "build:contracts-new": "npm run build --workspace @my-code-x/contracts-new",
+    "typecheck:contracts-new": "npm run typecheck --workspace @my-code-x/contracts-new",
+    "lint:contracts-new": "npm run lint --workspace @my-code-x/contracts-new",
+    "build:web-new": "npm run build --workspace @my-code-x/web-new",
+    "typecheck:web-new": "npm run typecheck --workspace @my-code-x/web-new",
+    "lint:web-new": "npm run lint --workspace @my-code-x/web-new"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
