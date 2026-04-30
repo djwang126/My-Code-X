@@ -3,9 +3,46 @@ import { describe, test } from 'node:test';
 
 import { CodexProtocolError } from '../runtime/codex-runtime-error.js';
 import { mapCodexResultToRuntimeResult } from './map-runtime-result.js';
+import type { JsonObject } from '../../../shared/index.js';
+
+function createCodexThread(overrides: JsonObject = {}): JsonObject {
+  return {
+    id: 'thread-1',
+    forkedFromId: null,
+    preview: 'Hello',
+    ephemeral: false,
+    modelProvider: 'openai',
+    createdAt: 1770000000,
+    updatedAt: 1770000300,
+    status: { type: 'idle' },
+    path: 'C:/Users/David/.codex/sessions/2026/04/29/rollout.jsonl',
+    cwd: '/workspace',
+    cliVersion: '0.0.0',
+    source: { type: 'appServer' },
+    agentNickname: null,
+    agentRole: null,
+    gitInfo: null,
+    name: 'Thread title',
+    turns: [],
+    ...overrides,
+  };
+}
+
+function createCodexTurn(overrides: JsonObject = {}): JsonObject {
+  return {
+    id: 'turn-1',
+    items: [],
+    status: 'completed',
+    error: null,
+    startedAt: 1770000001,
+    completedAt: 1770000003,
+    durationMs: 2000,
+    ...overrides,
+  };
+}
 
 describe('mapCodexResultToRuntimeResult', () => {
-  test('maps a Codex thread/start result into an internal thread-started result', () => {
+  test('maps a Codex v2 thread/start result into a rich internal thread-started result', () => {
     const result = mapCodexResultToRuntimeResult({
       command: {
         kind: 'start-thread',
@@ -14,19 +51,27 @@ describe('mapCodexResultToRuntimeResult', () => {
         baseInstructions: null,
       },
       result: {
-        thread: {
-          id: 'thread-1',
-        },
+        thread: createCodexThread(),
+        model: 'gpt-5.4',
+        modelProvider: 'openai',
+        serviceTier: null,
+        cwd: '/workspace',
+        instructionSources: ['/workspace/AGENTS.md'],
+        approvalPolicy: 'never',
+        approvalsReviewer: 'user',
+        sandbox: { type: 'workspaceWrite' },
+        permissionProfile: null,
+        reasoningEffort: 'high',
       },
     });
 
-    assert.deepEqual(result, {
-      kind: 'thread-started',
-      threadId: 'thread-1',
-    });
+    assert.equal(result.kind, 'thread-started');
+    assert.equal(result.threadId, 'thread-1');
+    assert.equal(result.thread?.preview, 'Hello');
+    assert.deepEqual(result.effectiveConfig?.instructionSources, ['/workspace/AGENTS.md']);
   });
 
-  test('maps a Codex thread/resume result into a typed snapshot', () => {
+  test('maps a Codex v2 thread/resume result from thread.turns items', () => {
     const result = mapCodexResultToRuntimeResult({
       command: {
         kind: 'resume-thread',
@@ -36,52 +81,55 @@ describe('mapCodexResultToRuntimeResult', () => {
         baseInstructions: null,
       },
       result: {
-        threadId: 'thread-1',
-        threadName: 'Thread title',
-        messages: [
-          {
-            id: 'item-1',
-            type: 'assistant_message',
-            status: 'complete',
-            text: 'hello',
-          },
-        ],
-        pendingRequests: [
-          {
-            id: 'request-1',
-            type: 'approval',
-            prompt: 'Approve?',
-          },
-        ],
+        thread: createCodexThread({
+          turns: [
+            createCodexTurn({
+              items: [
+                {
+                  type: 'userMessage',
+                  id: 'user-item-1',
+                  content: [{ type: 'text', text: 'Hello', text_elements: [] }],
+                },
+                {
+                  type: 'agentMessage',
+                  id: 'agent-item-1',
+                  text: 'Hi',
+                  phase: null,
+                  memoryCitation: null,
+                },
+              ],
+            }),
+          ],
+        }),
+        model: 'gpt-5.4',
+        modelProvider: 'openai',
+        serviceTier: null,
+        cwd: '/workspace',
+        instructionSources: [],
+        approvalPolicy: 'never',
+        approvalsReviewer: 'user',
+        sandbox: { type: 'dangerFullAccess' },
+        permissionProfile: null,
+        reasoningEffort: null,
       },
     });
 
-    assert.deepEqual(result, {
-      kind: 'thread-resumed',
-      threadId: 'thread-1',
-      snapshot: {
-        threadId: 'thread-1',
-        title: 'Thread title',
-        items: [
-          {
-            itemId: 'item-1',
-            itemKind: 'assistant_message',
-            status: 'complete',
-            text: 'hello',
-          },
-        ],
-        pendingInputs: [
-          {
-            requestId: 'request-1',
-            inputKind: 'approval',
-            prompt: 'Approve?',
-          },
-        ],
-      },
-    });
+    assert.equal(result.kind, 'thread-resumed');
+    assert.equal(result.threadId, 'thread-1');
+    assert.equal(result.snapshot.threadId, 'thread-1');
+    assert.equal(result.snapshot.title, 'Thread title');
+    assert.equal(result.snapshot.turns?.[0]?.id, 'turn-1');
+    assert.deepEqual(
+      result.snapshot.items.map(item => [item.itemKind, item.text]),
+      [
+        ['userMessage', 'Hello'],
+        ['agentMessage', 'Hi'],
+      ],
+    );
+    assert.deepEqual(result.snapshot.pendingInputs, []);
   });
 
-  test('maps a Codex thread/list result into internal listed threads', () => {
+  test('maps a Codex v2 thread/list result from data and cursors', () => {
     const result = mapCodexResultToRuntimeResult({
       command: {
         kind: 'list-threads',
@@ -90,32 +138,120 @@ describe('mapCodexResultToRuntimeResult', () => {
         archived: false,
       },
       result: {
-        threads: [
-          {
-            id: 'thread-1',
-            title: 'First',
-            cwd: '/workspace',
-            updated_at: '2026-04-27T00:00:00.000Z',
-          },
-        ],
+        data: [createCodexThread({ id: 'thread-1', name: 'First', turns: [] })],
+        nextCursor: 'next-1',
+        backwardsCursor: 'back-1',
       },
     });
 
-    assert.deepEqual(result, {
-      kind: 'threads-listed',
-      threads: [
-        {
-          threadId: 'thread-1',
-          title: 'First',
-          workspace: '/workspace',
-          updatedAt: '2026-04-27T00:00:00.000Z',
-        },
-      ],
-    });
+    assert.equal(result.kind, 'threads-listed');
+    assert.equal(result.threads[0]?.threadId, 'thread-1');
+    assert.equal(result.threads[0]?.title, 'First');
+    assert.equal(result.nextCursor, 'next-1');
+    assert.equal(result.backwardsCursor, 'back-1');
   });
 
-  test('maps a Codex turn/start result into an internal turn-started result', () => {
+  test('preserves structured Codex thread item semantics instead of only raw text', () => {
     const result = mapCodexResultToRuntimeResult({
+      command: {
+        kind: 'resume-thread',
+        threadId: 'thread-1',
+        workspace: '/workspace',
+        runtimeSettings: null,
+        baseInstructions: null,
+      },
+      result: {
+        thread: createCodexThread({
+          turns: [
+            createCodexTurn({
+              items: [
+                {
+                  type: 'commandExecution',
+                  id: 'cmd-1',
+                  command: 'npm test',
+                  cwd: '/workspace',
+                  processId: 'proc-1',
+                  source: 'agent',
+                  status: 'completed',
+                  commandActions: [{ type: 'test' }],
+                  aggregatedOutput: 'ok',
+                  exitCode: 0,
+                  durationMs: 123,
+                },
+              ],
+            }),
+          ],
+        }),
+        model: 'gpt-5.4',
+        modelProvider: 'openai',
+        serviceTier: null,
+        cwd: '/workspace',
+        instructionSources: [],
+        approvalPolicy: 'never',
+        approvalsReviewer: 'user',
+        sandbox: { type: 'dangerFullAccess' },
+        permissionProfile: null,
+        reasoningEffort: null,
+      },
+    });
+
+    assert.equal(result.kind, 'thread-resumed');
+    const item = result.snapshot.items[0];
+    assert.equal(item?.itemKind, 'commandExecution');
+    assert.equal(item?.text, 'npm test');
+    if (item?.itemKind !== 'commandExecution') {
+      assert.fail('expected a structured commandExecution item');
+    }
+    assert.equal(item.command, 'npm test');
+    assert.equal(item.cwd, '/workspace');
+    assert.equal(item.exitCode, 0);
+    assert.equal(item.durationMs, 123);
+  });
+
+  test('maps Codex v2 thread/fork, thread/read, and thread/turns/list results', () => {
+    const forkResult = mapCodexResultToRuntimeResult({
+      command: {
+        kind: 'fork-thread',
+        threadId: 'thread-1',
+        workspace: '/workspace',
+        runtimeSettings: null,
+        baseInstructions: null,
+      },
+      result: {
+        thread: createCodexThread({ id: 'thread-2', forkedFromId: 'thread-1' }),
+        model: 'gpt-5.4',
+        modelProvider: 'openai',
+        serviceTier: null,
+        cwd: '/workspace',
+        instructionSources: [],
+        approvalPolicy: 'never',
+        approvalsReviewer: 'user',
+        sandbox: { type: 'dangerFullAccess' },
+        permissionProfile: null,
+        reasoningEffort: null,
+      },
+    });
+    assert.equal(forkResult.kind, 'thread-forked');
+    assert.equal(forkResult.threadId, 'thread-2');
+
+    const readResult = mapCodexResultToRuntimeResult({
+      command: { kind: 'read-thread', threadId: 'thread-1', includeTurns: true },
+      result: { thread: createCodexThread() },
+    });
+    assert.equal(readResult.kind, 'thread-read');
+    assert.equal(readResult.threadId, 'thread-1');
+
+    const turnsResult = mapCodexResultToRuntimeResult({
+      command: { kind: 'list-thread-turns', threadId: 'thread-1', limit: 1 },
+      result: { data: [createCodexTurn()], nextCursor: null, backwardsCursor: 'turn-1' },
+    });
+    assert.equal(turnsResult.kind, 'thread-turns-listed');
+    assert.equal(turnsResult.turns?.[0]?.id, 'turn-1');
+    assert.equal(turnsResult.backwardsCursor, 'turn-1');
+  });
+
+  test('maps Codex v2 turn/start, turn/steer, and turn/interrupt results', () => {
+    const startResult = mapCodexResultToRuntimeResult({
       command: {
         kind: 'start-turn',
         threadId: 'thread-1',
@@ -124,36 +260,33 @@ describe('mapCodexResultToRuntimeResult', () => {
         runtimeSettings: null,
       },
       result: {
-        turn: {
-          id: 'turn-1',
-        },
+        turn: createCodexTurn({ status: 'inProgress', completedAt: null, durationMs: null }),
       },
     });
+    assert.equal(startResult.kind, 'turn-started');
+    assert.equal(startResult.turnId, 'turn-1');
+    assert.equal(startResult.turn?.status, 'inProgress');
 
-    assert.deepEqual(result, {
-      kind: 'turn-started',
-      turnId: 'turn-1',
-    });
-  });
-
-  test('maps a Codex turn/interrupt result into an ok result', () => {
-    const result = mapCodexResultToRuntimeResult({
+    const steerResult = mapCodexResultToRuntimeResult({
       command: {
-        kind: 'interrupt-turn',
+        kind: 'steer-turn',
         threadId: 'thread-1',
-        turnId: null,
+        expectedTurnId: 'turn-1',
+        message: 'More',
+        content: [],
       },
-      result: {
-        ok: true,
-      },
+      result: { turnId: 'turn-1' },
     });
+    assert.deepEqual(steerResult, { kind: 'turn-steered', turnId: 'turn-1' });
 
-    assert.deepEqual(result, {
-      kind: 'ok',
+    const interruptResult = mapCodexResultToRuntimeResult({
+      command: { kind: 'interrupt-turn', threadId: 'thread-1', turnId: 'turn-1' },
+      result: {},
     });
+    assert.deepEqual(interruptResult, { kind: 'ok' });
   });
 
-  test('rejects malformed listed threads at the adapter boundary', () => {
+  test('rejects a Codex v2 thread/list result without data', () => {
     assert.throws(
       () =>
         mapCodexResultToRuntimeResult({
@@ -163,61 +296,15 @@ describe('mapCodexResultToRuntimeResult', () => {
             limit: 10,
             archived: false,
           },
-          result: {
-            threads: [
-              {
-                title: 'Missing id',
-              },
-            ],
-          },
+          result: { threads: [createCodexThread()] },
         }),
       (error: unknown) =>
         error instanceof CodexProtocolError &&
-        error.message === 'Codex listed thread is missing id',
-      );
-  });
-
-  test('rejects a present thread list field that is not an array', () => {
-    assert.throws(
-      () =>
-        mapCodexResultToRuntimeResult({
-          command: {
-            kind: 'list-threads',
-            workspace: '/workspace',
-            limit: 10,
-            archived: false,
-          },
-          result: {
-            threads: 'not-an-array',
-          },
-        }),
-      (error: unknown) =>
-        error instanceof CodexProtocolError &&
-        error.message === 'Codex thread list result.threads must be an array',
+        error.message === 'Codex thread/list result.data must be an array',
     );
   });
 
-  test('rejects non-object thread list items at the adapter boundary', () => {
-    assert.throws(
-      () =>
-        mapCodexResultToRuntimeResult({
-          command: {
-            kind: 'list-threads',
-            workspace: '/workspace',
-            limit: 10,
-            archived: false,
-          },
-          result: {
-            threads: ['thread-1'],
-          },
-        }),
-      (error: unknown) =>
-        error instanceof CodexProtocolError &&
-        error.message === 'Codex listed thread must be an object',
-    );
-  });
-
-  test('rejects present resume timeline fields that are not arrays', () => {
+  test('rejects malformed v2 payloads at the adapter boundary', () => {
     assert.throws(
       () =>
         mapCodexResultToRuntimeResult({
@@ -228,92 +315,13 @@ describe('mapCodexResultToRuntimeResult', () => {
             runtimeSettings: null,
             baseInstructions: null,
           },
-          result: {
-            threadId: 'thread-1',
-            messages: 'not-an-array',
-          },
+          result: { threadId: 'thread-1' },
         }),
       (error: unknown) =>
         error instanceof CodexProtocolError &&
-        error.message === 'Codex resume result timeline items must be an array',
+        error.message === 'Codex thread/resume result.thread must be an object',
     );
-  });
 
-  test('rejects present resume pending request fields that are not arrays', () => {
-    assert.throws(
-      () =>
-        mapCodexResultToRuntimeResult({
-          command: {
-            kind: 'resume-thread',
-            threadId: 'thread-1',
-            workspace: '/workspace',
-            runtimeSettings: null,
-            baseInstructions: null,
-          },
-          result: {
-            threadId: 'thread-1',
-            pendingRequests: 'not-an-array',
-          },
-        }),
-      (error: unknown) =>
-        error instanceof CodexProtocolError &&
-        error.message === 'Codex resume result pendingRequests must be an array',
-    );
-  });
-
-  test('rejects resume timeline items without an id at the adapter boundary', () => {
-    assert.throws(
-      () =>
-        mapCodexResultToRuntimeResult({
-          command: {
-            kind: 'resume-thread',
-            threadId: 'thread-1',
-            workspace: '/workspace',
-            runtimeSettings: null,
-            baseInstructions: null,
-          },
-          result: {
-            threadId: 'thread-1',
-            messages: [
-              {
-                text: 'missing id',
-              },
-            ],
-          },
-        }),
-      (error: unknown) =>
-        error instanceof CodexProtocolError &&
-        error.message === 'Codex timeline item is missing id',
-    );
-  });
-
-  test('rejects resume pending inputs without an id at the adapter boundary', () => {
-    assert.throws(
-      () =>
-        mapCodexResultToRuntimeResult({
-          command: {
-            kind: 'resume-thread',
-            threadId: 'thread-1',
-            workspace: '/workspace',
-            runtimeSettings: null,
-            baseInstructions: null,
-          },
-          result: {
-            threadId: 'thread-1',
-            pendingRequests: [
-              {
-                prompt: 'Approve?',
-              },
-            ],
-          },
-        }),
-      (error: unknown) =>
-        error instanceof CodexProtocolError &&
-        error.message === 'Codex pending input is missing id',
-    );
-  });
-
-  test('rejects malformed turn start results at the adapter boundary', () => {
     assert.throws(
       () =>
         mapCodexResultToRuntimeResult({
@@ -324,11 +332,11 @@ describe('mapCodexResultToRuntimeResult', () => {
             content: [],
             runtimeSettings: null,
           },
-          result: {
-            turn: {},
-          },
+          result: { turn: {} },
         }),
-      (error: unknown) => error instanceof CodexProtocolError && error.message === 'Codex turn id must be a string',
+      (error: unknown) =>
+        error instanceof CodexProtocolError &&
+        error.message === 'Codex turn/start result.turn.id must be a string',
     );
   });
 });

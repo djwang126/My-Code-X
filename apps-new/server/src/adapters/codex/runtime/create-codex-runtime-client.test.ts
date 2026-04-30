@@ -4,7 +4,7 @@ import { describe, test } from 'node:test';
 import type { RuntimeEvent, RuntimeResult } from '../../../ports/index.js';
 import type { JsonValue } from '../../../shared/index.js';
 import type { CodexRuntimeLogger } from './codex-runtime-logger.js';
-import { CodexRpcError, CodexTransportClosedError } from './codex-runtime-error.js';
+import { CodexProtocolError, CodexRpcError, CodexTransportClosedError } from './codex-runtime-error.js';
 import { createCodexRuntimeClient } from './create-codex-runtime-client.js';
 import type {
   CodexJsonlTransport,
@@ -150,7 +150,10 @@ describe('createCodexRuntimeClient', () => {
       kind: 'respond-to-runtime-request',
       requestId: 'request-1',
       response: {
-        approved: true,
+        kind: 'raw',
+        value: {
+          approved: true,
+        },
       },
     });
 
@@ -167,6 +170,111 @@ describe('createCodexRuntimeClient', () => {
         },
       },
     ]);
+  });
+
+  test('maps typed runtime input responses to Codex server response payloads', async () => {
+    const testTransport = createTestTransport();
+    const client = createCodexRuntimeClient({
+      transport: testTransport.transport,
+      dynamicTools: [],
+      logger: createTestLogger(),
+    });
+
+    await client.send({
+      kind: 'respond-to-runtime-request',
+      requestId: 'approval-1',
+      method: 'item/commandExecution/requestApproval',
+      response: {
+        kind: 'decision',
+        decision: 'accept',
+      },
+    });
+    await client.send({
+      kind: 'respond-to-runtime-request',
+      requestId: 'tool-1',
+      method: 'item/tool/call',
+      response: {
+        kind: 'dynamic-tool',
+        contentItems: [{ type: 'inputText', text: 'ok' }],
+        success: true,
+      },
+    });
+    await client.send({
+      kind: 'respond-to-runtime-request',
+      requestId: 'auth-1',
+      method: 'account/chatgptAuthTokens/refresh',
+      response: {
+        kind: 'auth-refresh',
+        accessToken: 'access-token',
+        chatgptAccountId: 'org-123',
+        chatgptPlanType: 'business',
+      },
+    });
+
+    assert.deepEqual(testTransport.serverResponses, [
+      {
+        requestId: 'approval-1',
+        result: {
+          decision: 'accept',
+        },
+      },
+      {
+        requestId: 'tool-1',
+        result: {
+          contentItems: [{ type: 'inputText', text: 'ok' }],
+          success: true,
+        },
+      },
+      {
+        requestId: 'auth-1',
+        result: {
+          accessToken: 'access-token',
+          chatgptAccountId: 'org-123',
+          chatgptPlanType: 'business',
+        },
+      },
+    ]);
+  });
+
+  test('rejects typed runtime input responses that do not match the Codex server request method', async () => {
+    const testTransport = createTestTransport();
+    const client = createCodexRuntimeClient({
+      transport: testTransport.transport,
+      dynamicTools: [],
+      logger: createTestLogger(),
+    });
+
+    await assert.rejects(
+      () =>
+        client.send({
+          kind: 'respond-to-runtime-request',
+          requestId: 'request-1',
+          method: 'item/tool/call',
+          response: {
+            kind: 'decision',
+            decision: 'accept',
+          },
+        }),
+      (error: unknown) =>
+        error instanceof CodexProtocolError &&
+        error.message === 'Codex server request item/tool/call requires a dynamic-tool response',
+    );
+    await assert.rejects(
+      () =>
+        client.send({
+          kind: 'respond-to-runtime-request',
+          requestId: 'request-2',
+          method: 'account/chatgptAuthTokens/refresh',
+          response: {
+            kind: 'decision',
+            decision: 'accept',
+          },
+        }),
+      (error: unknown) =>
+        error instanceof CodexProtocolError &&
+        error.message === 'Codex server request account/chatgptAuthTokens/refresh requires a auth-refresh response',
+    );
+    assert.deepEqual(testTransport.serverResponses, []);
   });
 
   test('publishes mapped runtime events to subscribers until they unsubscribe', () => {

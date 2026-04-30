@@ -1,7 +1,13 @@
+import type { ConversationService } from '../features/conversation/index.js';
+import type { RuntimeRequestKind, RuntimeRequestService } from '../features/runtime-request/index.js';
+import type { ThreadRecord, ThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
-import type { RuntimeEvent } from '../ports/index.js';
+import type { RuntimeEvent, RuntimeInputKind, RuntimeThread, RuntimeThreadItem } from '../ports/index.js';
 
 export interface RuntimeEventCoordinatorInput {
+  readonly conversation?: ConversationService;
+  readonly runtimeRequests?: RuntimeRequestService;
+  readonly thread?: ThreadService;
   readonly turn: TurnService;
 }
 
@@ -18,13 +24,8 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
             kind: 'turn-started',
             threadId: event.threadId,
             turnId: event.turnId,
-            startedAt: null,
+            startedAt: event.turn?.startedAt ?? null,
           });
-          return;
-
-        case 'runtime-output-updated':
-          // Intentionally not projected in the skeleton. Conversation item
-          // semantics must be migrated with the real transcript feature.
           return;
 
         case 'runtime-turn-completed':
@@ -34,13 +35,55 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
             turnId: event.turnId,
             status: event.status,
             error: event.error,
-            completedAt: null,
-            durationMs: null,
+            completedAt: event.turn?.completedAt ?? null,
+            durationMs: event.turn?.durationMs ?? null,
           });
           return;
 
         case 'runtime-input-requested':
-          // Runtime request interaction semantics are migrated separately.
+          input.runtimeRequests?.apply({
+            kind: 'open-runtime-request',
+            request: {
+              id: event.requestId,
+              kind: mapRuntimeInputKind(event.inputKind),
+              lifecycle: 'open',
+              title: event.title,
+              prompt: event.prompt,
+              responseKind: mapRuntimeInputResponseKind(event.inputKind),
+              data: event.data ?? {},
+            },
+          });
+          return;
+
+        case 'runtime-input-resolved':
+          input.runtimeRequests?.apply({
+            kind: 'resolve-runtime-request',
+            requestId: event.requestId,
+          });
+          return;
+
+        case 'runtime-thread-started':
+          rememberRuntimeThread(input.thread, event.thread);
+          return;
+
+        case 'runtime-thread-name-updated':
+          rememberThreadName(input.thread, event.threadId, event.name ?? null);
+          return;
+
+        case 'runtime-thread-closed':
+          input.thread?.forget({
+            kind: 'forget-thread',
+            threadId: event.threadId,
+          });
+          return;
+
+        case 'runtime-item-started':
+        case 'runtime-item-completed':
+          appendConversationItem(input.conversation, event.item);
+          return;
+
+        case 'runtime-item-delta':
+          // Streaming delta aggregation belongs in the conversation timeline feature.
           return;
 
         case 'runtime-error':
@@ -57,9 +100,95 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
           }
           return;
 
+        case 'runtime-thread-status-changed':
+        case 'runtime-thread-archived':
+        case 'runtime-thread-unarchived':
+        case 'runtime-thread-token-usage-updated':
+        case 'runtime-turn-diff-updated':
+        case 'runtime-turn-plan-updated':
+        case 'runtime-codex-notification':
         case 'runtime-system-notice':
           return;
       }
     },
   };
+}
+
+function mapRuntimeInputKind(inputKind: RuntimeInputKind): RuntimeRequestKind {
+  switch (inputKind) {
+    case 'approval':
+      return 'approval';
+    case 'form':
+      return 'form';
+    case 'auth':
+      return 'auth';
+    case 'tool-response':
+    case 'unknown':
+      return 'tool-response';
+  }
+}
+
+function mapRuntimeInputResponseKind(inputKind: RuntimeInputKind): 'decision' | 'form' | 'freeform' | 'structured' {
+  switch (inputKind) {
+    case 'approval':
+      return 'decision';
+    case 'form':
+      return 'form';
+    case 'auth':
+      return 'freeform';
+    case 'tool-response':
+    case 'unknown':
+      return 'structured';
+  }
+}
+
+function rememberRuntimeThread(thread: ThreadService | undefined, runtimeThread: RuntimeThread): void {
+  if (!thread) {
+    return;
+  }
+
+  thread.remember({
+    kind: 'remember-thread',
+    thread: mapRuntimeThreadRecord(runtimeThread),
+  });
+}
+
+function rememberThreadName(thread: ThreadService | undefined, threadId: string, name: string | null): void {
+  if (!thread) {
+    return;
+  }
+
+  const existing = thread.get(threadId);
+  thread.remember({
+    kind: 'remember-thread',
+    thread: {
+      threadId,
+      workspace: existing?.workspace ?? null,
+      title: name,
+      updatedAt: existing?.updatedAt ?? null,
+    },
+  });
+}
+
+function mapRuntimeThreadRecord(thread: RuntimeThread): ThreadRecord {
+  return {
+    threadId: thread.threadId,
+    workspace: thread.workspace,
+    title: thread.title,
+    updatedAt: thread.updatedAt,
+  };
+}
+
+function appendConversationItem(conversation: ConversationService | undefined, item: RuntimeThreadItem): void {
+  if (!conversation || !item.text) {
+    return;
+  }
+
+  conversation.apply({
+    kind: 'append-conversation-item',
+    item: {
+      id: item.itemId,
+      text: item.text,
+    },
+  });
 }

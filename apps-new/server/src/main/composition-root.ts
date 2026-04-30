@@ -29,7 +29,7 @@ export async function createAppComposition(): Promise<AppComposition> {
   const turn = createTurnService({ events });
   const workspace = createWorkspaceService({ runtime });
   const application = createApplication({ conversation, runtime, runtimeRequests, slot, thread, threadActions, turn, workspace });
-  const runtimeEvents = createRuntimeEventCoordinator({ turn });
+  const runtimeEvents = createRuntimeEventCoordinator({ conversation, runtimeRequests, thread, turn });
   const unsubscribeRuntimeEvents = runtime.subscribe(runtimeEvents.receive);
   const http = createHttpApp({ application });
 

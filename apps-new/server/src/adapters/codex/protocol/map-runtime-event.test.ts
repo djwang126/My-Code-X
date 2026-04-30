@@ -47,10 +47,18 @@ describe('mapCodexIncomingMessageToRuntimeEvent', () => {
     assert.deepEqual(event, {
       kind: 'runtime-input-requested',
       requestId: 'request-1',
+      method: 'approval/request',
       threadId: 'thread-1',
+      turnId: null,
+      itemId: null,
       inputKind: 'approval',
       title: 'Approve command',
       prompt: 'Run npm test?',
+      data: {
+        threadId: 'thread-1',
+        title: 'Approve command',
+        prompt: 'Run npm test?',
+      },
     });
   });
 
@@ -73,7 +81,7 @@ describe('mapCodexIncomingMessageToRuntimeEvent', () => {
     });
   });
 
-  test('maps item delta notifications into runtime output updates', () => {
+  test('maps item delta notifications into runtime item delta events', () => {
     const event = mapMessage({
       kind: 'notification',
       method: 'item/agentMessage/delta',
@@ -86,16 +94,22 @@ describe('mapCodexIncomingMessageToRuntimeEvent', () => {
     });
 
     assert.deepEqual(event, {
-      kind: 'runtime-output-updated',
+      kind: 'runtime-item-delta',
       threadId: 'thread-1',
       turnId: 'turn-1',
       itemId: 'item-1',
-      outputKind: 'text-delta',
+      deltaKind: 'agent-message',
       text: 'hello',
+      data: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        itemId: 'item-1',
+        delta: 'hello',
+      },
     });
   });
 
-  test('maps item lifecycle notifications into runtime output updates', () => {
+  test('maps item lifecycle notifications into runtime item lifecycle events', () => {
     const events = [
       mapMessage({
         kind: 'notification',
@@ -104,6 +118,7 @@ describe('mapCodexIncomingMessageToRuntimeEvent', () => {
           threadId: 'thread-1',
           turnId: 'turn-1',
           item: {
+            type: 'agentMessage',
             id: 'item-started',
             text: 'started',
           },
@@ -111,49 +126,55 @@ describe('mapCodexIncomingMessageToRuntimeEvent', () => {
       }),
       mapMessage({
         kind: 'notification',
-        method: 'item/updated',
-        params: {
-          threadId: 'thread-1',
-          turnId: 'turn-1',
-          itemId: 'item-updated',
-          message: 'updated',
-        },
-      }),
-      mapMessage({
-        kind: 'notification',
         method: 'item/completed',
         params: {
           threadId: 'thread-1',
-          itemId: 'item-completed',
-          text: 'completed',
+          turnId: 'turn-1',
+          item: {
+            type: 'agentMessage',
+            id: 'item-completed',
+            text: 'completed',
+          },
         },
       }),
     ];
 
     assert.deepEqual(events, [
       {
-        kind: 'runtime-output-updated',
+        kind: 'runtime-item-started',
         threadId: 'thread-1',
         turnId: 'turn-1',
-        itemId: 'item-started',
-        outputKind: 'item-started',
-        text: 'started',
+        item: {
+          itemId: 'item-started',
+          itemKind: 'agentMessage',
+          phase: null,
+          memoryCitation: null,
+          status: null,
+          text: 'started',
+          raw: {
+            type: 'agentMessage',
+            id: 'item-started',
+            text: 'started',
+          },
+        },
       },
       {
-        kind: 'runtime-output-updated',
+        kind: 'runtime-item-completed',
         threadId: 'thread-1',
         turnId: 'turn-1',
-        itemId: 'item-updated',
-        outputKind: 'item-updated',
-        text: 'updated',
-      },
-      {
-        kind: 'runtime-output-updated',
-        threadId: 'thread-1',
-        turnId: null,
-        itemId: 'item-completed',
-        outputKind: 'item-completed',
-        text: 'completed',
+        item: {
+          itemId: 'item-completed',
+          itemKind: 'agentMessage',
+          phase: null,
+          memoryCitation: null,
+          status: null,
+          text: 'completed',
+          raw: {
+            type: 'agentMessage',
+            id: 'item-completed',
+            text: 'completed',
+          },
+        },
       },
     ]);
   });
@@ -270,6 +291,208 @@ describe('mapCodexIncomingMessageToRuntimeEvent', () => {
     });
   });
 
+  test('maps known non-core Codex thread and turn notifications without treating them as unknown', () => {
+    const hookEvent = mapMessage({
+      kind: 'notification',
+      method: 'hook/started',
+      params: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        run: {
+          id: 'hook-1',
+        },
+      },
+    });
+    const reviewEvent = mapMessage({
+      kind: 'notification',
+      method: 'item/autoApprovalReview/completed',
+      params: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        reviewId: 'review-1',
+        targetItemId: 'item-1',
+        review: {
+          status: 'approved',
+        },
+        action: {
+          type: 'commandExecution',
+        },
+      },
+    });
+    const realtimeEvent = mapMessage({
+      kind: 'notification',
+      method: 'thread/realtime/outputAudio/delta',
+      params: {
+        threadId: 'thread-1',
+        audio: {
+          itemId: 'audio-1',
+          data: 'base64',
+          sampleRate: 24000,
+          numChannels: 1,
+        },
+      },
+    });
+
+    assert.deepEqual(hookEvent, {
+      kind: 'runtime-codex-notification',
+      semanticKind: 'hook-started',
+      method: 'hook/started',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      itemId: null,
+      data: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        run: {
+          id: 'hook-1',
+        },
+      },
+    });
+    assert.deepEqual(reviewEvent, {
+      kind: 'runtime-codex-notification',
+      semanticKind: 'auto-approval-review-completed',
+      method: 'item/autoApprovalReview/completed',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      itemId: 'item-1',
+      data: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        reviewId: 'review-1',
+        targetItemId: 'item-1',
+        review: {
+          status: 'approved',
+        },
+        action: {
+          type: 'commandExecution',
+        },
+      },
+    });
+    assert.deepEqual(realtimeEvent, {
+      kind: 'runtime-codex-notification',
+      semanticKind: 'thread-realtime-output-audio-delta',
+      method: 'thread/realtime/outputAudio/delta',
+      threadId: 'thread-1',
+      turnId: null,
+      itemId: 'audio-1',
+      data: {
+        threadId: 'thread-1',
+        audio: {
+          itemId: 'audio-1',
+          data: 'base64',
+          sampleRate: 24000,
+          numChannels: 1,
+        },
+      },
+    });
+  });
+
+  test('maps every known shallow v2 notification without treating it as unknown', () => {
+    const knownNotifications = [
+      ['command/exec/outputDelta', 'command-exec-output-delta', { processId: 'proc-1', stream: 'stdout', deltaBase64: 'b2s=', capReached: false }],
+      ['skills/changed', 'skills-changed', {}],
+      ['mcpServer/oauthLogin/completed', 'mcp-server-oauth-login-completed', { name: 'github', success: true }],
+      ['mcpServer/startupStatus/updated', 'mcp-server-status-updated', { name: 'github', status: 'ready', error: null }],
+      ['account/updated', 'account-updated', { authMode: 'chatgpt', planType: 'pro' }],
+      ['account/rateLimits/updated', 'account-rate-limits-updated', { rateLimits: { primary: null } }],
+      ['app/list/updated', 'app-list-updated', {}],
+      ['externalAgentConfig/import/completed', 'external-agent-config-import-completed', { success: true }],
+      ['fs/changed', 'fs-changed', { watchId: 'watch-1', changes: [] }],
+      ['guardianWarning', 'guardian-warning', { message: 'guardian warning' }],
+      ['deprecationNotice', 'deprecation-notice', { message: 'deprecated' }],
+      ['configWarning', 'config-warning', { message: 'config warning' }],
+      ['fuzzyFileSearch/sessionUpdated', 'fuzzy-file-search-session-updated', { sessionId: 'search-1' }],
+      ['fuzzyFileSearch/sessionCompleted', 'fuzzy-file-search-session-completed', { sessionId: 'search-1' }],
+      ['windowsSandbox/setupCompleted', 'windows-sandbox-setup-completed', { mode: 'unelevated', success: true, error: null }],
+      ['account/login/completed', 'account-login-completed', { loginId: 'login-1', success: true }],
+    ] as const;
+    const testLogger = createTestLogger();
+
+    const events = knownNotifications.map(([method, _semanticKind, params]) =>
+      mapMessage(
+        {
+          kind: 'notification',
+          method,
+          params,
+        },
+        testLogger,
+      ),
+    );
+
+    assert.deepEqual(
+      events.map(event => event && event.kind === 'runtime-codex-notification' ? event.semanticKind : null),
+      knownNotifications.map(([, semanticKind]) => semanticKind),
+    );
+    assert.deepEqual(testLogger.warnings, []);
+  });
+
+  test('extracts text from rich item lifecycle notifications consistently with history parsing', () => {
+    const event = mapMessage({
+      kind: 'notification',
+      method: 'item/started',
+      params: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        item: {
+          type: 'userMessage',
+          id: 'item-1',
+          content: [
+            {
+              type: 'text',
+              text: 'Hello',
+              text_elements: [],
+            },
+            {
+              type: 'mention',
+              name: 'design',
+              path: 'app://figma/file',
+            },
+          ],
+        },
+      },
+    });
+
+    assert.deepEqual(event, {
+      kind: 'runtime-item-started',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      item: {
+        itemId: 'item-1',
+        itemKind: 'userMessage',
+        status: null,
+        text: 'Hello\n\n[mention: design]',
+        raw: {
+          type: 'userMessage',
+          id: 'item-1',
+          content: [
+            {
+              type: 'text',
+              text: 'Hello',
+              text_elements: [],
+            },
+            {
+              type: 'mention',
+              name: 'design',
+              path: 'app://figma/file',
+            },
+          ],
+        },
+        content: [
+          {
+            type: 'text',
+            text: 'Hello',
+            text_elements: [],
+          },
+          {
+            type: 'mention',
+            name: 'design',
+            path: 'app://figma/file',
+          },
+        ],
+      },
+    });
+  });
+
   test('ignores unknown Codex notifications and logs the ignored payload', () => {
     const testLogger = createTestLogger();
     const event = mapMessage(
@@ -322,7 +545,7 @@ describe('mapCodexIncomingMessageToRuntimeEvent', () => {
           },
         }),
       (error: unknown) =>
-        error instanceof CodexProtocolError && error.message === 'Unsupported Codex turn status: cancelled',
+        error instanceof CodexProtocolError && error.message === 'Unsupported Codex turn status at Codex turn/completed turn.status: cancelled',
     );
   });
 });

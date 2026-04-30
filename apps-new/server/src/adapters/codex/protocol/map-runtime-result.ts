@@ -1,42 +1,198 @@
 import { CodexProtocolError } from '../runtime/codex-runtime-error.js';
-import { readJsonObject, readString } from '../transport/jsonl-message.js';
-import type { JsonObject, JsonValue } from '../../../shared/index.js';
-import type {
-  RuntimeCommand,
-  RuntimeInputKind,
-  RuntimePendingInput,
-  RuntimeResult,
-  RuntimeThread,
-  RuntimeThreadSnapshot,
-  RuntimeTimelineItem,
-} from '../../../ports/index.js';
+import { readString } from '../transport/jsonl-message.js';
+import type { JsonValue } from '../../../shared/index.js';
+import type { RuntimeCommand, RuntimeResult } from '../../../ports/index.js';
+import {
+  createRuntimeThreadSnapshot,
+  hasCodexEffectiveConfig,
+  isRichCodexThreadPayload,
+  isRichCodexTurnPayload,
+  readCodexEffectiveConfig,
+  readCodexJsonObject,
+  readCodexNumberLike,
+  readCodexOptionalString,
+  readCodexThread,
+  readCodexTurn,
+  readRequiredCodexJsonArray,
+} from './codex-v2-readers.js';
 
 export function mapCodexResultToRuntimeResult(input: MapCodexResultInput): RuntimeResult {
   switch (input.command.kind) {
-    case 'start-thread':
-      return {
+    case 'start-thread': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/start result');
+      const threadPayload = readCodexJsonObject(payload.thread, 'Codex thread/start result.thread');
+      const thread = readCodexThread(threadPayload, 'Codex thread/start result.thread');
+      return cleanRuntimeResult({
         kind: 'thread-started',
-        threadId: readThreadId(input.result),
-      };
+        threadId: thread.threadId,
+        thread: isRichCodexThreadPayload(threadPayload) ? thread : undefined,
+        effectiveConfig: hasCodexEffectiveConfig(payload) ? readCodexEffectiveConfig(payload) : undefined,
+      });
+    }
 
-    case 'resume-thread':
-      return {
+    case 'resume-thread': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/resume result');
+      const thread = readCodexThread(payload.thread, 'Codex thread/resume result.thread');
+      return cleanRuntimeResult({
         kind: 'thread-resumed',
-        threadId: readResumeThreadId(input.result),
-        snapshot: readThreadSnapshot(input.result),
+        threadId: thread.threadId,
+        thread,
+        effectiveConfig: hasCodexEffectiveConfig(payload) ? readCodexEffectiveConfig(payload) : undefined,
+        snapshot: createRuntimeThreadSnapshot(thread),
+      });
+    }
+
+    case 'fork-thread': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/fork result');
+      const thread = readCodexThread(payload.thread, 'Codex thread/fork result.thread');
+      return {
+        kind: 'thread-forked',
+        threadId: thread.threadId,
+        thread,
+        effectiveConfig: readCodexEffectiveConfig(payload),
+        snapshot: createRuntimeThreadSnapshot(thread),
+      };
+    }
+
+    case 'archive-thread':
+    case 'set-thread-name':
+    case 'set-thread-memory-mode':
+    case 'compact-thread':
+    case 'run-thread-shell-command':
+    case 'approve-thread-guardian-denied-action':
+    case 'clean-thread-background-terminals':
+    case 'inject-thread-items':
+      return {
+        kind: 'ok',
       };
 
-    case 'list-threads':
+    case 'unarchive-thread': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/unarchive result');
+      const thread = readCodexThread(payload.thread, 'Codex thread/unarchive result.thread');
       return {
+        kind: 'thread-updated',
+        operation: 'unarchive',
+        threadId: thread.threadId,
+        thread,
+        snapshot: createRuntimeThreadSnapshot(thread),
+      };
+    }
+
+    case 'unsubscribe-thread': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/unsubscribe result');
+      return {
+        kind: 'thread-unsubscribed',
+        threadId: input.command.threadId,
+        status: readUnsubscribeStatus(payload.status),
+      };
+    }
+
+    case 'increment-thread-elicitation':
+    case 'decrement-thread-elicitation':
+      return readThreadElicitationResult({
+        result: input.result,
+        threadId: input.command.threadId,
+      });
+
+    case 'update-thread-metadata': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/metadata/update result');
+      const thread = readCodexThread(payload.thread, 'Codex thread/metadata/update result.thread');
+      return {
+        kind: 'thread-updated',
+        operation: 'metadata-update',
+        threadId: thread.threadId,
+        thread,
+        snapshot: createRuntimeThreadSnapshot(thread),
+      };
+    }
+
+    case 'read-thread': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/read result');
+      const thread = readCodexThread(payload.thread, 'Codex thread/read result.thread');
+      return {
+        kind: 'thread-read',
+        threadId: thread.threadId,
+        thread,
+        snapshot: createRuntimeThreadSnapshot(thread),
+      };
+    }
+
+    case 'list-threads': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/list result');
+      return cleanRuntimeResult({
         kind: 'threads-listed',
-        threads: readThreads(input.result),
-      };
+        threads: readRequiredCodexJsonArray(payload.data, 'Codex thread/list result.data').map(item =>
+          readCodexThread(item, 'Codex listed thread'),
+        ),
+        nextCursor: readCodexOptionalString(payload.nextCursor, 'Codex thread/list result.nextCursor') ?? undefined,
+        backwardsCursor: readCodexOptionalString(payload.backwardsCursor, 'Codex thread/list result.backwardsCursor') ?? undefined,
+      });
+    }
 
-    case 'start-turn':
+    case 'list-loaded-threads': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/loaded/list result');
+      return cleanRuntimeResult({
+        kind: 'loaded-threads-listed',
+        threadIds: readRequiredCodexJsonArray(payload.data, 'Codex thread/loaded/list result.data').map(item =>
+          readString(item, 'Codex loaded thread id'),
+        ),
+        nextCursor: readCodexOptionalString(payload.nextCursor, 'Codex thread/loaded/list result.nextCursor') ?? undefined,
+      });
+    }
+
+    case 'list-thread-turns': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/turns/list result');
       return {
-        kind: 'turn-started',
-        turnId: readTurnId(input.result),
+        kind: 'thread-turns-listed',
+        threadId: input.command.threadId,
+        turns: readRequiredCodexJsonArray(payload.data, 'Codex thread/turns/list result.data').map(item =>
+          readCodexTurn(item, 'Codex listed turn'),
+        ),
+        nextCursor: readCodexOptionalString(payload.nextCursor, 'Codex thread/turns/list result.nextCursor') ?? undefined,
+        backwardsCursor: readCodexOptionalString(payload.backwardsCursor, 'Codex thread/turns/list result.backwardsCursor') ?? undefined,
       };
+    }
+
+    case 'rollback-thread': {
+      const payload = readCodexJsonObject(input.result, 'Codex thread/rollback result');
+      const thread = readCodexThread(payload.thread, 'Codex thread/rollback result.thread');
+      return {
+        kind: 'thread-updated',
+        operation: 'rollback',
+        threadId: thread.threadId,
+        thread,
+        snapshot: createRuntimeThreadSnapshot(thread),
+      };
+    }
+
+    case 'start-turn': {
+      const payload = readCodexJsonObject(input.result, 'Codex turn/start result');
+      const turn = readCodexTurn(payload.turn, 'Codex turn/start result.turn');
+      return cleanRuntimeResult({
+        kind: 'turn-started',
+        turnId: turn.id,
+        turn: isRichCodexTurnPayload(turn.raw ?? null) ? turn : undefined,
+      });
+    }
+
+    case 'steer-turn': {
+      const payload = readCodexJsonObject(input.result, 'Codex turn/steer result');
+      return {
+        kind: 'turn-steered',
+        turnId: readString(payload.turnId, 'Codex turn/steer turnId'),
+      };
+    }
+
+    case 'start-review': {
+      const payload = readCodexJsonObject(input.result, 'Codex review/start result');
+      const turn = readCodexTurn(payload.turn, 'Codex review/start result.turn');
+      return cleanRuntimeResult({
+        kind: 'review-started',
+        turnId: turn.id,
+        reviewThreadId: readString(payload.reviewThreadId, 'Codex review/start result.reviewThreadId'),
+        turn: isRichCodexTurnPayload(turn.raw ?? null) ? turn : undefined,
+      });
+    }
 
     case 'interrupt-turn':
       return {
@@ -56,155 +212,48 @@ export interface MapCodexResultInput {
   readonly result: JsonValue;
 }
 
-function readThreadId(result: JsonValue): string {
-  const payload = readJsonObject(result, 'Codex thread result');
-  const thread = readJsonObject(payload.thread, 'Codex thread result.thread');
-  return readString(thread.id, 'Codex thread id');
+interface ReadThreadElicitationResultInput {
+  readonly result: JsonValue;
+  readonly threadId: string;
 }
 
-function readResumeThreadId(result: JsonValue): string {
-  const payload = readJsonObject(result, 'Codex resume result');
+function readThreadElicitationResult(input: ReadThreadElicitationResultInput): RuntimeResult {
+  const payload = readCodexJsonObject(input.result, 'Codex thread elicitation result');
+  const count = readCodexNumberLike(payload.count);
 
-  if (typeof payload.threadId === 'string') {
-    return payload.threadId;
-  }
-
-  if (payload.thread !== undefined && payload.thread !== null) {
-    return readThreadId(result);
-  }
-
-  throw new CodexProtocolError('Codex resume result is missing thread id');
-}
-
-function readThreadSnapshot(result: JsonValue): RuntimeThreadSnapshot {
-  const payload = readJsonObject(result, 'Codex resume result');
-  const threadId = readResumeThreadId(result);
-  const thread = payload.thread === undefined || payload.thread === null ? null : readJsonObject(payload.thread, 'Codex resume result.thread');
-  const timelineItems = payload.messages ?? payload.items ?? payload.timelineItems;
-
-  return {
-    threadId,
-    title: readTextLike(payload.threadName) ?? readTextLike(thread?.title) ?? readTextLike(thread?.name),
-    items: readTimelineItems(timelineItems, 'Codex resume result timeline items'),
-    pendingInputs: readPendingInputs(payload.pendingRequests, 'Codex resume result pendingRequests'),
-  };
-}
-
-function readThreads(result: JsonValue): readonly RuntimeThread[] {
-  const payload = readJsonObject(result, 'Codex thread list result');
-  return readJsonArray(payload.threads, 'Codex thread list result.threads').map(readThread);
-}
-
-function readThread(value: JsonValue): RuntimeThread {
-  const payload = readJsonObject(value, 'Codex listed thread');
-  const threadId = readTextLike(payload.id) ?? readTextLike(payload.threadId);
-
-  if (!threadId) {
-    throw new CodexProtocolError('Codex listed thread is missing id');
+  if (count === null || typeof payload.paused !== 'boolean') {
+    throw new CodexProtocolError('Codex thread elicitation result is missing count or paused');
   }
 
   return {
-    threadId,
-    title: readTextLike(payload.title) ?? readTextLike(payload.name) ?? readTextLike(payload.threadName),
-    workspace: readTextLike(payload.cwd) ?? readTextLike(payload.workspace),
-    updatedAt: readTextLike(payload.updatedAt) ?? readTextLike(payload.updated_at),
+    kind: 'thread-elicitation-updated',
+    threadId: input.threadId,
+    count,
+    paused: payload.paused,
   };
 }
 
-function readTurnId(result: JsonValue): string {
-  const payload = readJsonObject(result, 'Codex turn result');
-  const turn = readJsonObject(payload.turn, 'Codex turn result.turn');
-  return readString(turn.id, 'Codex turn id');
+function readUnsubscribeStatus(value: JsonValue | undefined): 'notLoaded' | 'notSubscribed' | 'unsubscribed' {
+  const status = readString(value, 'Codex thread/unsubscribe status');
+
+  switch (status) {
+    case 'notLoaded':
+    case 'notSubscribed':
+    case 'unsubscribed':
+      return status;
+    default:
+      throw new CodexProtocolError(`Unsupported Codex thread/unsubscribe status: ${status}`);
+  }
 }
 
-function readTimelineItems(value: JsonValue | undefined, fieldName: string): readonly RuntimeTimelineItem[] {
-  return readJsonArray(value, fieldName).map(readTimelineItem);
-}
+function cleanRuntimeResult<T extends RuntimeResult>(result: T): T {
+  const output: Record<string, unknown> = {};
 
-function readTimelineItem(value: JsonValue): RuntimeTimelineItem {
-  const payload = readJsonObject(value, 'Codex timeline item');
-  const itemId = readTextLike(payload.id) ?? readTextLike(payload.itemId);
-
-  if (!itemId) {
-    throw new CodexProtocolError('Codex timeline item is missing id');
+  for (const [key, value] of Object.entries(result)) {
+    if (value !== undefined) {
+      output[key] = value;
+    }
   }
 
-  return {
-    itemId,
-    itemKind: readTextLike(payload.type) ?? readTextLike(payload.itemType) ?? 'unknown',
-    status: readTextLike(payload.status) ?? readTextLike(payload.state),
-    text: readTimelineText(payload),
-  };
-}
-
-function readPendingInputs(value: JsonValue | undefined, fieldName: string): readonly RuntimePendingInput[] {
-  return readJsonArray(value, fieldName).map(readPendingInput);
-}
-
-function readPendingInput(value: JsonValue): RuntimePendingInput {
-  const payload = readJsonObject(value, 'Codex pending input');
-  const requestId = readTextLike(payload.id) ?? readTextLike(payload.requestId);
-
-  if (!requestId) {
-    throw new CodexProtocolError('Codex pending input is missing id');
-  }
-
-  return {
-    requestId,
-    inputKind: readInputKind(payload),
-    prompt: readTextLike(payload.prompt) ?? readTextLike(payload.message) ?? 'Runtime input requested',
-  };
-}
-
-function readInputKind(payload: JsonObject): RuntimeInputKind {
-  const type = readTextLike(payload.type) ?? readTextLike(payload.kind) ?? '';
-  const normalizedType = type.toLowerCase();
-
-  if (normalizedType.includes('approval')) {
-    return 'approval';
-  }
-
-  if (normalizedType.includes('tool')) {
-    return 'tool-response';
-  }
-
-  return 'unknown';
-}
-
-function readTimelineText(payload: JsonObject): string | null {
-  const text = readTextLike(payload.text) ?? readTextLike(payload.message);
-
-  if (text !== null) {
-    return text;
-  }
-
-  if (payload.content !== undefined && payload.content !== null) {
-    return readTextLike(payload.content);
-  }
-
-  return null;
-}
-
-function readTextLike(value: JsonValue | undefined): string | null {
-  if (typeof value === 'string') {
-    return value;
-  }
-
-  if (typeof value === 'number' || typeof value === 'boolean') {
-    return String(value);
-  }
-
-  return null;
-}
-
-function readJsonArray(value: JsonValue | undefined, fieldName: string): readonly JsonValue[] {
-  if (value === undefined || value === null) {
-    return [];
-  }
-
-  if (!Array.isArray(value)) {
-    throw new CodexProtocolError(`${fieldName} must be an array`);
-  }
-
-  return value;
+  return output as T;
 }

@@ -38,6 +38,28 @@ function write(message) {
   process.stdout.write(JSON.stringify(message) + '\\n');
 }
 
+function createThread(id) {
+  return {
+    id,
+    forkedFromId: null,
+    preview: '',
+    ephemeral: false,
+    modelProvider: 'openai',
+    createdAt: 1770000000,
+    updatedAt: 1770000000,
+    status: { type: 'idle' },
+    path: null,
+    cwd: '/workspace',
+    cliVersion: '0.0.0',
+    source: { type: 'appServer' },
+    agentNickname: null,
+    agentRole: null,
+    gitInfo: null,
+    name: null,
+    turns: [],
+  };
+}
+
 lines.on('line', line => {
   const message = JSON.parse(line);
 
@@ -60,7 +82,7 @@ lines.on('line', line => {
       write({ id: message.id, result: { modes: [{ kind: 'default' }] } });
       return;
     case 'thread/start':
-      write({ id: message.id, result: { thread: { id: 'thread-1' } } });
+      write({ id: message.id, result: { thread: createThread('thread-1') } });
       return;
     case 'turn/start':
       if (scenario === 'turn-error') {
@@ -197,10 +219,8 @@ describe('createCodexRuntime', () => {
       });
       await runtimeEventSeen;
 
-      assert.deepEqual(threadResult, {
-        kind: 'thread-started',
-        threadId: 'thread-1',
-      });
+      assert.equal(threadResult.kind, 'thread-started');
+      assert.equal(threadResult.threadId, 'thread-1');
       assert.deepEqual(turnResult, {
         kind: 'turn-started',
         turnId: 'turn-1',

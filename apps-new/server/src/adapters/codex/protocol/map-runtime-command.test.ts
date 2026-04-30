@@ -120,7 +120,7 @@ describe('mapRuntimeCommandToCodexRequest', () => {
             text_elements: [],
           },
           {
-            type: 'image',
+            type: 'localImage',
             path: 'D:/tmp/image.png',
           },
         ],
@@ -179,8 +179,175 @@ describe('mapRuntimeCommandToCodexRequest', () => {
       method: 'turn/interrupt',
       params: {
         threadId: 'thread-1',
+        turnId: '',
       },
     });
+  });
+
+  test('maps fork, read, turns list, rollback, and steer thread-turn commands', () => {
+    const fork = mapRuntimeCommandToCodexRequest(
+      {
+        kind: 'fork-thread',
+        threadId: 'thread-1',
+        workspace: '/workspace',
+        runtimeSettings: null,
+        baseInstructions: null,
+        path: '/rollout.jsonl',
+        ephemeral: true,
+      },
+      { dynamicTools: [] },
+    );
+    const read = mapRuntimeCommandToCodexRequest(
+      {
+        kind: 'read-thread',
+        threadId: 'thread-1',
+        includeTurns: true,
+      },
+      { dynamicTools: [] },
+    );
+    const turns = mapRuntimeCommandToCodexRequest(
+      {
+        kind: 'list-thread-turns',
+        threadId: 'thread-1',
+        cursor: 'turn-0',
+        limit: 10,
+        sortDirection: 'asc',
+      },
+      { dynamicTools: [] },
+    );
+    const rollback = mapRuntimeCommandToCodexRequest(
+      {
+        kind: 'rollback-thread',
+        threadId: 'thread-1',
+        numTurns: 2,
+      },
+      { dynamicTools: [] },
+    );
+    const steer = mapRuntimeCommandToCodexRequest(
+      {
+        kind: 'steer-turn',
+        threadId: 'thread-1',
+        expectedTurnId: 'turn-1',
+        message: 'continue',
+        content: [],
+        responsesapiClientMetadata: {
+          client: 'test',
+        },
+      },
+      { dynamicTools: [] },
+    );
+
+    assert.deepEqual(fork, {
+      method: 'thread/fork',
+      params: {
+        threadId: 'thread-1',
+        path: '/rollout.jsonl',
+        cwd: '/workspace',
+        ephemeral: true,
+        persistExtendedHistory: true,
+      },
+    });
+    assert.deepEqual(read, {
+      method: 'thread/read',
+      params: {
+        threadId: 'thread-1',
+        includeTurns: true,
+      },
+    });
+    assert.deepEqual(turns, {
+      method: 'thread/turns/list',
+      params: {
+        threadId: 'thread-1',
+        cursor: 'turn-0',
+        limit: 10,
+        sortDirection: 'asc',
+      },
+    });
+    assert.deepEqual(rollback, {
+      method: 'thread/rollback',
+      params: {
+        threadId: 'thread-1',
+        numTurns: 2,
+      },
+    });
+    assert.deepEqual(steer, {
+      method: 'turn/steer',
+      params: {
+        threadId: 'thread-1',
+        input: [
+          {
+            type: 'text',
+            text: 'continue',
+            text_elements: [],
+          },
+        ],
+        responsesapiClientMetadata: {
+          client: 'test',
+        },
+        expectedTurnId: 'turn-1',
+      },
+    });
+  });
+
+  test('maps all supported turn content item variants', () => {
+    const request = mapRuntimeCommandToCodexRequest(
+      {
+        kind: 'start-turn',
+        threadId: 'thread-1',
+        message: 'fallback',
+        content: [
+          {
+            kind: 'remote-image',
+            imageUrl: 'https://example.test/image.png',
+          },
+          {
+            kind: 'skill',
+            name: 'reader',
+            path: '/skills/reader',
+          },
+          {
+            kind: 'mention',
+            name: 'design',
+            path: 'app://figma/file',
+          },
+        ],
+        runtimeSettings: null,
+      },
+      { dynamicTools: [] },
+    );
+
+    assert.deepEqual(request.params.input, [
+      {
+        type: 'image',
+        url: 'https://example.test/image.png',
+      },
+      {
+        type: 'skill',
+        name: 'reader',
+        path: '/skills/reader',
+      },
+      {
+        type: 'mention',
+        name: 'design',
+        path: 'app://figma/file',
+      },
+    ]);
+  });
+
+  test('allows null permissionProfile values because Codex treats null as absent', () => {
+    assert.deepEqual(
+      mapRuntimeCommandToCodexRequest(
+        {
+          kind: 'start-thread',
+          workspace: '/workspace',
+          runtimeSettings: fullSettings,
+          baseInstructions: null,
+          permissionProfile: null,
+        },
+        { dynamicTools: [] },
+      ).params.permissionProfile,
+      undefined,
+    );
   });
 
   test('rejects corrupted runtime sandbox mode values before they reach Codex', () => {
@@ -201,5 +368,99 @@ describe('mapRuntimeCommandToCodexRequest', () => {
         error instanceof CodexProtocolError &&
         error.message === 'Unsupported runtime sandbox mode: networked',
     );
+  });
+
+  test('rejects Codex thread permission profile and sandbox conflicts before request dispatch', () => {
+    assert.throws(
+      () =>
+        mapRuntimeCommandToCodexRequest(
+          {
+            kind: 'start-thread',
+            workspace: '/workspace',
+            runtimeSettings: fullSettings,
+            baseInstructions: null,
+            permissionProfile: {
+              network: {
+                enabled: true,
+              },
+            },
+          },
+          {
+            dynamicTools: [],
+          },
+        ),
+      (error: unknown) =>
+        error instanceof CodexProtocolError &&
+        error.message === 'Codex thread request cannot combine permissionProfile with sandbox',
+    );
+  });
+
+  test('rejects Codex turn permission profile and sandbox policy conflicts before request dispatch', () => {
+    assert.throws(
+      () =>
+        mapRuntimeCommandToCodexRequest(
+          {
+            kind: 'start-turn',
+            threadId: 'thread-1',
+            message: 'Hello',
+            content: [],
+            runtimeSettings: null,
+            sandboxPolicy: {
+              type: 'dangerFullAccess',
+            },
+            permissionProfile: {
+              network: {
+                enabled: true,
+              },
+            },
+          },
+          {
+            dynamicTools: [],
+          },
+        ),
+      (error: unknown) =>
+        error instanceof CodexProtocolError &&
+        error.message === 'Codex turn request cannot combine permissionProfile with sandboxPolicy',
+    );
+  });
+
+  test('allows null turn sandboxPolicy values because Codex treats null as absent', () => {
+    const request = mapRuntimeCommandToCodexRequest(
+      {
+        kind: 'start-turn',
+        threadId: 'thread-1',
+        message: 'Hello',
+        content: [],
+        runtimeSettings: null,
+        sandboxPolicy: null,
+        permissionProfile: {
+          network: {
+            enabled: true,
+          },
+        },
+      },
+      {
+        dynamicTools: [],
+      },
+    );
+
+    assert.deepEqual(request, {
+      method: 'turn/start',
+      params: {
+        threadId: 'thread-1',
+        input: [
+          {
+            type: 'text',
+            text: 'Hello',
+            text_elements: [],
+          },
+        ],
+        permissionProfile: {
+          network: {
+            enabled: true,
+          },
+        },
+      },
+    });
   });
 });
