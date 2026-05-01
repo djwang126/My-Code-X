@@ -22,4 +22,5 @@ Codex sessions/past chats lives in ~/.codex/sessions/{YYYY}/{MM}/{DD}/rollout-{t
 ## tests
 
 Full test commands for the old version: npm run test; npm run test:smoke; npm run lint
+Full test commands for the new version: npm run test:new; npm run typecheck:new; npm run lint:new
 Tests are colocated by default.
