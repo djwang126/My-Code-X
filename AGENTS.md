@@ -9,7 +9,7 @@ Main dev in on windows but the code is cross-platform(linux, macos)
 
 The original codex is at: ../codex (relative to this repository root). Learn the app server api there.
 Codex sessions/past chats lives in ~/.codex/sessions/{YYYY}/{MM}/{DD}/rollout-{timestamp}-{session-id}.jsonl, usefull for debugging and real output checking
-When investigating workspace, 先理解目录，再定向阅读。不要暴力搜全局
+When investigating workspace, 先理解文件目录，再定向阅读。不要暴力搜全局
 
 ## core code principles
 
