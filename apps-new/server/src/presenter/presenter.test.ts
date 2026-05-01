@@ -47,8 +47,16 @@ test('presenters create a client snapshot from feature-owned state', () => {
   assert.equal(snapshot.thread.status, 'ready');
   assert.equal(snapshot.thread.title, 'Thread one');
   assert.equal(snapshot.turn.current, null);
-  assert.equal(snapshot.conversation.revision, 1);
-  assert.equal(snapshot.conversation.items.length, 1);
+  assert.deepEqual(snapshot.conversation, {
+    status: 'ready',
+    revision: 1,
+    items: [
+      {
+        id: 'message-1',
+        text: 'hello',
+      },
+    ],
+  });
   assert.equal(snapshot.stream.status, 'disabled');
 });
 

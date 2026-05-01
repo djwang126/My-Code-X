@@ -1,1 +1,4 @@
-export { createInitialConversationViewModel } from './conversation-view-model.js';
+export {
+  createConversationViewModelFromSnapshot,
+  type ConversationViewModel,
+} from './conversation-view-model.js';

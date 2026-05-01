@@ -1,7 +1,9 @@
+import type { ClientConversationView } from './conversation-item.js';
 import type { JsonValue } from '../shared/index.js';
-import type { ClientConversationItem } from './conversation-item.js';
 import type { PendingInteraction } from './pending-interaction.js';
 import type { ClientTurnView } from './turn-view.js';
+
+export type { ClientConversationView } from './conversation-item.js';
 
 export interface ClientSnapshot {
   readonly app: ClientAppView;
@@ -39,10 +41,6 @@ export interface ClientThreadView {
   readonly title: string | null;
 }
 
-export interface ClientConversationView {
-  readonly revision: number;
-  readonly items: readonly ClientConversationItem[];
-}
 
 export interface ClientNoticeView {
   readonly id: string;

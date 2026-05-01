@@ -39,6 +39,7 @@ export function createClientSnapshot(input: CreateClientSnapshotInput): ClientSn
     thread: presentThread(input),
     turn: presentTurn({ snapshot: input.turn }),
     conversation: {
+      status: 'ready',
       revision: input.conversation.revision,
       items: presentConversation({ snapshot: input.conversation }),
     },

@@ -1,4 +1,5 @@
-export interface ClientConversationItem {
-  readonly id: string;
-  readonly text: string;
-}
+export type {
+  ClientConversationError,
+  ClientConversationItem,
+  ClientConversationView,
+} from '@my-code-x/contracts-new';
