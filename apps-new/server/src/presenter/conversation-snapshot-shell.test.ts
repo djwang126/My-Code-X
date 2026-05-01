@@ -48,10 +48,14 @@ describe('conversation snapshot shell presenter', () => {
         items: [
           {
             id: 'item-1',
-            text: 'hello',
+            kind: 'message',
+            role: 'user',
+            text: 'hello **Codex**',
           },
           {
             id: 'item-2',
+            kind: 'message',
+            role: 'assistant',
             text: 'world',
           },
         ],
@@ -64,11 +68,45 @@ describe('conversation snapshot shell presenter', () => {
       items: [
         {
           id: 'item-1',
-          text: 'hello',
+          kind: 'message',
+          role: 'user',
+          text: 'hello **Codex**',
         },
         {
           id: 'item-2',
+          kind: 'message',
+          role: 'assistant',
           text: 'world',
+        },
+      ],
+    });
+  });
+
+  test('presents message raw markdown without rendered HTML or UI-only fields', () => {
+    const snapshot = createClientSnapshot({
+      ...createSnapshotInput(),
+      conversation: {
+        revision: 1,
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'assistant',
+            text: 'Use `<button>` as text.',
+          },
+        ],
+      },
+    });
+
+    assert.deepEqual(snapshot.conversation, {
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'item-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'Use `<button>` as text.',
         },
       ],
     });

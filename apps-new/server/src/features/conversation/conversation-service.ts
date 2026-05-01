@@ -1,4 +1,5 @@
 import { applyConversationDomainEvent, createInitialConversationState } from './conversation-state.js';
+import { projectRuntimeThreadItem } from './conversation-runtime-projection.js';
 import type { ConversationCommand, ConversationDomainEvent, ConversationSnapshot } from './conversation-events.js';
 import type { ConversationDependencies } from './conversation-ports.js';
 
@@ -7,7 +8,7 @@ export interface ConversationService {
   snapshot(): ConversationSnapshot;
 }
 
-function createConversationDomainEvent(command: ConversationCommand): ConversationDomainEvent {
+function createConversationDomainEvent(command: ConversationCommand): ConversationDomainEvent | null {
   switch (command.kind) {
     case 'replace-conversation':
       return {
@@ -20,6 +21,19 @@ function createConversationDomainEvent(command: ConversationCommand): Conversati
         kind: 'conversation-item-appended',
         item: command.item,
       };
+
+    case 'record-runtime-thread-item': {
+      const item = projectRuntimeThreadItem({ item: command.item });
+
+      if (!item) {
+        return null;
+      }
+
+      return {
+        kind: 'conversation-item-upserted',
+        item,
+      };
+    }
   }
 }
 
@@ -29,7 +43,18 @@ export function createConversationService(dependencies: ConversationDependencies
   return {
     apply(input: ConversationCommand): ConversationSnapshot {
       const event = createConversationDomainEvent(input);
-      state = applyConversationDomainEvent({ state, event });
+
+      if (!event) {
+        return state;
+      }
+
+      const nextState = applyConversationDomainEvent({ state, event });
+
+      if (nextState === state) {
+        return state;
+      }
+
+      state = nextState;
       dependencies.events.publish(event);
       return state;
     },

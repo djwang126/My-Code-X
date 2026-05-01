@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import { createRuntimeEventCoordinator } from './runtime-event-coordinator.js';
+import type { ConversationCommand, ConversationService } from '../features/conversation/index.js';
 import type { RuntimeRequestCommand, RuntimeRequestService } from '../features/runtime-request/index.js';
 import type { ThreadCommand, ThreadRecord, ThreadService } from '../features/thread/index.js';
 import type { TurnCommand, TurnService } from '../features/turn/index.js';
@@ -264,6 +265,58 @@ describe('createRuntimeEventCoordinator', () => {
       {
         kind: 'forget-thread',
         threadId: 'thread-1',
+      },
+    ]);
+  });
+
+  test('routes runtime items to conversation without classifying them in application', () => {
+    const conversationCommands: ConversationCommand[] = [];
+    const conversation: ConversationService = {
+      apply(input) {
+        conversationCommands.push(input);
+        return {
+          revision: 0,
+          items: [],
+        };
+      },
+
+      snapshot() {
+        return {
+          revision: 0,
+          items: [],
+        };
+      },
+    };
+    const coordinator = createRuntimeEventCoordinator({
+      conversation,
+      turn: createNoopTurnService(),
+    });
+
+    coordinator.receive({
+      kind: 'runtime-item-completed',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      item: {
+        itemId: 'item-1',
+        itemKind: 'agentMessage',
+        status: null,
+        text: 'hello',
+        phase: null,
+        memoryCitation: null,
+      },
+    });
+
+    assert.deepEqual(conversationCommands, [
+      {
+        kind: 'record-runtime-thread-item',
+        item: {
+          itemId: 'item-1',
+          itemKind: 'agentMessage',
+          status: null,
+          text: 'hello',
+          phase: null,
+          memoryCitation: null,
+        },
       },
     ]);
   });

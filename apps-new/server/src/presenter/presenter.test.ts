@@ -28,6 +28,8 @@ test('presenters create a client snapshot from feature-owned state', () => {
       items: [
         {
           id: 'message-1',
+          kind: 'message',
+          role: 'user',
           text: 'hello',
         },
       ],
@@ -53,6 +55,8 @@ test('presenters create a client snapshot from feature-owned state', () => {
     items: [
       {
         id: 'message-1',
+        kind: 'message',
+        role: 'user',
         text: 'hello',
       },
     ],
@@ -90,9 +94,11 @@ test('client snapshot keeps slot selection separate from thread readiness', () =
   assert.equal(snapshot.stream.status, 'disabled');
 });
 
-test('conversation presenter exposes only the skeleton timeline item shape', () => {
+test('conversation presenter exposes confirmed message timeline items', () => {
   const item: ConversationItem = {
     id: 'item-1',
+    kind: 'message',
+    role: 'assistant',
     text: 'hello',
   };
 
@@ -100,6 +106,8 @@ test('conversation presenter exposes only the skeleton timeline item shape', () 
 
   assert.deepEqual(presented, {
     id: 'item-1',
+    kind: 'message',
+    role: 'assistant',
     text: 'hello',
   });
 });

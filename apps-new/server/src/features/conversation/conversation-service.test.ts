@@ -3,6 +3,7 @@ import { describe, test } from 'node:test';
 
 import { createConversationService } from './conversation-service.js';
 import type { ConversationDomainEvent } from './conversation-events.js';
+import type { RuntimeThreadItem } from '../../ports/index.js';
 
 describe('createConversationService', () => {
   test('starts with an empty timeline at revision zero', () => {
@@ -21,7 +22,7 @@ describe('createConversationService', () => {
     });
   });
 
-  test('replaces and appends timeline items while advancing revision', () => {
+  test('replaces and appends confirmed message timeline items while advancing revision', () => {
     const events: ConversationDomainEvent[] = [];
     const service = createConversationService({
       events: {
@@ -37,24 +38,53 @@ describe('createConversationService', () => {
     assert.deepEqual(
       service.apply({
         kind: 'replace-conversation',
-        items: [{ id: 'item-1', text: 'hello' }],
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello **assistant**',
+          },
+        ],
       }),
       {
         revision: 1,
-        items: [{ id: 'item-1', text: 'hello' }],
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello **assistant**',
+          },
+        ],
       },
     );
 
     assert.deepEqual(
       service.apply({
         kind: 'append-conversation-item',
-        item: { id: 'item-2', text: 'world' },
+        item: {
+          id: 'item-2',
+          kind: 'message',
+          role: 'assistant',
+          text: 'world',
+        },
       }),
       {
         revision: 2,
         items: [
-          { id: 'item-1', text: 'hello' },
-          { id: 'item-2', text: 'world' },
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello **assistant**',
+          },
+          {
+            id: 'item-2',
+            kind: 'message',
+            role: 'assistant',
+            text: 'world',
+          },
         ],
       },
     );
@@ -62,12 +92,240 @@ describe('createConversationService', () => {
     assert.deepEqual(events, [
       {
         kind: 'conversation-replaced',
-        items: [{ id: 'item-1', text: 'hello' }],
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello **assistant**',
+          },
+        ],
       },
       {
         kind: 'conversation-item-appended',
-        item: { id: 'item-2', text: 'world' },
+        item: {
+          id: 'item-2',
+          kind: 'message',
+          role: 'assistant',
+          text: 'world',
+        },
       },
     ]);
   });
+
+  test('projects runtime user and assistant messages inside the conversation feature', () => {
+    const events: ConversationDomainEvent[] = [];
+    const service = createConversationService({
+      events: {
+        publish(event) {
+          events.push(event as ConversationDomainEvent);
+        },
+        subscribe() {
+          return () => {};
+        },
+      },
+    });
+
+    service.apply({
+      kind: 'record-runtime-thread-item',
+      item: createRuntimeUserMessage({
+        itemId: 'item-1',
+        text: 'hello',
+      }),
+    });
+    service.apply({
+      kind: 'record-runtime-thread-item',
+      item: createRuntimeAgentMessage({
+        itemId: 'item-2',
+        text: 'world',
+      }),
+    });
+
+    assert.deepEqual(service.snapshot(), {
+      revision: 2,
+      items: [
+        {
+          id: 'item-1',
+          kind: 'message',
+          role: 'user',
+          text: 'hello',
+        },
+        {
+          id: 'item-2',
+          kind: 'message',
+          role: 'assistant',
+          text: 'world',
+        },
+      ],
+    });
+    assert.deepEqual(events, [
+      {
+        kind: 'conversation-item-upserted',
+        item: {
+          id: 'item-1',
+          kind: 'message',
+          role: 'user',
+          text: 'hello',
+        },
+      },
+      {
+        kind: 'conversation-item-upserted',
+        item: {
+          id: 'item-2',
+          kind: 'message',
+          role: 'assistant',
+          text: 'world',
+        },
+      },
+    ]);
+  });
+
+  test('updates the same runtime item identity instead of appending duplicates', () => {
+    const service = createConversationService({
+      events: {
+        publish() {},
+        subscribe() {
+          return () => {};
+        },
+      },
+    });
+
+    service.apply({
+      kind: 'record-runtime-thread-item',
+      item: createRuntimeAgentMessage({
+        itemId: 'item-1',
+        text: 'draft answer',
+      }),
+    });
+
+    assert.deepEqual(
+      service.apply({
+        kind: 'record-runtime-thread-item',
+        item: createRuntimeAgentMessage({
+          itemId: 'item-1',
+          text: 'final answer',
+        }),
+      }),
+      {
+        revision: 2,
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'assistant',
+            text: 'final answer',
+          },
+        ],
+      },
+    );
+  });
+
+  test('does not advance revision or publish when the same runtime item is unchanged', () => {
+    const events: ConversationDomainEvent[] = [];
+    const service = createConversationService({
+      events: {
+        publish(event) {
+          events.push(event as ConversationDomainEvent);
+        },
+        subscribe() {
+          return () => {};
+        },
+      },
+    });
+    const item = createRuntimeAgentMessage({
+      itemId: 'item-1',
+      text: 'same answer',
+    });
+
+    service.apply({
+      kind: 'record-runtime-thread-item',
+      item,
+    });
+
+    assert.deepEqual(
+      service.apply({
+        kind: 'record-runtime-thread-item',
+        item,
+      }),
+      {
+        revision: 1,
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'assistant',
+            text: 'same answer',
+          },
+        ],
+      },
+    );
+    assert.deepEqual(events, [
+      {
+        kind: 'conversation-item-upserted',
+        item: {
+          id: 'item-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'same answer',
+        },
+      },
+    ]);
+  });
+
+  test('ignores runtime work trace items until their slices define the projection', () => {
+    const events: ConversationDomainEvent[] = [];
+    const service = createConversationService({
+      events: {
+        publish(event) {
+          events.push(event as ConversationDomainEvent);
+        },
+        subscribe() {
+          return () => {};
+        },
+      },
+    });
+
+    assert.deepEqual(
+      service.apply({
+        kind: 'record-runtime-thread-item',
+        item: {
+          itemId: 'plan-1',
+          itemKind: 'plan',
+          status: null,
+          text: 'Plan',
+        },
+      }),
+      {
+        revision: 0,
+        items: [],
+      },
+    );
+    assert.deepEqual(events, []);
+  });
 });
+
+interface CreateRuntimeMessageInput {
+  readonly itemId: string;
+  readonly text: string;
+}
+
+function createRuntimeUserMessage(input: CreateRuntimeMessageInput): RuntimeThreadItem {
+  return {
+    itemId: input.itemId,
+    itemKind: 'userMessage',
+    status: null,
+    text: input.text,
+    content: [],
+  };
+}
+
+function createRuntimeAgentMessage(input: CreateRuntimeMessageInput): RuntimeThreadItem {
+  return {
+    itemId: input.itemId,
+    itemKind: 'agentMessage',
+    status: null,
+    text: input.text,
+    phase: null,
+    memoryCitation: null,
+  };
+}

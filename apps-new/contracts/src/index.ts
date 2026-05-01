@@ -6,6 +6,7 @@ export {
   clientConversationViewSchema,
   type ClientConversationError,
   type ClientConversationItem,
+  type ClientConversationMessageItem,
   type ClientConversationView,
 } from './conversation-view.js';
 

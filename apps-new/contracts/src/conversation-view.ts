@@ -1,10 +1,17 @@
 import { z } from 'zod';
 
-export const clientConversationItemSchema = z.object({
+export const clientConversationMessageItemSchema = z.object({
   id: z.string(),
+  kind: z.literal('message'),
+  role: z.enum(['user', 'assistant']),
   text: z.string(),
 }).strict();
 
+export const clientConversationItemSchema = z.discriminatedUnion('kind', [
+  clientConversationMessageItemSchema,
+]);
+
+export type ClientConversationMessageItem = Readonly<z.infer<typeof clientConversationMessageItemSchema>>;
 export type ClientConversationItem = Readonly<z.infer<typeof clientConversationItemSchema>>;
 
 export const clientConversationErrorSchema = z.object({

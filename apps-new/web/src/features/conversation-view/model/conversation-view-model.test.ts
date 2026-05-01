@@ -27,7 +27,7 @@ describe('conversation view model', () => {
     });
   });
 
-  test('maps ready snapshot with items to timeline state', () => {
+  test('maps ready snapshot with confirmed message items to timeline state', () => {
     assert.deepEqual(createConversationViewModelFromSnapshot({
       conversation: {
         status: 'ready',
@@ -35,7 +35,15 @@ describe('conversation view model', () => {
         items: [
           {
             id: 'item-1',
-            text: 'hello',
+            kind: 'message',
+            role: 'user',
+            text: 'hello **Codex**',
+          },
+          {
+            id: 'item-2',
+            kind: 'message',
+            role: 'assistant',
+            text: 'world',
           },
         ],
       },
@@ -45,7 +53,43 @@ describe('conversation view model', () => {
       items: [
         {
           id: 'item-1',
-          text: 'hello',
+          kind: 'message',
+          role: 'user',
+          text: 'hello **Codex**',
+        },
+        {
+          id: 'item-2',
+          kind: 'message',
+          role: 'assistant',
+          text: 'world',
+        },
+      ],
+    });
+  });
+
+  test('keeps message raw markdown as data instead of rendering HTML in the model', () => {
+    assert.deepEqual(createConversationViewModelFromSnapshot({
+      conversation: {
+        status: 'ready',
+        revision: 1,
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'assistant',
+            text: 'Use `<button>` as text.',
+          },
+        ],
+      },
+    }), {
+      status: 'timeline',
+      revision: 1,
+      items: [
+        {
+          id: 'item-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'Use `<button>` as text.',
         },
       ],
     });

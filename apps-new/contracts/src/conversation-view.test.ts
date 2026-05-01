@@ -12,17 +12,21 @@ describe('client conversation view contract', () => {
     });
   });
 
-  test('accepts ready state with revision and ordered items', () => {
+  test('accepts ready state with revision and ordered confirmed message items', () => {
     assert.deepEqual(clientConversationViewSchema.parse({
       status: 'ready',
       revision: 2,
       items: [
         {
           id: 'item-1',
-          text: 'hello',
+          kind: 'message',
+          role: 'user',
+          text: 'hello **Codex**',
         },
         {
           id: 'item-2',
+          kind: 'message',
+          role: 'assistant',
           text: 'world',
         },
       ],
@@ -32,14 +36,88 @@ describe('client conversation view contract', () => {
       items: [
         {
           id: 'item-1',
-          text: 'hello',
+          kind: 'message',
+          role: 'user',
+          text: 'hello **Codex**',
         },
         {
           id: 'item-2',
+          kind: 'message',
+          role: 'assistant',
           text: 'world',
         },
       ],
     });
+  });
+
+  test('rejects legacy bare text timeline items', () => {
+    const parsed = clientConversationViewSchema.safeParse({
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'item-1',
+          text: 'hello',
+        },
+      ],
+    });
+
+    assert.equal(parsed.success, false);
+  });
+
+  test('rejects message items without a confirmed user or assistant role', () => {
+    const parsed = clientConversationViewSchema.safeParse({
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'item-1',
+          kind: 'message',
+          role: 'system',
+          text: 'hidden instruction',
+        },
+      ],
+    });
+
+    assert.equal(parsed.success, false);
+  });
+
+  test('rejects message items that carry rendered or trusted HTML', () => {
+    const parsed = clientConversationViewSchema.safeParse({
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'item-1',
+          kind: 'message',
+          role: 'assistant',
+          text: '<strong>hello</strong>',
+          renderedHtml: '<strong>hello</strong>',
+          trustedHtml: true,
+        },
+      ],
+    });
+
+    assert.equal(parsed.success, false);
+  });
+
+  test('rejects optimistic or pending message markers', () => {
+    const parsed = clientConversationViewSchema.safeParse({
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'item-1',
+          kind: 'message',
+          role: 'user',
+          text: 'not confirmed yet',
+          optimistic: true,
+          pending: true,
+        },
+      ],
+    });
+
+    assert.equal(parsed.success, false);
   });
 
   test('represents empty conversation as ready with zero items', () => {
@@ -124,6 +202,28 @@ describe('client conversation view contract', () => {
         retry: true,
         approval: true,
       },
+    });
+
+    assert.equal(parsed.success, false);
+  });
+
+  test('does not allow message item timestamps or controls', () => {
+    const parsed = clientConversationViewSchema.safeParse({
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'item-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'done',
+          timestamp: '2026-05-01T00:00:00.000Z',
+          done: true,
+          controls: {
+            retry: true,
+          },
+        },
+      ],
     });
 
     assert.equal(parsed.success, false);

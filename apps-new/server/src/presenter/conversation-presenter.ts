@@ -14,8 +14,13 @@ export interface PresentConversationItemInput {
 }
 
 export function presentConversationItem(input: PresentConversationItemInput): ClientConversationItem {
-  return {
-    id: input.item.id,
-    text: input.item.text,
-  };
+  switch (input.item.kind) {
+    case 'message':
+      return {
+        id: input.item.id,
+        kind: 'message',
+        role: input.item.role,
+        text: input.item.text,
+      };
+  }
 }

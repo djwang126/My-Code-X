@@ -1,4 +1,5 @@
 import type { ConversationDomainEvent, ConversationSnapshot } from './conversation-events.js';
+import type { ConversationItem } from './conversation-events.js';
 
 export type ConversationState = ConversationSnapshot;
 
@@ -29,5 +30,48 @@ export function applyConversationDomainEvent(input: ApplyConversationDomainEvent
         revision: state.revision + 1,
         items: [...state.items, event.item],
       };
+
+    case 'conversation-item-upserted':
+      return upsertConversationItem({
+        state,
+        item: event.item,
+      });
+  }
+}
+
+interface UpsertConversationItemInput {
+  readonly state: ConversationState;
+  readonly item: ConversationState['items'][number];
+}
+
+function upsertConversationItem(input: UpsertConversationItemInput): ConversationState {
+  const existingIndex = input.state.items.findIndex(item => item.id === input.item.id);
+
+  if (existingIndex < 0) {
+    return {
+      revision: input.state.revision + 1,
+      items: [...input.state.items, input.item],
+    };
+  }
+
+  const existingItem = input.state.items[existingIndex];
+
+  if (existingItem && isSameConversationItem(existingItem, input.item)) {
+    return input.state;
+  }
+
+  return {
+    revision: input.state.revision + 1,
+    items: input.state.items.map((item, index) => (index === existingIndex ? input.item : item)),
+  };
+}
+
+function isSameConversationItem(left: ConversationItem, right: ConversationItem): boolean {
+  switch (left.kind) {
+    case 'message':
+      return right.kind === 'message'
+        && left.id === right.id
+        && left.role === right.role
+        && left.text === right.text;
   }
 }

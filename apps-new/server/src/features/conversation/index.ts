@@ -4,6 +4,10 @@ export type {
   ConversationDomainEvent,
   ConversationItem,
   ConversationItemAppendedEvent,
+  ConversationItemUpsertedEvent,
+  ConversationMessageItem,
+  ConversationMessageRole,
+  RecordRuntimeThreadItemCommand,
   ConversationReplacedEvent,
   ConversationSnapshot,
 } from './conversation-events.js';

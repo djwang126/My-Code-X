@@ -118,12 +118,93 @@ select {
 }
 
 .conversation-view__timeline-item {
-  max-width: 80%;
-  align-self: flex-start;
+  display: flex;
+  width: 100%;
+}
+
+.conversation-view__timeline-item--user {
+  justify-content: flex-end;
+}
+
+.conversation-view__timeline-item--assistant {
+  justify-content: flex-start;
+}
+
+.conversation-view__message {
+  max-width: min(42rem, 86%);
   border-radius: 0.875rem;
-  background: #f1f5f9;
   padding: 0.75rem 0.875rem;
   color: #172033;
   line-height: 1.5;
-  white-space: pre-wrap;
+}
+
+.conversation-view__message--user {
+  background: #dbeafe;
+}
+
+.conversation-view__message--assistant {
+  background: #f1f5f9;
+}
+
+.conversation-view__message-body {
+  overflow-wrap: anywhere;
+}
+
+.conversation-view__message-body p,
+.conversation-view__message-body ul,
+.conversation-view__message-body pre,
+.conversation-view__message-body table {
+  margin: 0.5rem 0 0;
+}
+
+.conversation-view__message-body p:first-child,
+.conversation-view__message-body ul:first-child,
+.conversation-view__message-body pre:first-child,
+.conversation-view__message-body table:first-child {
+  margin-top: 0;
+}
+
+.conversation-view__message-body code,
+.conversation-view__message-body pre {
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+.conversation-view__message-body pre {
+  overflow-x: auto;
+  border-radius: 0.625rem;
+  background: rgba(15, 23, 42, 0.08);
+  padding: 0.75rem;
+}
+
+.conversation-view__copy-message,
+.conversation-view__copy-code {
+  margin-top: 0.625rem;
+  border: 1px solid rgba(23, 32, 51, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #334155;
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.625rem;
+}
+
+.conversation-view__copy-code {
+  display: block;
+}
+
+.conversation-markdown__table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.conversation-markdown__table-scroll table {
+  min-width: max-content;
+  border-collapse: collapse;
+}
+
+.conversation-markdown__table-scroll th,
+.conversation-markdown__table-scroll td {
+  border: 1px solid rgba(23, 32, 51, 0.14);
+  padding: 0.375rem 0.5rem;
+  text-align: left;
 }

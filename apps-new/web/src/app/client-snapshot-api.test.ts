@@ -22,7 +22,20 @@ describe('client snapshot api boundary', () => {
         conversation: {
           status: 'ready',
           revision: 0,
-          items: [],
+          items: [
+            {
+              id: 'item-1',
+              kind: 'message',
+              role: 'user',
+              text: 'hello **Codex**',
+            },
+            {
+              id: 'item-2',
+              kind: 'message',
+              role: 'assistant',
+              text: 'world',
+            },
+          ],
         },
         ignored: true,
       }), {
@@ -53,7 +66,20 @@ describe('client snapshot api boundary', () => {
       conversation: {
         status: 'ready',
         revision: 0,
-        items: [],
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello **Codex**',
+          },
+          {
+            id: 'item-2',
+            kind: 'message',
+            role: 'assistant',
+            text: 'world',
+          },
+        ],
       },
     });
   });
@@ -65,6 +91,96 @@ describe('client snapshot api boundary', () => {
         revision: 0,
         items: [],
         timestamp: 'not allowed',
+      },
+    }), {
+      status: 200,
+    }));
+
+    const api = createClientSnapshotApiBoundary();
+
+    await assert.rejects(api.loadSnapshot({
+      scope: {
+        slotId: 'slot-1',
+        workspaceId: null,
+        threadId: null,
+        label: 'slot slot-1',
+      },
+    }));
+  });
+
+  test('rejects invalid message roles at the client boundary', async () => {
+    installFetch(async () => new globalThis.Response(JSON.stringify({
+      conversation: {
+        status: 'ready',
+        revision: 0,
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'system',
+            text: 'not a conversation message role',
+          },
+        ],
+      },
+    }), {
+      status: 200,
+    }));
+
+    const api = createClientSnapshotApiBoundary();
+
+    await assert.rejects(api.loadSnapshot({
+      scope: {
+        slotId: 'slot-1',
+        workspaceId: null,
+        threadId: null,
+        label: 'slot slot-1',
+      },
+    }));
+  });
+
+  test('rejects rendered or trusted HTML at the client boundary', async () => {
+    installFetch(async () => new globalThis.Response(JSON.stringify({
+      conversation: {
+        status: 'ready',
+        revision: 0,
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'assistant',
+            text: '<strong>hello</strong>',
+            renderedHtml: '<strong>hello</strong>',
+            trustedHtml: true,
+          },
+        ],
+      },
+    }), {
+      status: 200,
+    }));
+
+    const api = createClientSnapshotApiBoundary();
+
+    await assert.rejects(api.loadSnapshot({
+      scope: {
+        slotId: 'slot-1',
+        workspaceId: null,
+        threadId: null,
+        label: 'slot slot-1',
+      },
+    }));
+  });
+
+  test('rejects legacy bare text timeline items at the client boundary', async () => {
+    installFetch(async () => new globalThis.Response(JSON.stringify({
+      conversation: {
+        status: 'ready',
+        revision: 0,
+        items: [
+          {
+            id: 'item-1',
+            text: 'legacy item',
+          },
+        ],
       },
     }), {
       status: 200,

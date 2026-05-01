@@ -1,4 +1,9 @@
-export type ConversationCommand = ReplaceConversationCommand | AppendConversationItemCommand;
+import type { RuntimeThreadItem } from '../../ports/index.js';
+
+export type ConversationCommand =
+  | ReplaceConversationCommand
+  | AppendConversationItemCommand
+  | RecordRuntimeThreadItemCommand;
 
 export interface ReplaceConversationCommand {
   readonly kind: 'replace-conversation';
@@ -10,7 +15,15 @@ export interface AppendConversationItemCommand {
   readonly item: ConversationItem;
 }
 
-export type ConversationDomainEvent = ConversationReplacedEvent | ConversationItemAppendedEvent;
+export interface RecordRuntimeThreadItemCommand {
+  readonly kind: 'record-runtime-thread-item';
+  readonly item: RuntimeThreadItem;
+}
+
+export type ConversationDomainEvent =
+  | ConversationReplacedEvent
+  | ConversationItemAppendedEvent
+  | ConversationItemUpsertedEvent;
 
 export interface ConversationReplacedEvent {
   readonly kind: 'conversation-replaced';
@@ -22,12 +35,23 @@ export interface ConversationItemAppendedEvent {
   readonly item: ConversationItem;
 }
 
+export interface ConversationItemUpsertedEvent {
+  readonly kind: 'conversation-item-upserted';
+  readonly item: ConversationItem;
+}
+
 export interface ConversationSnapshot {
   readonly revision: number;
   readonly items: readonly ConversationItem[];
 }
 
-export interface ConversationItem {
+export type ConversationItem = ConversationMessageItem;
+
+export interface ConversationMessageItem {
   readonly id: string;
+  readonly kind: 'message';
+  readonly role: ConversationMessageRole;
   readonly text: string;
 }
+
+export type ConversationMessageRole = 'user' | 'assistant';

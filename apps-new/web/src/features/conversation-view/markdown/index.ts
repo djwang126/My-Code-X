@@ -1,2 +1,8 @@
-// Markdown rendering belongs to Conversation View, but Slice 1 only creates the boundary.
-export {};
+export {
+  renderConversationMarkdown,
+  type RenderConversationMarkdownInput,
+  type RenderConversationMarkdownResult,
+  type RenderedCodeBlock,
+  type RenderedHtmlBlock,
+  type RenderedMarkdownBlock,
+} from './markdown-renderer.js';

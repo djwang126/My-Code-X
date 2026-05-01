@@ -79,7 +79,7 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
 
         case 'runtime-item-started':
         case 'runtime-item-completed':
-          appendConversationItem(input.conversation, event.item);
+          recordConversationItem(input.conversation, event.item);
           return;
 
         case 'runtime-item-delta':
@@ -179,16 +179,13 @@ function mapRuntimeThreadRecord(thread: RuntimeThread): ThreadRecord {
   };
 }
 
-function appendConversationItem(conversation: ConversationService | undefined, item: RuntimeThreadItem): void {
-  if (!conversation || !item.text) {
+function recordConversationItem(conversation: ConversationService | undefined, item: RuntimeThreadItem): void {
+  if (!conversation) {
     return;
   }
 
   conversation.apply({
-    kind: 'append-conversation-item',
-    item: {
-      id: item.itemId,
-      text: item.text,
-    },
+    kind: 'record-runtime-thread-item',
+    item,
   });
 }
