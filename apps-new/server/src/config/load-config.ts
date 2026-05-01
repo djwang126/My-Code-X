@@ -1,6 +1,12 @@
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { ConfigError } from './config-error.js';
 import { isJsonValue, type JsonValue } from '@my-code-x/contracts-new/json';
 import type { AppConfig } from './types.js';
+
+const currentDir = path.dirname(fileURLToPath(import.meta.url));
+const appsNewRoot = path.resolve(currentDir, '..', '..', '..');
+const defaultStaticRoot = path.join(appsNewRoot, 'web', 'dist');
 
 export function loadConfig(): AppConfig {
   return {
@@ -11,6 +17,12 @@ export function loadConfig(): AppConfig {
       env: process.env,
       requestTimeoutMs: readNumberEnv('CODEX_REQUEST_TIMEOUT_MS', 300_000),
       dynamicTools: readJsonArrayEnv('MY_CODE_X_DYNAMIC_TOOLS_JSON'),
+    },
+    httpServer: {
+      host: readStringEnv('MY_CODE_X_HOST', '127.0.0.1'),
+      port: readNumberEnv('MY_CODE_X_PORT', 4311),
+      staticRoot: readStringEnv('MY_CODE_X_STATIC_ROOT', defaultStaticRoot),
+      bodyLimitBytes: readNumberEnv('MY_CODE_X_BODY_LIMIT_BYTES', 1_048_576),
     },
   };
 }

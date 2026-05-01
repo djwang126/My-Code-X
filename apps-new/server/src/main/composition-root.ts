@@ -2,6 +2,7 @@ import { createCodexRuntime } from '../adapters/codex/index.js';
 import { createEventBus } from '../adapters/memory/index.js';
 import { createApplication, createRuntimeEventCoordinator } from '../application/index.js';
 import { loadConfig } from '../config/index.js';
+import type { HttpServerConfig } from '../config/index.js';
 import { createConversationService } from '../features/conversation/index.js';
 import { createRuntimeRequestService } from '../features/runtime-request/index.js';
 import { createSlotService } from '../features/slot/index.js';
@@ -14,6 +15,7 @@ import type { HttpHandler } from '../http/index.js';
 
 export interface AppComposition {
   http: HttpHandler;
+  httpServer: HttpServerConfig;
   close(): Promise<void>;
 }
 
@@ -36,6 +38,7 @@ export async function createAppComposition(): Promise<AppComposition> {
 
   return {
     http,
+    httpServer: config.httpServer,
 
     async close() {
       unsubscribeRuntimeEvents();

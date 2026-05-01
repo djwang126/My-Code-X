@@ -34,7 +34,8 @@ const allowedBoundaryImports: Record<string, readonly string[]> = {
   'features/turn': ['features/turn', 'ports', 'shared'],
   'features/workspace': ['features/workspace', 'ports', 'shared'],
   http: ['http', 'application', 'contracts/client', 'contracts/json', 'shared'],
-  main: ['main', 'config', 'http', 'application', 'features/*', 'adapters/*', 'ports', 'shared'],
+  'http/node': ['http/node', 'http', 'contracts/json', 'shared'],
+  main: ['main', 'config', 'http', 'http/node', 'application', 'features/*', 'adapters/*', 'ports', 'shared'],
   presenter: ['presenter', 'contracts/client', 'features/*', 'shared'],
   ports: ['ports', 'shared', 'contracts/json'],
   shared: ['shared'],
@@ -66,6 +67,10 @@ function toBoundary(relativePath: string): string {
 
   if ((layer === 'adapters' || layer === 'features') && rest[0]) {
     return `${layer}/${rest[0]}`;
+  }
+
+  if (layer === 'http' && rest[0] === 'node') {
+    return 'http/node';
   }
 
   return rest.length ? layer : 'root';
@@ -157,6 +162,9 @@ test('server-new external contract imports are separated by client protocol and 
   assert.equal(isAllowedImport(allowedBoundaryImports['features/runtime-request'] ?? [], 'contracts/json'), true);
   assert.equal(isAllowedImport(allowedBoundaryImports['features/runtime-request'] ?? [], 'contracts/client'), false);
   assert.equal(isAllowedImport(allowedBoundaryImports.http ?? [], 'contracts/unknown'), false);
+  assert.equal(toBoundary(path.join('http', 'node', 'node-http-server.ts')), 'http/node');
+  assert.equal(isAllowedImport(allowedBoundaryImports.http ?? [], 'http/node'), false);
+  assert.equal(isAllowedImport(allowedBoundaryImports.main ?? [], 'http/node'), true);
 });
 
 test('server-new import boundaries follow the architecture direction', async () => {

@@ -1,5 +1,6 @@
 import { clientActionSchema, type ClientAction } from '@my-code-x/contracts-new';
 import type { ApplicationService } from '../../application/index.js';
+import { errorResponse, jsonResponse } from '../http-responses.js';
 import type { HttpHandler, HttpRequest, HttpResponse } from '../http-types.js';
 
 export interface ClientControllerInput {
@@ -12,29 +13,44 @@ export function createClientController(input: ClientControllerInput): HttpHandle
       const actionResult = readClientAction(request);
 
       if (actionResult.status === 'invalid') {
-        return {
+        return errorResponse({
           statusCode: 400,
-          message: 'Invalid client action',
-        };
+          body: 'Invalid client action',
+        });
       }
 
       const action = actionResult.action;
 
       switch (action.kind) {
         case 'open-client':
-          return input.application.openClient(action);
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.openClient(action),
+          });
 
         case 'send-message':
-          return input.application.sendClientMessage(action);
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.sendClientMessage(action),
+          });
 
         case 'resume-thread':
-          return input.application.resumeClientThread(action);
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.resumeClientThread(action),
+          });
 
         case 'respond-interaction':
-          return input.application.respondClientInteraction(action);
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.respondClientInteraction(action),
+          });
 
         case 'interrupt-turn':
-          return input.application.interruptClientTurn(action);
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.interruptClientTurn(action),
+          });
       }
     },
   };
@@ -45,6 +61,12 @@ type ReadClientActionResult =
   | { readonly status: 'invalid' };
 
 function readClientAction(request: HttpRequest): ReadClientActionResult {
+  if (typeof request.body === 'string' || request.body === null) {
+    return {
+      status: 'invalid',
+    };
+  }
+
   const parsed = clientActionSchema.safeParse(request.body);
 
   if (!parsed.success) {

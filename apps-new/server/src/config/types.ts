@@ -3,6 +3,7 @@ import type { EnvironmentVariables } from '../shared/index.js';
 
 export interface AppConfig {
   readonly codex: CodexRuntimeConfig;
+  readonly httpServer: HttpServerConfig;
 }
 
 export interface CodexRuntimeConfig {
@@ -12,4 +13,11 @@ export interface CodexRuntimeConfig {
   readonly env: EnvironmentVariables;
   readonly requestTimeoutMs: number;
   readonly dynamicTools: readonly JsonValue[];
+}
+
+export interface HttpServerConfig {
+  readonly host: string;
+  readonly port: number;
+  readonly staticRoot: string;
+  readonly bodyLimitBytes: number;
 }

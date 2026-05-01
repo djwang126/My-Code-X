@@ -3,6 +3,7 @@ import { describe, test } from 'node:test';
 
 import { createHttpApp } from './create-http-app.js';
 import type { ApplicationService } from '../application/index.js';
+import type { HttpRequest } from './http-types.js';
 
 function createApplication(): ApplicationService {
   return {
@@ -71,54 +72,61 @@ describe('client HTTP conversation snapshot shell', () => {
     });
 
     const response = await app.handle({
-      method: 'POST',
-      path: '/client',
-      body: {
-        kind: 'open-client',
-        scope: {
-          slotId: 'slot-1',
-          workspaceId: null,
-          threadId: null,
+      ...createTestRequest({
+        method: 'POST',
+        path: '/client',
+        body: {
+          kind: 'open-client',
+          scope: {
+            slotId: 'slot-1',
+            workspaceId: null,
+            threadId: null,
+          },
+          payload: {},
         },
-        payload: {},
-      },
+      }),
     });
 
     assert.deepEqual(response, {
-      app: {
-        status: 'ready',
-      },
-      identity: {
-        slotId: 'slot-1',
-      },
-      selection: {
-        workspaceId: null,
-        threadId: null,
-      },
-      workspace: {
-        status: 'none',
-      },
-      thread: {
-        status: 'none',
-        title: null,
-      },
-      turn: {
-        current: null,
-      },
-      conversation: {
-        status: 'ready',
-        revision: 0,
-        items: [],
-      },
-      pendingInteractions: [],
-      notices: [],
-      capabilities: {
-        actions: [],
-        options: {},
-      },
-      stream: {
-        status: 'disabled',
-        revision: 'initial',
+      kind: 'json',
+      statusCode: 200,
+      headers: {},
+      body: {
+        app: {
+          status: 'ready',
+        },
+        identity: {
+          slotId: 'slot-1',
+        },
+        selection: {
+          workspaceId: null,
+          threadId: null,
+        },
+        workspace: {
+          status: 'none',
+        },
+        thread: {
+          status: 'none',
+          title: null,
+        },
+        turn: {
+          current: null,
+        },
+        conversation: {
+          status: 'ready',
+          revision: 0,
+          items: [],
+        },
+        pendingInteractions: [],
+        notices: [],
+        capabilities: {
+          actions: [],
+          options: {},
+        },
+        stream: {
+          status: 'disabled',
+          revision: 'initial',
+        },
       },
     });
   });
@@ -128,7 +136,7 @@ describe('client HTTP conversation snapshot shell', () => {
       application: createApplication(),
     });
 
-    const response = await app.handle({
+    const response = await app.handle(createTestRequest({
       method: 'POST',
       path: '/client',
       body: {
@@ -139,11 +147,51 @@ describe('client HTTP conversation snapshot shell', () => {
           threadId: null,
         },
       },
-    });
+    }));
 
     assert.deepEqual(response, {
+      kind: 'json',
       statusCode: 400,
-      message: 'Invalid client action',
+      headers: {},
+      body: {
+        error: {
+          message: 'Invalid client action',
+        },
+      },
+    });
+  });
+
+  test('rejects client actions with unsupported content type', async () => {
+    const app = createHttpApp({
+      application: createApplication(),
+    });
+
+    const response = await app.handle(createTestRequest({
+      method: 'POST',
+      path: '/client',
+      headers: {
+        'content-type': 'text/plain',
+      },
+      body: {
+        kind: 'open-client',
+        scope: {
+          slotId: 'slot-1',
+          workspaceId: null,
+          threadId: null,
+        },
+        payload: {},
+      },
+    }));
+
+    assert.deepEqual(response, {
+      kind: 'json',
+      statusCode: 415,
+      headers: {},
+      body: {
+        error: {
+          message: 'Unsupported media type',
+        },
+      },
     });
   });
 
@@ -152,21 +200,32 @@ describe('client HTTP conversation snapshot shell', () => {
       application: createApplication(),
     });
 
-    assert.deepEqual(await app.handle({
+    assert.deepEqual(await app.handle(createTestRequest({
       method: 'GET',
       path: '/health',
       body: null,
-    }), {
-      status: 'ok',
+    })), {
+      kind: 'json',
+      statusCode: 200,
+      headers: {},
+      body: {
+        status: 'ok',
+      },
     });
 
-    assert.deepEqual(await app.handle({
+    assert.deepEqual(await app.handle(createTestRequest({
       method: 'GET',
       path: '/missing',
       body: null,
-    }), {
+    })), {
+      kind: 'json',
       statusCode: 404,
-      message: 'Not found',
+      headers: {},
+      body: {
+        error: {
+          message: 'Not found',
+        },
+      },
     });
   });
 
@@ -175,22 +234,52 @@ describe('client HTTP conversation snapshot shell', () => {
       application: createApplication(),
     });
 
-    assert.deepEqual(await app.handle({
+    assert.deepEqual(await app.handle(createTestRequest({
       method: 'GET',
       path: '/client',
       body: null,
-    }), {
+    })), {
+      kind: 'json',
       statusCode: 405,
-      message: 'Method not allowed',
+      headers: {},
+      body: {
+        error: {
+          message: 'Method not allowed',
+        },
+      },
     });
 
-    assert.deepEqual(await app.handle({
+    assert.deepEqual(await app.handle(createTestRequest({
       method: 'POST',
       path: '/health',
       body: null,
-    }), {
+    })), {
+      kind: 'json',
       statusCode: 405,
-      message: 'Method not allowed',
+      headers: {},
+      body: {
+        error: {
+          message: 'Method not allowed',
+        },
+      },
     });
   });
 });
+
+type TestRequestInput = Pick<HttpRequest, 'method' | 'path' | 'body'> & {
+  readonly headers?: HttpRequest['headers'];
+};
+
+function createTestRequest(input: TestRequestInput): HttpRequest {
+  return {
+    method: input.method,
+    path: input.path,
+    query: {},
+    headers: input.headers ?? {
+      'content-type': 'application/json',
+    },
+    body: input.body,
+    rawBody: input.body === null ? null : JSON.stringify(input.body),
+    signal: new globalThis.AbortController().signal,
+  };
+}
