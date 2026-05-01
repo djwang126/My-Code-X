@@ -1,5 +1,5 @@
 import { ConfigError } from './config-error.js';
-import { isJsonValue, type JsonValue } from '../shared/index.js';
+import { isJsonValue, type JsonValue } from '@my-code-x/contracts-new/json';
 import type { AppConfig } from './types.js';
 
 export function loadConfig(): AppConfig {

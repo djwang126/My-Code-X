@@ -13,7 +13,7 @@ import type {
   RuntimeResult,
   Unsubscribe,
 } from '../../../ports/index.js';
-import type { JsonObject, JsonValue } from '../../../shared/index.js';
+import type { JsonObject, JsonValue } from '@my-code-x/contracts-new/json';
 
 export interface CreateCodexRuntimeClientInput {
   readonly transport: CodexJsonlTransport;

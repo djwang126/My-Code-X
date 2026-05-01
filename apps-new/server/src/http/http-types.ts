@@ -1,4 +1,4 @@
-import type { JsonValue } from '../shared/index.js';
+import type { JsonValue } from '@my-code-x/contracts-new/json';
 
 export interface HttpRequest {
   readonly method: string;

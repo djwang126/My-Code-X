@@ -1,4 +1,4 @@
-import type { ClientActionResult, ClientResumeThreadAction } from '../contracts/index.js';
+import type { ClientActionResult, ClientResumeThreadAction } from '@my-code-x/contracts-new';
 import type { SlotService } from '../features/slot/index.js';
 import type { ThreadActionsService } from '../features/thread-actions/index.js';
 import type { ThreadService } from '../features/thread/index.js';

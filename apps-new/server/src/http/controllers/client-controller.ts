@@ -1,16 +1,6 @@
-import { readBodyObject, readOptionalObject, readOptionalString, readRequiredKind } from '../http-body.js';
-import type { ClientAction, ClientActionKind, ClientActionScope } from '../../contracts/index.js';
+import { clientActionSchema, type ClientAction } from '@my-code-x/contracts-new';
 import type { ApplicationService } from '../../application/index.js';
-import type { JsonObject } from '../../shared/index.js';
 import type { HttpHandler, HttpRequest, HttpResponse } from '../http-types.js';
-
-const clientActionKinds: readonly ClientActionKind[] = [
-  'open-client',
-  'send-message',
-  'resume-thread',
-  'respond-interaction',
-  'interrupt-turn',
-];
 
 export interface ClientControllerInput {
   application: ApplicationService;
@@ -19,7 +9,16 @@ export interface ClientControllerInput {
 export function createClientController(input: ClientControllerInput): HttpHandler {
   return {
     async handle(request: HttpRequest): Promise<HttpResponse> {
-      const action = readClientAction(request);
+      const actionResult = readClientAction(request);
+
+      if (actionResult.status === 'invalid') {
+        return {
+          statusCode: 400,
+          message: 'Invalid client action',
+        };
+      }
+
+      const action = actionResult.action;
 
       switch (action.kind) {
         case 'open-client':
@@ -41,42 +40,21 @@ export function createClientController(input: ClientControllerInput): HttpHandle
   };
 }
 
-function readClientAction(request: HttpRequest): ClientAction {
-  const body = readBodyObject(request);
-  const kind = readRequiredKind(body, clientActionKinds);
-  const scope = readClientActionScope(body);
-  const payload = readOptionalObject(body, 'payload') ?? {};
+type ReadClientActionResult =
+  | { readonly status: 'valid'; readonly action: ClientAction }
+  | { readonly status: 'invalid' };
 
-  return createClientAction({ kind, scope, payload });
-}
+function readClientAction(request: HttpRequest): ReadClientActionResult {
+  const parsed = clientActionSchema.safeParse(request.body);
 
-interface CreateClientActionInput {
-  readonly kind: ClientActionKind;
-  readonly scope: ClientActionScope;
-  readonly payload: JsonObject;
-}
-
-function createClientAction(input: CreateClientActionInput): ClientAction {
-  switch (input.kind) {
-    case 'open-client':
-      return { ...input, kind: 'open-client' };
-    case 'send-message':
-      return { ...input, kind: 'send-message' };
-    case 'resume-thread':
-      return { ...input, kind: 'resume-thread' };
-    case 'respond-interaction':
-      return { ...input, kind: 'respond-interaction' };
-    case 'interrupt-turn':
-      return { ...input, kind: 'interrupt-turn' };
+  if (!parsed.success) {
+    return {
+      status: 'invalid',
+    };
   }
-}
-
-function readClientActionScope(body: JsonObject): ClientActionScope {
-  const scope = readOptionalObject(body, 'scope') ?? {};
 
   return {
-    slotId: readOptionalString(scope, 'slotId'),
-    workspaceId: readOptionalString(scope, 'workspaceId'),
-    threadId: readOptionalString(scope, 'threadId'),
+    status: 'valid',
+    action: parsed.data,
   };
 }

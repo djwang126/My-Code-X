@@ -1,4 +1,4 @@
-import type { JsonObject } from '../../../shared/index.js';
+import type { JsonObject } from '@my-code-x/contracts-new/json';
 
 export interface CodexRequest {
   readonly method: string;

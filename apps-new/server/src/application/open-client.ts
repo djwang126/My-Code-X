@@ -1,4 +1,4 @@
-import type { ClientOpenAction, ClientSnapshot } from '../contracts/index.js';
+import type { ClientOpenAction, ClientSnapshot } from '@my-code-x/contracts-new';
 import type { ConversationService } from '../features/conversation/index.js';
 import type { RuntimeRequestService } from '../features/runtime-request/index.js';
 import type { SlotService } from '../features/slot/index.js';

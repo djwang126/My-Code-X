@@ -1,3 +1,5 @@
+import { SkeletonMigrationPendingError } from '../../shared/index.js';
+
 export type AppControlCommand = unknown;
 export type AppControlResult = unknown;
 
@@ -8,7 +10,8 @@ export interface AppControlService {
 export function createAppControlService(): AppControlService {
   return {
     async restart(input: AppControlCommand): Promise<AppControlResult> {
-      return input;
+      void input;
+      throw new SkeletonMigrationPendingError('appControl.restart');
     },
   };
 }

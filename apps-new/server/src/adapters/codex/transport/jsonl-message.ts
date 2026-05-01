@@ -1,5 +1,5 @@
 import { CodexProtocolError } from '../runtime/codex-runtime-error.js';
-import { isJsonObject, isJsonValue, type JsonObject, type JsonValue } from '../../../shared/index.js';
+import { isJsonObject, isJsonValue, type JsonObject, type JsonValue } from '@my-code-x/contracts-new/json';
 
 export type CodexIncomingMessage =
   | CodexResponseMessage

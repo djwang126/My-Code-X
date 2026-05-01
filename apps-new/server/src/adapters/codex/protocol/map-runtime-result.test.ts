@@ -3,7 +3,7 @@ import { describe, test } from 'node:test';
 
 import { CodexProtocolError } from '../runtime/codex-runtime-error.js';
 import { mapCodexResultToRuntimeResult } from './map-runtime-result.js';
-import type { JsonObject } from '../../../shared/index.js';
+import type { JsonObject } from '@my-code-x/contracts-new/json';
 
 function createCodexThread(overrides: JsonObject = {}): JsonObject {
   return {

@@ -1,4 +1,4 @@
-import type { ClientActionResult, ClientEvent, ClientSnapshot } from '../contracts/index.js';
+import type { ClientActionResult, ClientEvent, ClientSnapshot } from '@my-code-x/contracts-new';
 
 export interface CreateActionResultInput {
   readonly accepted: boolean;

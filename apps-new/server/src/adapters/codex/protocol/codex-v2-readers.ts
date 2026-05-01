@@ -1,6 +1,6 @@
 import { CodexProtocolError } from '../runtime/codex-runtime-error.js';
 import { readJsonObject as readTransportJsonObject, readString } from '../transport/jsonl-message.js';
-import type { JsonObject, JsonValue } from '../../../shared/index.js';
+import type { JsonObject, JsonValue } from '@my-code-x/contracts-new/json';
 import type {
   RuntimeErrorInfo,
   RuntimeTerminalTurnStatus,

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
-import type { JsonValue } from '../../../shared/index.js';
+import type { JsonValue } from '@my-code-x/contracts-new/json';
 import { CodexBootstrapError } from '../runtime/codex-runtime-error.js';
 import type {
   CodexJsonlTransport,

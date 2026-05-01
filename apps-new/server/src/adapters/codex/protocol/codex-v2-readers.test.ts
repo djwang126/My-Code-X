@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import { readCodexThread, readCodexThreadItem } from './codex-v2-readers.js';
-import type { JsonObject } from '../../../shared/index.js';
+import type { JsonObject } from '@my-code-x/contracts-new/json';
 
 function readItem(item: JsonObject) {
   return readCodexThreadItem(item, 'test item');

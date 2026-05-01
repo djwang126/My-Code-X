@@ -1,4 +1,4 @@
-import type { ClientActionResult, ClientInterruptTurnAction } from '../contracts/index.js';
+import type { ClientActionResult, ClientInterruptTurnAction } from '@my-code-x/contracts-new';
 import type { TurnService } from '../features/turn/index.js';
 import type { RuntimePort } from '../ports/index.js';
 import { SkeletonMigrationPendingError } from '../shared/index.js';

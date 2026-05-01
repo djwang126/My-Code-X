@@ -9,7 +9,8 @@ import {
 } from '../runtime/codex-runtime-error.js';
 import { parseCodexIncomingMessage, readOptionalString, type CodexIncomingMessage } from './jsonl-message.js';
 import { startCodexProcess } from './start-codex-process.js';
-import type { EnvironmentVariables, JsonObject, JsonValue } from '../../../shared/index.js';
+import type { JsonObject, JsonValue } from '@my-code-x/contracts-new/json';
+import type { EnvironmentVariables } from '../../../shared/index.js';
 
 export type CodexTransportNotificationHandler = (message: CodexIncomingMessage) => void;
 

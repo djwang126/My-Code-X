@@ -1,4 +1,4 @@
-import type { JsonObject, JsonValue } from '../shared/index.js';
+import type { JsonObject, JsonValue } from '@my-code-x/contracts-new/json';
 
 export type RuntimeSandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access';
 

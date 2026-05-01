@@ -1,10 +1,5 @@
-import { z } from 'zod';
-import { clientConversationViewSchema, type ClientConversationView } from '@my-code-x/contracts-new';
+import { clientSnapshotSchema, type ClientConversationView } from '@my-code-x/contracts-new';
 import type { AppScope } from './app-scope.js';
-
-const clientSnapshotSchema = z.object({
-  conversation: clientConversationViewSchema,
-}).passthrough();
 
 export interface ClientSnapshotApiBoundary {
   loadSnapshot(input: LoadClientSnapshotInput): Promise<ClientSnapshotResult>;

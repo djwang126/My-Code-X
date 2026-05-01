@@ -1,4 +1,4 @@
-import type { ClientConversationItem } from '../contracts/index.js';
+import type { ClientConversationItem } from '@my-code-x/contracts-new';
 import type { ConversationItem, ConversationSnapshot } from '../features/conversation/index.js';
 
 export interface PresentConversationInput {

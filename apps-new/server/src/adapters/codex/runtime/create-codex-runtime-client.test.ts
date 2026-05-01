@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import type { RuntimeEvent, RuntimeResult } from '../../../ports/index.js';
-import type { JsonValue } from '../../../shared/index.js';
+import type { JsonValue } from '@my-code-x/contracts-new/json';
 import type { CodexRuntimeLogger } from './codex-runtime-logger.js';
 import { CodexProtocolError, CodexRpcError, CodexTransportClosedError } from './codex-runtime-error.js';
 import { createCodexRuntimeClient } from './create-codex-runtime-client.js';

@@ -1,4 +1,4 @@
-import type { PendingInteraction } from '../contracts/index.js';
+import type { PendingInteraction } from '@my-code-x/contracts-new';
 import type { RuntimeRequest, RuntimeRequestSnapshot } from '../features/runtime-request/index.js';
 import { SkeletonMigrationPendingError } from '../shared/index.js';
 
@@ -17,4 +17,3 @@ export interface PresentPendingInteractionInput {
 export function presentPendingInteraction(input: PresentPendingInteractionInput): PendingInteraction {
   throw new SkeletonMigrationPendingError(`pending interaction presenter for ${input.request.kind}`);
 }
-

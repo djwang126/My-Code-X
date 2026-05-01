@@ -1,4 +1,4 @@
-import type { ClientActionResult, ClientSendMessageAction } from '../contracts/index.js';
+import type { ClientActionResult, ClientSendMessageAction } from '@my-code-x/contracts-new';
 import type { ConversationService } from '../features/conversation/index.js';
 import type { TurnService } from '../features/turn/index.js';
 import type { RuntimePort } from '../ports/index.js';

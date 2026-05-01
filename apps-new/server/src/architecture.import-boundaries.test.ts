@@ -18,26 +18,25 @@ interface ImportReference {
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const srcRoot = currentDir;
-const importPattern = /^import\s+(?:type\s+)?(?:[^'";]+?\s+from\s+)?['"]([^'"]+)['"];?/gm;
+const importPattern = /^(?:import|export)\s+(?:type\s+)?(?:[^'";]+?\s+from\s+)?['"]([^'"]+)['"];?/gm;
 
 const allowedBoundaryImports: Record<string, readonly string[]> = {
-  'adapters/codex': ['adapters/codex', 'ports', 'shared'],
+  'adapters/codex': ['adapters/codex', 'ports', 'shared', 'contracts/json'],
   'adapters/memory': ['adapters/memory', 'ports', 'shared'],
-  application: ['application', 'contracts', 'features/*', 'ports', 'presenter', 'shared'],
-  config: ['config', 'shared'],
-  contracts: ['contracts', 'shared'],
+  application: ['application', 'contracts/client', 'features/*', 'ports', 'presenter', 'shared'],
+  config: ['config', 'shared', 'contracts/json'],
   'features/app-control': ['features/app-control', 'ports', 'shared'],
   'features/conversation': ['features/conversation', 'ports', 'shared'],
-  'features/runtime-request': ['features/runtime-request', 'ports', 'shared'],
+  'features/runtime-request': ['features/runtime-request', 'ports', 'shared', 'contracts/json'],
   'features/slot': ['features/slot', 'ports', 'shared'],
   'features/thread': ['features/thread', 'ports', 'shared'],
   'features/thread-actions': ['features/thread-actions', 'ports', 'shared'],
   'features/turn': ['features/turn', 'ports', 'shared'],
   'features/workspace': ['features/workspace', 'ports', 'shared'],
-  http: ['http', 'application', 'contracts', 'shared'],
+  http: ['http', 'application', 'contracts/client', 'contracts/json', 'shared'],
   main: ['main', 'config', 'http', 'application', 'features/*', 'adapters/*', 'ports', 'shared'],
-  presenter: ['presenter', 'contracts', 'features/*', 'shared'],
-  ports: ['ports', 'shared'],
+  presenter: ['presenter', 'contracts/client', 'features/*', 'shared'],
+  ports: ['ports', 'shared', 'contracts/json'],
   shared: ['shared'],
   root: ['main'],
 };
@@ -73,6 +72,12 @@ function toBoundary(relativePath: string): string {
 }
 
 function resolveImportBoundary(sourceFile: SourceFile, importPath: string): string | null {
+  const externalBoundary = resolveExternalImportBoundary(importPath);
+
+  if (externalBoundary) {
+    return externalBoundary;
+  }
+
   if (!importPath.startsWith('.')) {
     return null;
   }
@@ -85,6 +90,22 @@ function resolveImportBoundary(sourceFile: SourceFile, importPath: string): stri
   }
 
   return toBoundary(relativeImportPath);
+}
+
+function resolveExternalImportBoundary(importPath: string): string | null {
+  if (importPath === '@my-code-x/contracts-new') {
+    return 'contracts/client';
+  }
+
+  if (importPath === '@my-code-x/contracts-new/json') {
+    return 'contracts/json';
+  }
+
+  if (importPath.startsWith('@my-code-x/contracts-new/')) {
+    return 'contracts/unknown';
+  }
+
+  return null;
 }
 
 function findImportReferences(sourceFile: SourceFile): readonly ImportReference[] {
@@ -124,6 +145,19 @@ function isAllowedImport(allowedImports: readonly string[], importedBoundary: st
 
   return false;
 }
+
+test('server-new external contract imports are separated by client protocol and JSON foundation', () => {
+  assert.equal(resolveExternalImportBoundary('@my-code-x/contracts-new'), 'contracts/client');
+  assert.equal(resolveExternalImportBoundary('@my-code-x/contracts-new/json'), 'contracts/json');
+  assert.equal(resolveExternalImportBoundary('@my-code-x/contracts-new/internal'), 'contracts/unknown');
+
+  assert.equal(isAllowedImport(allowedBoundaryImports['adapters/codex'] ?? [], 'contracts/json'), true);
+  assert.equal(isAllowedImport(allowedBoundaryImports['adapters/codex'] ?? [], 'contracts/client'), false);
+  assert.equal(isAllowedImport(allowedBoundaryImports.presenter ?? [], 'contracts/client'), true);
+  assert.equal(isAllowedImport(allowedBoundaryImports['features/runtime-request'] ?? [], 'contracts/json'), true);
+  assert.equal(isAllowedImport(allowedBoundaryImports['features/runtime-request'] ?? [], 'contracts/client'), false);
+  assert.equal(isAllowedImport(allowedBoundaryImports.http ?? [], 'contracts/unknown'), false);
+});
 
 test('server-new import boundaries follow the architecture direction', async () => {
   const absoluteFiles = await listSourceFiles(srcRoot);

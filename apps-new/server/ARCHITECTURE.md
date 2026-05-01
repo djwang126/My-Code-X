@@ -54,21 +54,27 @@ Application receives client intent and coordinates features. It must not make
 HTTP input mirror runtime command fields. Runtime command details are introduced
 inside the use case only when the real behavior is migrated.
 
-### `contracts`
+### `apps-new/contracts` (`@my-code-x/contracts-new`)
 
-Frontend-facing product contracts.
+唯一前后端客户端协议层。
 
-Contracts describe client actions, snapshots, events, action results, timeline
-items, pending interactions, and turn views. They must not expose adapter,
-transport, or raw runtime protocol vocabulary.
+客户端 action、snapshot、event、action result、timeline item、pending
+interaction、turn view 都放在 `apps-new/contracts`。`server/src` 下面不再保留
+自己的 contracts 目录，也不做 re-export 过渡层。协议层必须提供 Zod schema，
+且不能暴露 adapter、transport 或原始 runtime protocol 词汇。
+
+`@my-code-x/contracts-new/json` 是单独的 JSON 基础协议入口，只导出
+`JsonValue`、`JsonObject`、JSON schema 和 JSON type guard。后端内部的
+runtime、config、ports、features 需要 JSON 基础类型时只能使用这个子入口，
+不能 import 客户端产品协议根入口。
 
 ### `presenter`
 
 Frontend-facing projection.
 
-Presenters convert feature-owned state and domain events into `contracts`
-shapes. They are the only layer that should decide how domain state appears to
-the client.
+Presenters convert feature-owned state and domain events into
+`@my-code-x/contracts-new` shapes. They are the only layer that should decide how
+domain state appears to the client.
 
 ### `features/*`
 
@@ -111,37 +117,39 @@ main -> ports
 main -> shared
 
 http -> application
-http -> contracts
+http -> @my-code-x/contracts-new
+http -> @my-code-x/contracts-new/json
 http -> shared
 http -> http
 
 application -> features/*
-application -> contracts
+application -> @my-code-x/contracts-new
 application -> ports
 application -> presenter
 application -> shared
 application -> application
 
-contracts -> contracts
-contracts -> shared
-
 presenter -> presenter
-presenter -> contracts
+presenter -> @my-code-x/contracts-new
 presenter -> features/*
 presenter -> shared
 
 features/<name> -> features/<same-name>
 features/<name> -> ports
+features/runtime-request -> @my-code-x/contracts-new/json
 features/<name> -> shared
 
 adapters/<name> -> adapters/<same-name>
 adapters/<name> -> ports
+adapters/codex -> @my-code-x/contracts-new/json
 adapters/<name> -> shared
 
 config -> config
+config -> @my-code-x/contracts-new/json
 config -> shared
 
 ports -> ports
+ports -> @my-code-x/contracts-new/json
 ports -> shared
 
 shared -> shared
@@ -187,7 +195,7 @@ timeline state -> features/conversation
 pending runtime input state -> features/runtime-request
 runtime process/protocol -> adapters/codex
 request/response mapping -> http
-client-facing contracts -> contracts
+client-facing contracts -> apps-new/contracts
 frontend projection -> presenter
 cross-feature orchestration -> application
 startup wiring -> main
@@ -226,7 +234,7 @@ and focused tests.
 
 - Package root exports startup-facing API only.
 - HTTP depends on application use cases, not feature services.
-- Application depends on feature public APIs, contracts, and presenters.
+- Application depends on feature public APIs, `@my-code-x/contracts-new`, and presenters.
 - Feature public APIs do not expose internal state.
 - Adapters implement ports and do not import features.
 - Client action input does not predeclare runtime command fields.

@@ -1,4 +1,5 @@
-import type { EnvironmentVariables, JsonValue } from '../shared/index.js';
+import type { JsonValue } from '@my-code-x/contracts-new/json';
+import type { EnvironmentVariables } from '../shared/index.js';
 
 export interface AppConfig {
   readonly codex: CodexRuntimeConfig;

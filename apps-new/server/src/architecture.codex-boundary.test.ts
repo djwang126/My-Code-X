@@ -16,6 +16,7 @@ interface ForbiddenMatch {
 
 const currentDir = path.dirname(fileURLToPath(import.meta.url));
 const srcRoot = currentDir;
+const contractsSrcRoot = path.resolve(srcRoot, '..', '..', 'contracts', 'src');
 
 async function listSourceFiles(dir: string): Promise<readonly string[]> {
   const entries = await readdir(dir, { withFileTypes: true });
@@ -38,15 +39,24 @@ async function listSourceFiles(dir: string): Promise<readonly string[]> {
 }
 
 async function readSourceFiles(relativeDirs: readonly string[]): Promise<readonly SourceFile[]> {
+  return readSourceFilesFromRoot({ root: srcRoot, relativeDirs });
+}
+
+interface ReadSourceFilesFromRootInput {
+  readonly root: string;
+  readonly relativeDirs: readonly string[];
+}
+
+async function readSourceFilesFromRoot(input: ReadSourceFilesFromRootInput): Promise<readonly SourceFile[]> {
   const sourceFiles: SourceFile[] = [];
 
-  for (const relativeDir of relativeDirs) {
-    const absoluteDir = path.join(srcRoot, relativeDir);
+  for (const relativeDir of input.relativeDirs) {
+    const absoluteDir = path.join(input.root, relativeDir);
     const absoluteFiles = await listSourceFiles(absoluteDir);
 
     for (const absoluteFile of absoluteFiles) {
       sourceFiles.push({
-        relativePath: path.relative(srcRoot, absoluteFile),
+        relativePath: path.relative(input.root, absoluteFile),
         source: await readFile(absoluteFile, 'utf-8'),
       });
     }
@@ -125,9 +135,12 @@ test('codex adapter implementation does not mention conversation/slot ownership 
 });
 
 test('frontend contracts do not expose adapter or transport vocabulary', async () => {
-  const sourceFiles = await readSourceFiles(['contracts']);
+  const sourceFiles = await readSourceFilesFromRoot({
+    root: contractsSrcRoot,
+    relativeDirs: ['.'],
+  });
   const matches = findForbiddenMatches(
-    sourceFiles,
+    sourceFiles.filter(sourceFile => !sourceFile.relativePath.endsWith('.test.ts')),
     /\b(Codex|method|params|jsonrpc|deltaField|raw|item\/agentMessage|thread\/realtime\/error)\b/g,
   );
 

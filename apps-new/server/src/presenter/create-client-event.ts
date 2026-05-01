@@ -1,4 +1,4 @@
-import type { ClientEvent, ClientEventScope, ClientSnapshot } from '../contracts/index.js';
+import type { ClientEvent, ClientEventScope, ClientSnapshot } from '@my-code-x/contracts-new';
 import { SkeletonMigrationPendingError } from '../shared/index.js';
 
 export interface CreateClientEventInput {

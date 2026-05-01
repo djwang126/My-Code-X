@@ -1,4 +1,4 @@
-import type { ClientTurnView } from '../contracts/index.js';
+import type { ClientTurnView } from '@my-code-x/contracts-new';
 import type { TurnSnapshot } from '../features/turn/index.js';
 
 export interface PresentTurnInput {

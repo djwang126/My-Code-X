@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { afterEach, describe, test } from 'node:test';
 
 import { createClientSnapshotApiBoundary } from './client-snapshot-api.js';
+import type { ClientConversationView, ClientSnapshot } from '@my-code-x/contracts-new';
 
 const originalWindow = globalThis.window;
 
@@ -18,27 +19,24 @@ describe('client snapshot api boundary', () => {
     installFetch(async (_resource, init) => {
       requestBody = JSON.parse(String(init?.body));
 
-      return new globalThis.Response(JSON.stringify({
-        conversation: {
-          status: 'ready',
-          revision: 0,
-          items: [
-            {
-              id: 'item-1',
-              kind: 'message',
-              role: 'user',
-              text: 'hello **Codex**',
-            },
-            {
-              id: 'item-2',
-              kind: 'message',
-              role: 'assistant',
-              text: 'world',
-            },
-          ],
-        },
-        ignored: true,
-      }), {
+      return new globalThis.Response(JSON.stringify(createClientSnapshot({
+        status: 'ready',
+        revision: 0,
+        items: [
+          {
+            id: 'item-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello **Codex**',
+          },
+          {
+            id: 'item-2',
+            kind: 'message',
+            role: 'assistant',
+            text: 'world',
+          },
+        ],
+      })), {
         status: 200,
       });
     });
@@ -86,12 +84,12 @@ describe('client snapshot api boundary', () => {
 
   test('rejects invalid bootstrap response shape at the boundary', async () => {
     installFetch(async () => new globalThis.Response(JSON.stringify({
-      conversation: {
+      ...createClientSnapshot({
         status: 'ready',
         revision: 0,
         items: [],
-        timestamp: 'not allowed',
-      },
+      }),
+      ignored: true,
     }), {
       status: 200,
     }));
@@ -109,20 +107,18 @@ describe('client snapshot api boundary', () => {
   });
 
   test('rejects invalid message roles at the client boundary', async () => {
-    installFetch(async () => new globalThis.Response(JSON.stringify({
-      conversation: {
-        status: 'ready',
-        revision: 0,
-        items: [
-          {
-            id: 'item-1',
-            kind: 'message',
-            role: 'system',
-            text: 'not a conversation message role',
-          },
-        ],
-      },
-    }), {
+    installFetch(async () => new globalThis.Response(JSON.stringify(createClientSnapshot({
+      status: 'ready',
+      revision: 0,
+      items: [
+        {
+          id: 'item-1',
+          kind: 'message',
+          role: 'system',
+          text: 'not a conversation message role',
+        },
+      ],
+    } as unknown as ClientConversationView)), {
       status: 200,
     }));
 
@@ -139,22 +135,20 @@ describe('client snapshot api boundary', () => {
   });
 
   test('rejects rendered or trusted HTML at the client boundary', async () => {
-    installFetch(async () => new globalThis.Response(JSON.stringify({
-      conversation: {
-        status: 'ready',
-        revision: 0,
-        items: [
-          {
-            id: 'item-1',
-            kind: 'message',
-            role: 'assistant',
-            text: '<strong>hello</strong>',
-            renderedHtml: '<strong>hello</strong>',
-            trustedHtml: true,
-          },
-        ],
-      },
-    }), {
+    installFetch(async () => new globalThis.Response(JSON.stringify(createClientSnapshot({
+      status: 'ready',
+      revision: 0,
+      items: [
+        {
+          id: 'item-1',
+          kind: 'message',
+          role: 'assistant',
+          text: '<strong>hello</strong>',
+          renderedHtml: '<strong>hello</strong>',
+          trustedHtml: true,
+        },
+      ],
+    } as unknown as ClientConversationView)), {
       status: 200,
     }));
 
@@ -171,18 +165,16 @@ describe('client snapshot api boundary', () => {
   });
 
   test('rejects legacy bare text timeline items at the client boundary', async () => {
-    installFetch(async () => new globalThis.Response(JSON.stringify({
-      conversation: {
-        status: 'ready',
-        revision: 0,
-        items: [
-          {
-            id: 'item-1',
-            text: 'legacy item',
-          },
-        ],
-      },
-    }), {
+    installFetch(async () => new globalThis.Response(JSON.stringify(createClientSnapshot({
+      status: 'ready',
+      revision: 0,
+      items: [
+        {
+          id: 'item-1',
+          text: 'legacy item',
+        },
+      ],
+    } as unknown as ClientConversationView)), {
       status: 200,
     }));
 
@@ -210,3 +202,38 @@ function installFetch(fetch: FetchReplacement): void {
   });
 }
 
+function createClientSnapshot(conversation: ClientConversationView): ClientSnapshot {
+  return {
+    app: {
+      status: 'ready',
+    },
+    identity: {
+      slotId: 'slot-1',
+    },
+    selection: {
+      workspaceId: null,
+      threadId: null,
+    },
+    workspace: {
+      status: 'none',
+    },
+    thread: {
+      status: 'none',
+      title: null,
+    },
+    turn: {
+      current: null,
+    },
+    conversation,
+    pendingInteractions: [],
+    notices: [],
+    capabilities: {
+      actions: [],
+      options: {},
+    },
+    stream: {
+      status: 'disabled',
+      revision: 'initial',
+    },
+  };
+}

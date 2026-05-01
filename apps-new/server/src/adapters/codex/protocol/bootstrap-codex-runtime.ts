@@ -1,6 +1,6 @@
 import { CodexBootstrapError } from '../runtime/codex-runtime-error.js';
 import type { CodexJsonlTransport } from '../transport/create-jsonl-transport.js';
-import type { JsonValue } from '../../../shared/index.js';
+import type { JsonValue } from '@my-code-x/contracts-new/json';
 
 interface RuntimeBootstrapSnapshot {
   readonly initialized: true;

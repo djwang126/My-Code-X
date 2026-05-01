@@ -3,7 +3,8 @@ import { createCodexRuntimeClient } from './runtime/create-codex-runtime-client.
 import { createStderrCodexRuntimeLogger, type CodexRuntimeLogger } from './runtime/codex-runtime-logger.js';
 import { createJsonlTransport } from './transport/create-jsonl-transport.js';
 import type { RuntimePort } from '../../ports/index.js';
-import type { EnvironmentVariables, JsonValue } from '../../shared/index.js';
+import type { JsonValue } from '@my-code-x/contracts-new/json';
+import type { EnvironmentVariables } from '../../shared/index.js';
 
 export interface CodexRuntimeOptions {
   readonly command: string;

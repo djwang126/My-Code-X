@@ -1,17 +1,104 @@
 import { z } from 'zod';
 
 export {
+  clientActionKindSchema,
+  clientActionSchema,
+  clientActionScopeSchema,
+  type ClientAction,
+  type ClientActionKind,
+  type ClientActionScope,
+  type ClientInterruptTurnAction,
+  type ClientOpenAction,
+  type ClientRespondInteractionAction,
+  type ClientResumeThreadAction,
+  type ClientSendMessageAction,
+} from './client-action.js';
+export {
+  clientActionResultSchema,
+  type ClientActionResult,
+} from './action-result.js';
+export {
+  clientEventSchema,
+  clientEventScopeSchema,
+  type ClientConversationItemPatchedEvent,
+  type ClientConversationItemUpsertedEvent,
+  type ClientErrorRaisedEvent,
+  type ClientEvent,
+  type ClientEventScope,
+  type ClientNoticeAddedEvent,
+  type ClientPendingInteractionClosedEvent,
+  type ClientPendingInteractionOpenedEvent,
+  type ClientSnapshotEvent,
+  type ClientThreadChangedEvent,
+  type ClientTurnChangedEvent,
+} from './client-event.js';
+export {
+  clientAppViewSchema,
+  clientCapabilitiesViewSchema,
+  clientIdentityViewSchema,
+  clientNoticeViewSchema,
+  clientSelectionViewSchema,
+  clientSnapshotSchema,
+  clientStreamViewSchema,
+  clientThreadViewSchema,
+  clientWorkspaceViewSchema,
+  type ClientAppView,
+  type ClientCapabilitiesView,
+  type ClientIdentityView,
+  type ClientNoticeView,
+  type ClientSelectionView,
+  type ClientSnapshot,
+  type ClientStreamView,
+  type ClientThreadView,
+  type ClientWorkspaceView,
+} from './client-snapshot.js';
+export {
   clientConversationErrorSchema,
   clientConversationItemSchema,
+  clientConversationMessageItemSchema,
   clientConversationViewSchema,
   type ClientConversationError,
+  type ClientConversationFailedView,
   type ClientConversationItem,
+  type ClientConversationLoadingView,
   type ClientConversationMessageItem,
+  type ClientConversationReadyView,
   type ClientConversationView,
 } from './conversation-view.js';
+export {
+  pendingInteractionControlSchema,
+  pendingInteractionLifecycleSchema,
+  pendingInteractionResponseShapeSchema,
+  pendingInteractionSchema,
+  type ApprovalInteraction,
+  type AuthInteraction,
+  type FormInteraction,
+  type PendingInteraction,
+  type PendingInteractionBase,
+  type PendingInteractionButtonControl,
+  type PendingInteractionChoice,
+  type PendingInteractionChoiceControl,
+  type PendingInteractionControl,
+  type PendingInteractionInputControl,
+  type PendingInteractionLifecycle,
+  type PendingInteractionDecisionResponseShape,
+  type PendingInteractionFormResponseShape,
+  type PendingInteractionFreeformResponseShape,
+  type PendingInteractionResponseShape,
+  type PendingInteractionStructuredResponseShape,
+  type ToolResponseInteraction,
+} from './pending-interaction.js';
+export {
+  clientTurnErrorSchema,
+  clientTurnRecordSchema,
+  clientTurnStatusSchema,
+  clientTurnViewSchema,
+  type ClientTurnError,
+  type ClientTurnRecord,
+  type ClientTurnStatus,
+  type ClientTurnView,
+} from './turn-view.js';
 
 export const contractVersionSchema = z.literal(1);
-
 export type ContractVersion = z.infer<typeof contractVersionSchema>;
-
 export const contractVersion: ContractVersion = 1;

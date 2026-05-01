@@ -1,6 +1,6 @@
 import { formatUnknownCodexPayload, type CodexRuntimeLogger } from '../runtime/codex-runtime-logger.js';
 import { readOptionalString, readString, type CodexIncomingMessage } from '../transport/jsonl-message.js';
-import type { JsonObject, JsonValue } from '../../../shared/index.js';
+import type { JsonObject, JsonValue } from '@my-code-x/contracts-new/json';
 import type {
   RuntimeCodexNotificationSemanticKind,
   RuntimeEvent,
