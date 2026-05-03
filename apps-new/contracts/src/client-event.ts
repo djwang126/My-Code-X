@@ -7,7 +7,12 @@ import {
   type ClientSnapshot,
   type ClientThreadView,
 } from './client-snapshot.js';
-import { clientConversationItemSchema, type ClientConversationItem } from './conversation-view.js';
+import {
+  clientConversationItemSchema,
+  clientConversationReadyViewSchema,
+  type ClientConversationItem,
+  type ClientConversationReadyView,
+} from './conversation-view.js';
 import { pendingInteractionSchema, type PendingInteraction } from './pending-interaction.js';
 import { clientTurnViewSchema, type ClientTurnView } from './turn-view.js';
 
@@ -23,19 +28,18 @@ const clientSnapshotEventSchema = z.object({
   snapshot: clientSnapshotSchema,
 }).strict();
 
+const clientConversationReplacedEventSchema = z.object({
+  kind: z.literal('conversation-replaced'),
+  scope: clientEventScopeSchema,
+  revision: z.string(),
+  conversation: clientConversationReadyViewSchema,
+}).strict();
+
 const clientConversationItemUpsertedEventSchema = z.object({
   kind: z.literal('conversation-item-upserted'),
   scope: clientEventScopeSchema,
   revision: z.string(),
   item: clientConversationItemSchema,
-}).strict();
-
-const clientConversationItemPatchedEventSchema = z.object({
-  kind: z.literal('conversation-item-patched'),
-  scope: clientEventScopeSchema,
-  revision: z.string(),
-  itemId: z.string(),
-  patch: clientConversationItemSchema,
 }).strict();
 
 const clientTurnChangedEventSchema = z.object({
@@ -82,8 +86,8 @@ const clientErrorRaisedEventSchema = z.object({
 
 export const clientEventSchema = z.discriminatedUnion('kind', [
   clientSnapshotEventSchema,
+  clientConversationReplacedEventSchema,
   clientConversationItemUpsertedEventSchema,
-  clientConversationItemPatchedEventSchema,
   clientTurnChangedEventSchema,
   clientThreadChangedEventSchema,
   clientPendingInteractionOpenedEventSchema,
@@ -104,16 +108,17 @@ export type ClientSnapshotEvent = Readonly<
     readonly snapshot: ClientSnapshot;
   }
 >;
+
+export type ClientConversationReplacedEvent = Readonly<
+  Omit<ClientEventBaseShape<'conversation-replaced'>, 'scope' | 'conversation'> & {
+    readonly scope: ClientEventScope;
+    readonly conversation: ClientConversationReadyView;
+  }
+>;
 export type ClientConversationItemUpsertedEvent = Readonly<
   Omit<ClientEventBaseShape<'conversation-item-upserted'>, 'scope' | 'item'> & {
     readonly scope: ClientEventScope;
     readonly item: ClientConversationItem;
-  }
->;
-export type ClientConversationItemPatchedEvent = Readonly<
-  Omit<ClientEventBaseShape<'conversation-item-patched'>, 'scope' | 'patch'> & {
-    readonly scope: ClientEventScope;
-    readonly patch: ClientConversationItem;
   }
 >;
 export type ClientTurnChangedEvent = Readonly<
@@ -153,8 +158,8 @@ export type ClientErrorRaisedEvent = Readonly<
 
 export type ClientEvent =
   | ClientSnapshotEvent
+  | ClientConversationReplacedEvent
   | ClientConversationItemUpsertedEvent
-  | ClientConversationItemPatchedEvent
   | ClientTurnChangedEvent
   | ClientThreadChangedEvent
   | ClientPendingInteractionOpenedEvent

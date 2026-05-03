@@ -9,7 +9,7 @@ import type { ThreadActionsService } from '../features/thread-actions/index.js';
 import { createThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
 import type { WorkspaceService } from '../features/workspace/index.js';
-import type { DomainEvent, EventBusPort } from '../ports/index.js';
+import type { DomainEvent, EventBusPort, RuntimePort } from '../ports/index.js';
 
 const events: EventBusPort = {
   publish(_event: DomainEvent) {},
@@ -71,16 +71,43 @@ function createOpenClientDependencies() {
 
     async open(input) {
       return {
-        threadId: input.threadId,
-        workspace: input.workspace,
-        title: 'Thread one',
-        updatedAt: null,
+        status: 'ready',
+        thread: {
+          threadId: input.threadId,
+          workspace: input.workspace,
+          title: 'Thread one',
+          updatedAt: null,
+        },
+        restoredItems: [],
       };
     },
+  };
+  const runtime: RuntimePort = {
+    async send(input) {
+      if (input.kind === 'resume-thread') {
+        return {
+          kind: 'thread-resumed',
+          threadId: input.threadId,
+          snapshot: {
+            threadId: input.threadId,
+            title: 'Thread one',
+            items: [],
+            pendingInputs: [],
+          },
+        };
+      }
+
+      throw new Error(`unexpected runtime command: ${input.kind}`);
+    },
+    subscribe() {
+      return () => {};
+    },
+    async close() {},
   };
 
   return {
     conversation,
+    runtime,
     runtimeRequests,
     slot: createSlotService({ events }),
     thread: createThreadService({ events }),

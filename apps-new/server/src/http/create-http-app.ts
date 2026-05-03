@@ -1,12 +1,13 @@
 import { createRouteTable } from './route-table.js';
-import type { ApplicationService } from '../application/index.js';
+import type { ApplicationService, ClientEventStream } from '../application/index.js';
 import type { HttpHandler, HttpRequest, HttpResponse } from './http-types.js';
 import { createHttpErrorResponse } from './http-error-response.js';
 import { classifyHttpRoute } from './http-route-policy.js';
 import { errorResponse } from './http-responses.js';
 
 export interface HttpAppInput {
-  application: ApplicationService;
+  readonly application: ApplicationService;
+  readonly eventStream: ClientEventStream;
 }
 
 export function createHttpApp(input: HttpAppInput): HttpHandler {
@@ -30,6 +31,14 @@ export function createHttpApp(input: HttpAppInput): HttpHandler {
           }
 
           return routes.client.handle(request);
+        }
+
+        if (routeKind === 'client-events') {
+          if (request.method !== 'GET') {
+            return methodNotAllowed();
+          }
+
+          return routes.clientEvents.handle(request);
         }
 
         if (routeKind === 'health') {

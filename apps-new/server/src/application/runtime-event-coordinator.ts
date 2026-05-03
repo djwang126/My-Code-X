@@ -79,11 +79,11 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
 
         case 'runtime-item-started':
         case 'runtime-item-completed':
-          recordConversationItem(input.conversation, event.item);
+          recordConversationItem({ conversation: input.conversation, threadId: event.threadId, item: event.item });
           return;
 
         case 'runtime-item-delta':
-          // Streaming delta aggregation belongs in the conversation timeline feature.
+          recordConversationDelta({ conversation: input.conversation, threadId: event.threadId, event });
           return;
 
         case 'runtime-error':
@@ -179,13 +179,40 @@ function mapRuntimeThreadRecord(thread: RuntimeThread): ThreadRecord {
   };
 }
 
-function recordConversationItem(conversation: ConversationService | undefined, item: RuntimeThreadItem): void {
-  if (!conversation) {
+interface RecordConversationItemInput {
+  readonly conversation: ConversationService | undefined;
+  readonly threadId: string;
+  readonly item: RuntimeThreadItem;
+}
+
+function recordConversationItem(input: RecordConversationItemInput): void {
+  if (!input.conversation) {
     return;
   }
 
-  conversation.apply({
+  input.conversation.apply({
     kind: 'record-runtime-thread-item',
-    item,
+    threadId: input.threadId,
+    item: input.item,
+  });
+}
+
+interface RecordConversationDeltaInput {
+  readonly conversation: ConversationService | undefined;
+  readonly threadId: string;
+  readonly event: Extract<RuntimeEvent, { readonly kind: 'runtime-item-delta' }>;
+}
+
+function recordConversationDelta(input: RecordConversationDeltaInput): void {
+  if (!input.conversation) {
+    return;
+  }
+
+  input.conversation.apply({
+    kind: 'record-runtime-item-delta',
+    threadId: input.threadId,
+    itemId: input.event.itemId,
+    deltaKind: input.event.deltaKind,
+    text: input.event.text,
   });
 }

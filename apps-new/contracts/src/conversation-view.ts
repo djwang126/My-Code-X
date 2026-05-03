@@ -24,7 +24,7 @@ const clientConversationLoadingViewSchema = z.object({
   status: z.literal('loading'),
 }).strict();
 
-const clientConversationReadyViewSchema = z.object({
+export const clientConversationReadyViewSchema = z.object({
   status: z.literal('ready'),
   revision: z.number().int().nonnegative(),
   items: z.array(clientConversationItemSchema),

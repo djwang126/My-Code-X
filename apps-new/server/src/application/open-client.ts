@@ -1,4 +1,4 @@
-import type { ClientOpenAction, ClientSnapshot } from '@my-code-x/contracts-new';
+import type { ClientConversationView, ClientOpenAction, ClientSnapshot } from '@my-code-x/contracts-new';
 import type { ConversationService } from '../features/conversation/index.js';
 import type { RuntimeRequestService } from '../features/runtime-request/index.js';
 import type { SlotService } from '../features/slot/index.js';
@@ -6,6 +6,7 @@ import type { ThreadActionsService } from '../features/thread-actions/index.js';
 import type { ThreadRecord, ThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
 import type { WorkspaceService } from '../features/workspace/index.js';
+import type { RuntimeTimelineItem } from '../ports/index.js';
 import { createClientSnapshot } from '../presenter/index.js';
 import { BoundaryError } from '../shared/index.js';
 
@@ -37,11 +38,16 @@ export async function openClient(useCase: OpenClientUseCaseInput): Promise<Clien
     kind: 'inspect-workspace',
     workspace: useCase.input.scope.workspaceId,
   });
-  const selectedThread = await openSelectedThread({
+  const openedThread = await openSelectedThread({
     threadId: slot.threadId,
     workspace: slot.workspace,
     thread: useCase.dependencies.thread,
     threadActions: useCase.dependencies.threadActions,
+  });
+  const selectedThread = openedThread.thread;
+  const conversationView = restoreConversation({
+    conversation: useCase.dependencies.conversation,
+    openedThread,
   });
 
   return createClientSnapshot({
@@ -49,7 +55,8 @@ export async function openClient(useCase: OpenClientUseCaseInput): Promise<Clien
     slot,
     selectedThread,
     turn: useCase.dependencies.turn.snapshot(),
-    conversation: useCase.dependencies.conversation.snapshot(),
+    conversation: useCase.dependencies.conversation.snapshot({ threadId: slot.threadId }),
+    conversationView,
     runtimeRequests: useCase.dependencies.runtimeRequests.snapshot(),
     workspace,
   });
@@ -62,9 +69,35 @@ interface OpenSelectedThreadInput {
   readonly threadActions: ThreadActionsService;
 }
 
-async function openSelectedThread(input: OpenSelectedThreadInput): Promise<ThreadRecord | null> {
+type OpenSelectedThreadResult = OpenSelectedThreadNoneResult | OpenSelectedThreadReadyResult | OpenSelectedThreadFailedResult;
+
+interface OpenSelectedThreadNoneResult {
+  readonly status: 'none';
+  readonly thread: null;
+}
+
+interface OpenSelectedThreadReadyResult {
+  readonly status: 'ready';
+  readonly thread: ThreadRecord;
+  readonly restoredItems: readonly RuntimeTimelineItem[];
+}
+
+interface OpenSelectedThreadFailedResult {
+  readonly status: 'failed';
+  readonly thread: null;
+  readonly error: OpenSelectedThreadError;
+}
+
+interface OpenSelectedThreadError {
+  readonly message: string;
+}
+
+async function openSelectedThread(input: OpenSelectedThreadInput): Promise<OpenSelectedThreadResult> {
   if (!input.threadId) {
-    return null;
+    return {
+      status: 'none',
+      thread: null,
+    };
   }
 
   if (!input.workspace) {
@@ -76,10 +109,55 @@ async function openSelectedThread(input: OpenSelectedThreadInput): Promise<Threa
     workspace: input.workspace,
   });
 
-  return input.thread.remember({
+  if (openedThread.status === 'failed') {
+    return {
+      status: 'failed',
+      thread: null,
+      error: openedThread.error,
+    };
+  }
+
+  const thread = input.thread.remember({
     kind: 'remember-thread',
-    thread: openedThread,
+    thread: {
+      threadId: openedThread.thread.threadId,
+      workspace: openedThread.thread.workspace,
+      title: openedThread.thread.title,
+      updatedAt: openedThread.thread.updatedAt,
+    },
   });
+
+  return {
+    status: 'ready',
+    thread,
+    restoredItems: openedThread.restoredItems,
+  };
+}
+
+interface RestoreConversationInput {
+  readonly conversation: ConversationService;
+  readonly openedThread: OpenSelectedThreadResult;
+}
+
+function restoreConversation(input: RestoreConversationInput): ClientConversationView | undefined {
+  switch (input.openedThread.status) {
+    case 'none':
+      return undefined;
+
+    case 'ready':
+      input.conversation.apply({
+        kind: 'replace-runtime-conversation',
+        threadId: input.openedThread.thread.threadId,
+        items: input.openedThread.restoredItems,
+      });
+      return undefined;
+
+    case 'failed':
+      return {
+        status: 'failed',
+        error: input.openedThread.error,
+      };
+  }
 }
 
 function readRequiredScopeValue(value: string | null, fieldName: string): string {

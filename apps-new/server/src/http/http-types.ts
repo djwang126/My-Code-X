@@ -28,7 +28,8 @@ export type HttpResponse =
   | HttpJsonResponse
   | HttpTextResponse
   | HttpEmptyResponse
-  | HttpFileResponse;
+  | HttpFileResponse
+  | HttpEventStreamResponse;
 
 export type HttpJsonBody = JsonValue;
 
@@ -56,6 +57,17 @@ export interface HttpFileResponse extends HttpResponseBase {
   readonly path: string;
   readonly contentType: string;
 }
+
+export interface HttpEventStreamResponse extends HttpResponseBase {
+  readonly kind: 'event-stream';
+  open(input: HttpEventStreamOpenInput): HttpEventStreamClose;
+}
+
+export interface HttpEventStreamOpenInput {
+  write(data: string): void;
+}
+
+export type HttpEventStreamClose = () => void;
 
 export interface HttpHandler {
   handle(input: HttpRequest): Promise<HttpResponse>;

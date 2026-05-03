@@ -309,6 +309,7 @@ describe('createRuntimeEventCoordinator', () => {
     assert.deepEqual(conversationCommands, [
       {
         kind: 'record-runtime-thread-item',
+        threadId: 'thread-1',
         item: {
           itemId: 'item-1',
           itemKind: 'agentMessage',

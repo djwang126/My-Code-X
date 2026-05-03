@@ -1,6 +1,7 @@
 import type {
   CreateThreadCommand,
   OpenThreadCommand,
+  OpenThreadActionResult,
   ThreadActionResult,
   ThreadActionsDomainEvent,
 } from './thread-actions-events.js';
@@ -9,7 +10,7 @@ import { BoundaryError } from '../../shared/index.js';
 
 export interface ThreadActionsService {
   create(input: CreateThreadCommand): Promise<ThreadActionResult>;
-  open(input: OpenThreadCommand): Promise<ThreadActionResult>;
+  open(input: OpenThreadCommand): Promise<OpenThreadActionResult>;
 }
 
 function publishThreadActionEvent(dependencies: ThreadActionsDependencies, event: ThreadActionsDomainEvent) {
@@ -40,7 +41,7 @@ export function createThreadActionsService(dependencies: ThreadActionsDependenci
       return thread;
     },
 
-    async open(input: OpenThreadCommand): Promise<ThreadActionResult> {
+    async open(input: OpenThreadCommand): Promise<OpenThreadActionResult> {
       const result = await dependencies.runtime.send({
         kind: 'resume-thread',
         threadId: input.threadId,
@@ -50,7 +51,12 @@ export function createThreadActionsService(dependencies: ThreadActionsDependenci
       });
 
       if (result.kind !== 'thread-resumed') {
-        throw new BoundaryError('runtime did not open the requested thread');
+        return {
+          status: 'failed',
+          error: {
+            message: 'runtime did not open the requested thread',
+          },
+        };
       }
 
       const thread = {
@@ -60,7 +66,11 @@ export function createThreadActionsService(dependencies: ThreadActionsDependenci
         updatedAt: null,
       };
       publishThreadActionEvent(dependencies, { kind: 'thread-opened', thread });
-      return thread;
+      return {
+        status: 'ready',
+        thread,
+        restoredItems: result.snapshot.items,
+      };
     },
   };
 }

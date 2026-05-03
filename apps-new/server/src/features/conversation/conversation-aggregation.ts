@@ -1,0 +1,142 @@
+import type { ConversationItem } from './conversation-events.js';
+import type { ConversationScheduledTask, ConversationSchedulerPort } from './conversation-ports.js';
+
+export interface ConversationAggregation {
+  recordDelta(input: RecordConversationDeltaInput): void;
+  discardItem(input: DiscardPendingConversationItemInput): void;
+  discardThread(input: DiscardPendingConversationThreadInput): void;
+}
+
+export interface CreateConversationAggregationInput {
+  readonly delayMs: number;
+  readonly scheduler: ConversationSchedulerPort;
+  flush(input: FlushPendingConversationItemInput): void;
+}
+
+export interface RecordConversationDeltaInput {
+  readonly threadId: string;
+  readonly itemId: string;
+  readonly currentText: string;
+  readonly deltaText: string;
+}
+
+export interface DiscardPendingConversationItemInput {
+  readonly threadId: string;
+  readonly itemId: string;
+}
+
+export interface DiscardPendingConversationThreadInput {
+  readonly threadId: string;
+}
+
+export interface FlushPendingConversationItemInput {
+  readonly threadId: string;
+  readonly item: ConversationItem;
+}
+
+interface PendingConversationItem {
+  readonly threadId: string;
+  readonly item: ConversationItem;
+  readonly task: ConversationScheduledTask;
+}
+
+export function createConversationAggregation(input: CreateConversationAggregationInput): ConversationAggregation {
+  const pendingItems = new Map<string, PendingConversationItem>();
+
+  function flushItem(threadId: string, itemId: string): void {
+    const key = createPendingItemKey({ threadId, itemId });
+    const pending = pendingItems.get(key);
+
+    if (!pending) {
+      return;
+    }
+
+    pending.task.cancel();
+    pendingItems.delete(key);
+    input.flush({
+      threadId,
+      item: pending.item,
+    });
+  }
+
+  return {
+    recordDelta(delta: RecordConversationDeltaInput): void {
+      const key = createPendingItemKey({
+        threadId: delta.threadId,
+        itemId: delta.itemId,
+      });
+      const pending = pendingItems.get(key);
+      const item = createAssistantMessageFromDelta({
+        itemId: delta.itemId,
+        text: `${pending?.item.text ?? delta.currentText}${delta.deltaText}`,
+      });
+
+      if (pending) {
+        pendingItems.set(key, {
+          ...pending,
+          item,
+        });
+        return;
+      }
+
+      const task = input.scheduler.schedule({
+        delayMs: input.delayMs,
+        run() {
+          flushItem(delta.threadId, delta.itemId);
+        },
+      });
+
+      pendingItems.set(key, {
+        threadId: delta.threadId,
+        item,
+        task,
+      });
+    },
+
+    discardItem(item: DiscardPendingConversationItemInput): void {
+      const key = createPendingItemKey(item);
+      const pending = pendingItems.get(key);
+
+      if (!pending) {
+        return;
+      }
+
+      pending.task.cancel();
+      pendingItems.delete(key);
+    },
+
+    discardThread(thread: DiscardPendingConversationThreadInput): void {
+      for (const [key, pending] of pendingItems) {
+        if (pending.threadId !== thread.threadId) {
+          continue;
+        }
+
+        pending.task.cancel();
+        pendingItems.delete(key);
+      }
+    },
+  };
+}
+
+interface CreatePendingItemKeyInput {
+  readonly threadId: string;
+  readonly itemId: string;
+}
+
+function createPendingItemKey(input: CreatePendingItemKeyInput): string {
+  return `${input.threadId}\u0000${input.itemId}`;
+}
+
+interface CreateAssistantMessageFromDeltaInput {
+  readonly itemId: string;
+  readonly text: string;
+}
+
+function createAssistantMessageFromDelta(input: CreateAssistantMessageFromDeltaInput): ConversationItem {
+  return {
+    id: input.itemId,
+    kind: 'message',
+    role: 'assistant',
+    text: input.text,
+  };
+}

@@ -1,6 +1,6 @@
 import { createCodexRuntime } from '../adapters/codex/index.js';
 import { createEventBus } from '../adapters/memory/index.js';
-import { createApplication, createRuntimeEventCoordinator } from '../application/index.js';
+import { createApplication, createClientEventStream, createRuntimeEventCoordinator } from '../application/index.js';
 import { loadConfig } from '../config/index.js';
 import type { HttpServerConfig } from '../config/index.js';
 import { createConversationService } from '../features/conversation/index.js';
@@ -31,9 +31,10 @@ export async function createAppComposition(): Promise<AppComposition> {
   const turn = createTurnService({ events });
   const workspace = createWorkspaceService({ runtime });
   const application = createApplication({ conversation, runtime, runtimeRequests, slot, thread, threadActions, turn, workspace });
+  const eventStream = createClientEventStream({ conversation, events });
   const runtimeEvents = createRuntimeEventCoordinator({ conversation, runtimeRequests, thread, turn });
   const unsubscribeRuntimeEvents = runtime.subscribe(runtimeEvents.receive);
-  const http = createHttpApp({ application });
+  const http = createHttpApp({ application, eventStream });
 
 
   return {
@@ -46,4 +47,3 @@ export async function createAppComposition(): Promise<AppComposition> {
     },
   };
 }
-

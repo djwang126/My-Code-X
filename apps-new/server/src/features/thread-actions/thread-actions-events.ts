@@ -1,3 +1,5 @@
+import type { RuntimeTimelineItem } from '../../ports/index.js';
+
 export type ThreadActionCommand = CreateThreadCommand | OpenThreadCommand;
 
 export interface CreateThreadCommand {
@@ -26,4 +28,21 @@ export interface ThreadActionResult {
   readonly workspace: string;
   readonly title: string | null;
   readonly updatedAt: string | null;
+}
+
+export type OpenThreadActionResult = OpenThreadReadyActionResult | OpenThreadFailedActionResult;
+
+export interface OpenThreadReadyActionResult {
+  readonly status: 'ready';
+  readonly thread: ThreadActionResult;
+  readonly restoredItems: readonly RuntimeTimelineItem[];
+}
+
+export interface OpenThreadFailedActionResult {
+  readonly status: 'failed';
+  readonly error: ThreadOpenError;
+}
+
+export interface ThreadOpenError {
+  readonly message: string;
 }

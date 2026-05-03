@@ -94,13 +94,17 @@ describe('createThreadActionsService', () => {
     ]);
     const service = createThreadActionsService({ events: published.bus, runtime: runtime.runtime });
 
-    const thread = await service.open({ threadId: 'thread-1', workspace: 'workspace-1' });
+    const result = await service.open({ threadId: 'thread-1', workspace: 'workspace-1' });
 
-    assert.deepEqual(thread, {
-      threadId: 'thread-1',
-      workspace: 'workspace-1',
-      title: 'Thread one',
-      updatedAt: null,
+    assert.deepEqual(result, {
+      status: 'ready',
+      thread: {
+        threadId: 'thread-1',
+        workspace: 'workspace-1',
+        title: 'Thread one',
+        updatedAt: null,
+      },
+      restoredItems: [],
     });
     assert.deepEqual(runtime.calls, [
       {
@@ -113,6 +117,30 @@ describe('createThreadActionsService', () => {
         },
       },
     ]);
-    assert.deepEqual(published.events, [{ kind: 'thread-opened', thread }]);
+    assert.deepEqual(published.events, [{
+      kind: 'thread-opened',
+      thread: {
+        threadId: 'thread-1',
+        workspace: 'workspace-1',
+        title: 'Thread one',
+        updatedAt: null,
+      },
+    }]);
+  });
+
+  test('returns a failed open result when runtime does not resume the thread', async () => {
+    const published = createPublishedEvents();
+    const runtime = createRuntime([{ kind: 'ok' }]);
+    const service = createThreadActionsService({ events: published.bus, runtime: runtime.runtime });
+
+    const result = await service.open({ threadId: 'thread-1', workspace: 'workspace-1' });
+
+    assert.deepEqual(result, {
+      status: 'failed',
+      error: {
+        message: 'runtime did not open the requested thread',
+      },
+    });
+    assert.deepEqual(published.events, []);
   });
 });

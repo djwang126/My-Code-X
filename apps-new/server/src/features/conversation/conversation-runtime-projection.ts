@@ -1,4 +1,4 @@
-import type { RuntimeThreadItem } from '../../ports/index.js';
+import type { RuntimeTimelineItem, RuntimeThreadItem } from '../../ports/index.js';
 import type { ConversationItem, ConversationMessageRole } from './conversation-events.js';
 
 export interface ProjectRuntimeThreadItemInput {
@@ -18,6 +18,24 @@ export function projectRuntimeThreadItem(input: ProjectRuntimeThreadItemInput): 
     role,
     text: input.item.text,
   };
+}
+
+export interface ProjectRuntimeTimelineInput {
+  readonly items: readonly RuntimeTimelineItem[];
+}
+
+export function projectRuntimeTimeline(input: ProjectRuntimeTimelineInput): readonly ConversationItem[] {
+  const items: ConversationItem[] = [];
+
+  for (const item of input.items) {
+    const projected = projectRuntimeThreadItem({ item });
+
+    if (projected) {
+      items.push(projected);
+    }
+  }
+
+  return items;
 }
 
 function mapRuntimeThreadItemRole(item: RuntimeThreadItem): ConversationMessageRole | null {

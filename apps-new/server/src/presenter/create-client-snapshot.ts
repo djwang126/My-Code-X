@@ -1,4 +1,4 @@
-import type { ClientSnapshot } from '@my-code-x/contracts-new';
+import type { ClientConversationView, ClientSnapshot } from '@my-code-x/contracts-new';
 import type { ConversationSnapshot } from '../features/conversation/index.js';
 import type { RuntimeRequestSnapshot } from '../features/runtime-request/index.js';
 import type { SlotSelection } from '../features/slot/index.js';
@@ -15,6 +15,7 @@ export interface CreateClientSnapshotInput {
   readonly selectedThread: ThreadRecord | null;
   readonly turn: TurnSnapshot;
   readonly conversation: ConversationSnapshot;
+  readonly conversationView?: ClientConversationView;
   readonly runtimeRequests: RuntimeRequestSnapshot;
   readonly workspace: WorkspaceSnapshot;
 }
@@ -38,7 +39,7 @@ export function createClientSnapshot(input: CreateClientSnapshotInput): ClientSn
     },
     thread: presentThread(input),
     turn: presentTurn({ snapshot: input.turn }),
-    conversation: {
+    conversation: input.conversationView ?? {
       status: 'ready',
       revision: input.conversation.revision,
       items: presentConversation({ snapshot: input.conversation }),

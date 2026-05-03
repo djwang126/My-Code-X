@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { ClientConversationView } from '@my-code-x/contracts-new';
 import { ConversationView } from '../features/conversation-view/index.js';
+import { applyConversationClientEvent } from '../features/conversation-view/model/index.js';
 import { readAppConfig } from './app-config.js';
-import { createClientSnapshotApiBoundary } from './client-snapshot-api.js';
+import { createClientSnapshotApiBoundary, type ClientEventSubscription } from './client-snapshot-api.js';
 import { readAppScope } from './app-scope.js';
 import { AppLayout } from './app-layout.js';
 
@@ -14,6 +15,7 @@ export function AppShell() {
 
   useEffect(() => {
     let disposed = false;
+    let subscription: ClientEventSubscription | null = null;
 
     setConversation({ status: 'loading' });
     api.loadSnapshot({ scope })
@@ -23,6 +25,27 @@ export function AppShell() {
         }
 
         setConversation(snapshot.conversation);
+        subscription = api.subscribeEvents({
+          scope,
+          receive(event) {
+            setConversation(current => applyConversationClientEvent({
+              scope: {
+                slotId: scope.slotId,
+                threadId: scope.threadId,
+              },
+              conversation: current,
+              event,
+            }));
+          },
+          fail(error) {
+            setConversation({
+              status: 'failed',
+              error: {
+                message: readErrorMessage(error),
+              },
+            });
+          },
+        });
       })
       .catch(error => {
         if (disposed) {
@@ -39,6 +62,7 @@ export function AppShell() {
 
     return () => {
       disposed = true;
+      subscription?.close();
     };
   }, [api, scope]);
 

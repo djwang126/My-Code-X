@@ -1,6 +1,6 @@
 import { isJsonValue } from '@my-code-x/contracts-new/json';
 import { BoundaryError } from '../shared/index.js';
-import type { HttpEmptyResponse, HttpFileResponse, HttpHeaders, HttpJsonBody, HttpJsonResponse, HttpTextResponse } from './http-types.js';
+import type { HttpEmptyResponse, HttpEventStreamResponse, HttpFileResponse, HttpHeaders, HttpJsonBody, HttpJsonResponse, HttpTextResponse } from './http-types.js';
 
 export interface CreateJsonResponseInput {
   readonly statusCode: number;
@@ -24,6 +24,11 @@ export interface CreateFileResponseInput {
   readonly path: string;
   readonly contentType: string;
   readonly headers?: HttpHeaders;
+}
+
+export interface CreateEventStreamResponseInput {
+  readonly headers?: HttpHeaders;
+  open: HttpEventStreamResponse['open'];
 }
 
 export function jsonResponse(input: CreateJsonResponseInput): HttpJsonResponse {
@@ -59,6 +64,15 @@ export function fileResponse(input: CreateFileResponseInput): HttpFileResponse {
     headers: input.headers ?? {},
     path: input.path,
     contentType: input.contentType,
+  };
+}
+
+export function eventStreamResponse(input: CreateEventStreamResponseInput): HttpEventStreamResponse {
+  return {
+    kind: 'event-stream',
+    statusCode: 200,
+    headers: input.headers ?? {},
+    open: input.open,
   };
 }
 

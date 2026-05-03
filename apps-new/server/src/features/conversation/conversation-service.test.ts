@@ -16,13 +16,13 @@ describe('createConversationService', () => {
       },
     });
 
-    assert.deepEqual(service.snapshot(), {
+    assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
       revision: 0,
       items: [],
     });
   });
 
-  test('replaces and appends confirmed message timeline items while advancing revision', () => {
+  test('replaces and upserts confirmed message timeline items while advancing revision', () => {
     const events: ConversationDomainEvent[] = [];
     const service = createConversationService({
       events: {
@@ -38,6 +38,7 @@ describe('createConversationService', () => {
     assert.deepEqual(
       service.apply({
         kind: 'replace-conversation',
+        threadId: 'thread-1',
         items: [
           {
             id: 'item-1',
@@ -62,13 +63,12 @@ describe('createConversationService', () => {
 
     assert.deepEqual(
       service.apply({
-        kind: 'append-conversation-item',
-        item: {
-          id: 'item-2',
-          kind: 'message',
-          role: 'assistant',
+        kind: 'record-runtime-thread-item',
+        threadId: 'thread-1',
+        item: createRuntimeAgentMessage({
+          itemId: 'item-2',
           text: 'world',
-        },
+        }),
       }),
       {
         revision: 2,
@@ -92,6 +92,8 @@ describe('createConversationService', () => {
     assert.deepEqual(events, [
       {
         kind: 'conversation-replaced',
+        threadId: 'thread-1',
+        revision: 1,
         items: [
           {
             id: 'item-1',
@@ -102,7 +104,9 @@ describe('createConversationService', () => {
         ],
       },
       {
-        kind: 'conversation-item-appended',
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 2,
         item: {
           id: 'item-2',
           kind: 'message',
@@ -128,6 +132,7 @@ describe('createConversationService', () => {
 
     service.apply({
       kind: 'record-runtime-thread-item',
+      threadId: 'thread-1',
       item: createRuntimeUserMessage({
         itemId: 'item-1',
         text: 'hello',
@@ -135,13 +140,14 @@ describe('createConversationService', () => {
     });
     service.apply({
       kind: 'record-runtime-thread-item',
+      threadId: 'thread-1',
       item: createRuntimeAgentMessage({
         itemId: 'item-2',
         text: 'world',
       }),
     });
 
-    assert.deepEqual(service.snapshot(), {
+    assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
       revision: 2,
       items: [
         {
@@ -161,6 +167,8 @@ describe('createConversationService', () => {
     assert.deepEqual(events, [
       {
         kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 1,
         item: {
           id: 'item-1',
           kind: 'message',
@@ -170,6 +178,8 @@ describe('createConversationService', () => {
       },
       {
         kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 2,
         item: {
           id: 'item-2',
           kind: 'message',
@@ -192,6 +202,7 @@ describe('createConversationService', () => {
 
     service.apply({
       kind: 'record-runtime-thread-item',
+      threadId: 'thread-1',
       item: createRuntimeAgentMessage({
         itemId: 'item-1',
         text: 'draft answer',
@@ -201,6 +212,7 @@ describe('createConversationService', () => {
     assert.deepEqual(
       service.apply({
         kind: 'record-runtime-thread-item',
+        threadId: 'thread-1',
         item: createRuntimeAgentMessage({
           itemId: 'item-1',
           text: 'final answer',
@@ -239,12 +251,14 @@ describe('createConversationService', () => {
 
     service.apply({
       kind: 'record-runtime-thread-item',
+      threadId: 'thread-1',
       item,
     });
 
     assert.deepEqual(
       service.apply({
         kind: 'record-runtime-thread-item',
+        threadId: 'thread-1',
         item,
       }),
       {
@@ -262,6 +276,8 @@ describe('createConversationService', () => {
     assert.deepEqual(events, [
       {
         kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 1,
         item: {
           id: 'item-1',
           kind: 'message',
@@ -288,6 +304,7 @@ describe('createConversationService', () => {
     assert.deepEqual(
       service.apply({
         kind: 'record-runtime-thread-item',
+        threadId: 'thread-1',
         item: {
           itemId: 'plan-1',
           itemKind: 'plan',
@@ -301,6 +318,56 @@ describe('createConversationService', () => {
       },
     );
     assert.deepEqual(events, []);
+  });
+  test('keeps timelines isolated by thread id', () => {
+    const service = createConversationService({
+      events: {
+        publish() {},
+        subscribe() {
+          return () => {};
+        },
+      },
+    });
+
+    service.apply({
+      kind: 'record-runtime-thread-item',
+      threadId: 'thread-1',
+      item: createRuntimeAgentMessage({
+        itemId: 'shared-item',
+        text: 'thread one answer',
+      }),
+    });
+    service.apply({
+      kind: 'record-runtime-thread-item',
+      threadId: 'thread-2',
+      item: createRuntimeAgentMessage({
+        itemId: 'shared-item',
+        text: 'thread two answer',
+      }),
+    });
+
+    assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      revision: 1,
+      items: [
+        {
+          id: 'shared-item',
+          kind: 'message',
+          role: 'assistant',
+          text: 'thread one answer',
+        },
+      ],
+    });
+    assert.deepEqual(service.snapshot({ threadId: 'thread-2' }), {
+      revision: 1,
+      items: [
+        {
+          id: 'shared-item',
+          kind: 'message',
+          role: 'assistant',
+          text: 'thread two answer',
+        },
+      ],
+    });
   });
 });
 

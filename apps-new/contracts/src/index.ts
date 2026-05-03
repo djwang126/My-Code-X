@@ -20,8 +20,8 @@ export {
 export {
   clientEventSchema,
   clientEventScopeSchema,
-  type ClientConversationItemPatchedEvent,
   type ClientConversationItemUpsertedEvent,
+  type ClientConversationReplacedEvent,
   type ClientErrorRaisedEvent,
   type ClientEvent,
   type ClientEventScope,
@@ -56,6 +56,7 @@ export {
   clientConversationErrorSchema,
   clientConversationItemSchema,
   clientConversationMessageItemSchema,
+  clientConversationReadyViewSchema,
   clientConversationViewSchema,
   type ClientConversationError,
   type ClientConversationFailedView,

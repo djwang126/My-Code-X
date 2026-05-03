@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { afterEach, describe, test } from 'node:test';
 
-import { createClientSnapshotApiBoundary } from './client-snapshot-api.js';
+import { createClientSnapshotApiBoundary, type ClientEventSubscription } from './client-snapshot-api.js';
 import type { ClientConversationView, ClientSnapshot } from '@my-code-x/contracts-new';
 
 const originalWindow = globalThis.window;
@@ -189,6 +189,71 @@ describe('client snapshot api boundary', () => {
       },
     }));
   });
+  test('opens an event source for the current slot and thread', () => {
+    const fixture = createSubscribedEventSourceFixture();
+
+    assert.equal(fixture.source.url, '/client/events?slotId=slot-1&threadId=thread-1');
+    fixture.subscription.close();
+  });
+
+  test('delivers valid client events from the stream', () => {
+    const fixture = createSubscribedEventSourceFixture();
+
+    fixture.source.emit(JSON.stringify({
+      kind: 'conversation-item-upserted',
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      revision: '1',
+      item: {
+        id: 'assistant-1',
+        kind: 'message',
+        role: 'assistant',
+        text: 'hello',
+      },
+    }));
+
+    assert.deepEqual(fixture.received, [
+      {
+        kind: 'conversation-item-upserted',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '1',
+        item: {
+          id: 'assistant-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'hello',
+        },
+      },
+    ]);
+    fixture.subscription.close();
+  });
+
+  test('reports malformed event stream messages at the client boundary', () => {
+    const fixture = createSubscribedEventSourceFixture();
+
+    fixture.source.emit('not json');
+    fixture.source.emit(JSON.stringify({ kind: 'unknown-event' }));
+
+    assert.deepEqual(fixture.received, []);
+    assert.deepEqual(fixture.failures.map(error => error.message), [
+      'Invalid client event payload',
+      'Invalid client event payload',
+    ]);
+    fixture.subscription.close();
+  });
+
+  test('closes the event source subscription', () => {
+    const fixture = createSubscribedEventSourceFixture();
+
+    fixture.subscription.close();
+
+    assert.equal(fixture.source.closed, true);
+  });
 });
 
 type FetchReplacement = typeof window.fetch;
@@ -236,4 +301,96 @@ function createClientSnapshot(conversation: ClientConversationView): ClientSnaps
       revision: 'initial',
     },
   };
+}
+
+type EventSourceFactory = (url: string) => TestEventSource;
+
+function installEventSource(factory: EventSourceFactory): void {
+  const EventSourceReplacement = function createEventSource(url: string) {
+    return factory(url);
+  };
+
+  Object.defineProperty(globalThis, 'window', {
+    configurable: true,
+    value: {
+      EventSource: EventSourceReplacement,
+    },
+  });
+}
+
+interface SubscribedEventSourceFixture {
+  readonly source: TestEventSource;
+  readonly received: readonly unknown[];
+  readonly failures: readonly Error[];
+  readonly subscription: ClientEventSubscription;
+}
+
+function createSubscribedEventSourceFixture(): SubscribedEventSourceFixture {
+  const sources: TestEventSource[] = [];
+  installEventSource(url => {
+    const source = new TestEventSource(url);
+    sources.push(source);
+    return source;
+  });
+  const received: unknown[] = [];
+  const failures: Error[] = [];
+  const api = createClientSnapshotApiBoundary();
+  const subscription = api.subscribeEvents({
+    scope: {
+      slotId: 'slot-1',
+      workspaceId: null,
+      threadId: 'thread-1',
+      label: 'thread thread-1',
+    },
+    receive(event) {
+      received.push(event);
+    },
+    fail(error) {
+      failures.push(error);
+    },
+  });
+
+  return {
+    source: readOnlyEventSource({ sources }),
+    received,
+    failures,
+    subscription,
+  };
+}
+
+interface ReadOnlyEventSourceInput {
+  readonly sources: readonly TestEventSource[];
+}
+
+function readOnlyEventSource(input: ReadOnlyEventSourceInput): TestEventSource {
+  assert.equal(input.sources.length, 1);
+  return input.sources[0] as TestEventSource;
+}
+
+interface TestMessageEvent {
+  readonly data: string;
+}
+
+class TestEventSource {
+  readonly url: string;
+  closed = false;
+  private messageHandler: ((event: TestMessageEvent) => void) | null = null;
+
+  constructor(url: string) {
+    this.url = url;
+  }
+
+  addEventListener(type: string, handler: (event: TestMessageEvent) => void): void {
+    if (type === 'message') {
+      this.messageHandler = handler;
+    }
+  }
+
+  emit(data: string): void {
+    this.messageHandler?.({ data });
+  }
+
+  close(): void {
+    this.closed = true;
+  }
 }

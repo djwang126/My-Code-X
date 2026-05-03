@@ -49,6 +49,13 @@ export async function writeNodeHttpResponse(input: WriteNodeHttpResponseInput): 
         httpResponse: input.httpResponse,
       });
       return;
+
+    case 'event-stream':
+      writeEventStreamResponse({
+        response: input.response,
+        httpResponse: input.httpResponse,
+      });
+      return;
   }
 }
 
@@ -78,4 +85,32 @@ async function writeFileResponse(input: WriteFileResponseInput): Promise<void> {
   });
 
   await pipeline(createReadStream(input.httpResponse.path), input.response);
+}
+
+interface WriteEventStreamResponseInput {
+  readonly response: ServerResponse;
+  readonly httpResponse: Extract<HttpResponse, { readonly kind: 'event-stream' }>;
+}
+
+function writeEventStreamResponse(input: WriteEventStreamResponseInput): void {
+  writeResponseHead({
+    response: input.response,
+    statusCode: input.httpResponse.statusCode,
+    headers: {
+      'content-type': 'text/event-stream; charset=utf-8',
+      'cache-control': 'no-cache, no-transform',
+      connection: 'keep-alive',
+      ...input.httpResponse.headers,
+    },
+  });
+
+  input.response.write(': connected\n\n');
+  const close = input.httpResponse.open({
+    write(data: string) {
+      if (!input.response.writableEnded) {
+        input.response.write(data);
+      }
+    },
+  });
+  input.response.on('close', close);
 }

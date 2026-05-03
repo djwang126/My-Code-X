@@ -1,4 +1,5 @@
 export { createApplication } from './create-application.js';
+export { createClientEventStream } from './client-event-stream.js';
 export { interruptClientTurn } from './interrupt-client-turn.js';
 export { openClient } from './open-client.js';
 export { respondClientInteraction } from './respond-client-interaction.js';
@@ -13,6 +14,11 @@ export type {
   ApplicationSendClientMessageInput,
   ApplicationService,
 } from './create-application.js';
+export type {
+  ClientEventStream,
+  CreateClientEventStreamInput,
+  SubscribeClientEventStreamInput,
+} from './client-event-stream.js';
 export type { InterruptClientTurnDependencies, InterruptClientTurnInput, InterruptClientTurnUseCaseInput } from './interrupt-client-turn.js';
 export type { OpenClientDependencies, OpenClientInput, OpenClientUseCaseInput } from './open-client.js';
 export type { RespondClientInteractionDependencies, RespondClientInteractionInput, RespondClientInteractionUseCaseInput } from './respond-client-interaction.js';

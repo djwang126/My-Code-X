@@ -25,12 +25,6 @@ export function applyConversationDomainEvent(input: ApplyConversationDomainEvent
         items: event.items,
       };
 
-    case 'conversation-item-appended':
-      return {
-        revision: state.revision + 1,
-        items: [...state.items, event.item],
-      };
-
     case 'conversation-item-upserted':
       return upsertConversationItem({
         state,

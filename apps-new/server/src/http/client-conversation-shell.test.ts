@@ -69,6 +69,7 @@ describe('client HTTP conversation snapshot shell', () => {
   test('returns a ready empty conversation view for open-client action', async () => {
     const app = createHttpApp({
       application: createApplication(),
+      eventStream: createNoopClientEventStream(),
     });
 
     const response = await app.handle({
@@ -134,6 +135,7 @@ describe('client HTTP conversation snapshot shell', () => {
   test('rejects client actions that do not match the shared protocol', async () => {
     const app = createHttpApp({
       application: createApplication(),
+      eventStream: createNoopClientEventStream(),
     });
 
     const response = await app.handle(createTestRequest({
@@ -164,6 +166,7 @@ describe('client HTTP conversation snapshot shell', () => {
   test('rejects client actions with unsupported content type', async () => {
     const app = createHttpApp({
       application: createApplication(),
+      eventStream: createNoopClientEventStream(),
     });
 
     const response = await app.handle(createTestRequest({
@@ -198,6 +201,7 @@ describe('client HTTP conversation snapshot shell', () => {
   test('returns explicit health and not-found responses', async () => {
     const app = createHttpApp({
       application: createApplication(),
+      eventStream: createNoopClientEventStream(),
     });
 
     assert.deepEqual(await app.handle(createTestRequest({
@@ -232,6 +236,7 @@ describe('client HTTP conversation snapshot shell', () => {
   test('rejects known routes with unsupported methods', async () => {
     const app = createHttpApp({
       application: createApplication(),
+      eventStream: createNoopClientEventStream(),
     });
 
     assert.deepEqual(await app.handle(createTestRequest({
@@ -281,5 +286,13 @@ function createTestRequest(input: TestRequestInput): HttpRequest {
     body: input.body,
     rawBody: input.body === null ? null : JSON.stringify(input.body),
     signal: new globalThis.AbortController().signal,
+  };
+}
+
+function createNoopClientEventStream() {
+  return {
+    subscribe() {
+      return () => {};
+    },
   };
 }
