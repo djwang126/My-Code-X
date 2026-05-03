@@ -3,7 +3,6 @@ import { describe, test } from 'node:test';
 
 import { createRuntimeEventCoordinator } from './runtime-event-coordinator.js';
 import type { ConversationCommand, ConversationService } from '../features/conversation/index.js';
-import type { RuntimeRequestCommand, RuntimeRequestService } from '../features/runtime-request/index.js';
 import type { ThreadCommand, ThreadRecord, ThreadService } from '../features/thread/index.js';
 import type { TurnCommand, TurnService } from '../features/turn/index.js';
 import type { RuntimeEvent } from '../ports/index.js';
@@ -76,15 +75,15 @@ describe('createRuntimeEventCoordinator', () => {
     ]);
   });
 
-  test('leaves runtime-input-requested events to the runtime-request migration', () => {
+  test('leaves runtime host requests to the host-request migration', () => {
     const fixture = createCoordinatorFixture();
     const event: RuntimeEvent = {
-      inputKind: 'approval',
-      kind: 'runtime-input-requested',
-      prompt: 'Approve?',
+      data: { prompt: 'Approve?' },
+      kind: 'runtime-host-requested',
       requestId: 'request-1',
       threadId: 'thread-1',
-      title: 'Approval',
+      turnId: null,
+      itemId: null,
     };
 
     fixture.coordinator.receive(event);
@@ -136,59 +135,24 @@ describe('createRuntimeEventCoordinator', () => {
     assert.deepEqual(fixture.turnCommands, []);
   });
 
-  test('routes runtime input lifecycle events to runtime requests when provided', () => {
-    const runtimeRequestCommands: RuntimeRequestCommand[] = [];
-    const runtimeRequests: RuntimeRequestService = {
-      apply(input) {
-        runtimeRequestCommands.push(input);
-        return { requests: [] };
-      },
-
-      snapshot() {
-        return { requests: [] };
-      },
-    };
+  test('does not open runtime-request state from host request placeholders', () => {
     const fixture = createCoordinatorFixture();
-    const coordinator = createRuntimeEventCoordinator({
-      runtimeRequests,
-      turn: createNoopTurnService(),
-    });
 
-    coordinator.receive({
+    fixture.coordinator.receive({
       data: { command: 'npm test' },
-      inputKind: 'approval',
-      kind: 'runtime-input-requested',
-      method: 'item/commandExecution/requestApproval',
-      prompt: 'npm test',
+      kind: 'runtime-host-requested',
       requestId: 'request-1',
       threadId: 'thread-1',
-      title: 'Approve command execution',
+      turnId: null,
+      itemId: null,
     });
-    coordinator.receive({
-      kind: 'runtime-input-resolved',
+    fixture.coordinator.receive({
+      kind: 'runtime-host-request-resolved',
       requestId: 'request-1',
       threadId: 'thread-1',
     });
 
     assert.deepEqual(fixture.turnCommands, []);
-    assert.deepEqual(runtimeRequestCommands, [
-      {
-        kind: 'open-runtime-request',
-        request: {
-          data: { command: 'npm test' },
-          id: 'request-1',
-          kind: 'approval',
-          lifecycle: 'open',
-          prompt: 'npm test',
-          responseKind: 'decision',
-          title: 'Approve command execution',
-        },
-      },
-      {
-        kind: 'resolve-runtime-request',
-        requestId: 'request-1',
-      },
-    ]);
   });
 
   test('routes runtime thread lifecycle events to thread metadata when provided', () => {

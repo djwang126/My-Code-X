@@ -8,4 +8,4 @@ export {
   CodexRequestTimeoutError,
   CodexRpcError,
   CodexTransportClosedError,
-} from './runtime/codex-runtime-error.js';
+} from './errors/codex-runtime-error.js';

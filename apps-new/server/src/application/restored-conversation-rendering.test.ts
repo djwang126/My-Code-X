@@ -5,7 +5,6 @@ import type { ClientEvent } from '@my-code-x/contracts-new';
 import { createClientEventStream } from './client-event-stream.js';
 import { createApplication } from './create-application.js';
 import { createConversationService, type ConversationService } from '../features/conversation/index.js';
-import { createRuntimeRequestService } from '../features/runtime-request/index.js';
 import { createSlotService } from '../features/slot/index.js';
 import { createThreadActionsService } from '../features/thread-actions/index.js';
 import { createThreadService } from '../features/thread/index.js';
@@ -382,7 +381,6 @@ function createApplicationFixtureParts(
   const events = createEventBus();
   const runtime = createRuntimePort(behavior);
   const conversation = createConversationService({ events });
-  const runtimeRequests = createRuntimeRequestService({ events });
   const slot = createSlotService({ events });
   const thread = createThreadService({ events });
   const threadActions = createThreadActionsService({ runtime, events });
@@ -401,7 +399,6 @@ function createApplicationFixtureParts(
     application: createApplication({
       conversation,
       runtime,
-      runtimeRequests,
       slot,
       thread,
       threadActions,

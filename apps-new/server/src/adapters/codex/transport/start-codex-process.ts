@@ -1,7 +1,7 @@
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { CodexProcessStartError } from '../runtime/codex-runtime-error.js';
+import { CodexProcessStartError } from '../errors/codex-runtime-error.js';
 import type { EnvironmentVariables } from '../../../shared/index.js';
 
 export interface StartCodexProcessInput {

@@ -1,6 +1,5 @@
 import type { ClientConversationView, ClientOpenAction, ClientSnapshot } from '@my-code-x/contracts-new';
 import type { ConversationService } from '../features/conversation/index.js';
-import type { RuntimeRequestService } from '../features/runtime-request/index.js';
 import type { SlotService } from '../features/slot/index.js';
 import type { ThreadActionsService } from '../features/thread-actions/index.js';
 import type { ThreadRecord, ThreadService } from '../features/thread/index.js';
@@ -14,7 +13,6 @@ export type OpenClientInput = ClientOpenAction;
 
 export interface OpenClientDependencies {
   readonly conversation: ConversationService;
-  readonly runtimeRequests: RuntimeRequestService;
   readonly slot: SlotService;
   readonly thread: ThreadService;
   readonly threadActions: ThreadActionsService;
@@ -57,7 +55,6 @@ export async function openClient(useCase: OpenClientUseCaseInput): Promise<Clien
     turn: useCase.dependencies.turn.snapshot(),
     conversation: useCase.dependencies.conversation.snapshot({ threadId: slot.threadId }),
     conversationView,
-    runtimeRequests: useCase.dependencies.runtimeRequests.snapshot(),
     workspace,
   });
 }

@@ -1,12 +1,11 @@
 import type { ConversationService } from '../features/conversation/index.js';
-import type { RuntimeRequestKind, RuntimeRequestService } from '../features/runtime-request/index.js';
 import type { ThreadRecord, ThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
-import type { RuntimeEvent, RuntimeInputKind, RuntimeThread, RuntimeThreadItem } from '../ports/index.js';
+import type { RuntimeEvent, RuntimeThread, RuntimeThreadItem } from '../ports/index.js';
+import { assertNever } from '../shared/index.js';
 
 export interface RuntimeEventCoordinatorInput {
   readonly conversation?: ConversationService;
-  readonly runtimeRequests?: RuntimeRequestService;
   readonly thread?: ThreadService;
   readonly turn: TurnService;
 }
@@ -40,26 +39,8 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
           });
           return;
 
-        case 'runtime-input-requested':
-          input.runtimeRequests?.apply({
-            kind: 'open-runtime-request',
-            request: {
-              id: event.requestId,
-              kind: mapRuntimeInputKind(event.inputKind),
-              lifecycle: 'open',
-              title: event.title,
-              prompt: event.prompt,
-              responseKind: mapRuntimeInputResponseKind(event.inputKind),
-              data: event.data ?? {},
-            },
-          });
-          return;
-
-        case 'runtime-input-resolved':
-          input.runtimeRequests?.apply({
-            kind: 'resolve-runtime-request',
-            requestId: event.requestId,
-          });
+        case 'runtime-host-requested':
+        case 'runtime-host-request-resolved':
           return;
 
         case 'runtime-thread-started':
@@ -106,40 +87,13 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
         case 'runtime-thread-token-usage-updated':
         case 'runtime-turn-diff-updated':
         case 'runtime-turn-plan-updated':
-        case 'runtime-codex-notification':
         case 'runtime-system-notice':
           return;
       }
+
+      return assertNever(event, 'Unsupported runtime event');
     },
   };
-}
-
-function mapRuntimeInputKind(inputKind: RuntimeInputKind): RuntimeRequestKind {
-  switch (inputKind) {
-    case 'approval':
-      return 'approval';
-    case 'form':
-      return 'form';
-    case 'auth':
-      return 'auth';
-    case 'tool-response':
-    case 'unknown':
-      return 'tool-response';
-  }
-}
-
-function mapRuntimeInputResponseKind(inputKind: RuntimeInputKind): 'decision' | 'form' | 'freeform' | 'structured' {
-  switch (inputKind) {
-    case 'approval':
-      return 'decision';
-    case 'form':
-      return 'form';
-    case 'auth':
-      return 'freeform';
-    case 'tool-response':
-    case 'unknown':
-      return 'structured';
-  }
 }
 
 function rememberRuntimeThread(thread: ThreadService | undefined, runtimeThread: RuntimeThread): void {

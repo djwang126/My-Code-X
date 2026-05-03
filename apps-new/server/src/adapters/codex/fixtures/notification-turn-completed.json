@@ -1,0 +1,12 @@
+{
+  "method": "turn/completed",
+  "params": {
+    "threadId": "thread-fixture",
+    "turn": {
+      "id": "turn-fixture",
+      "status": "completed",
+      "items": [],
+      "error": null
+    }
+  }
+}

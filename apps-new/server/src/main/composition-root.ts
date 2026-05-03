@@ -4,7 +4,6 @@ import { createApplication, createClientEventStream, createRuntimeEventCoordinat
 import { loadConfig } from '../config/index.js';
 import type { HttpServerConfig } from '../config/index.js';
 import { createConversationService } from '../features/conversation/index.js';
-import { createRuntimeRequestService } from '../features/runtime-request/index.js';
 import { createSlotService } from '../features/slot/index.js';
 import { createThreadActionsService } from '../features/thread-actions/index.js';
 import { createThreadService } from '../features/thread/index.js';
@@ -27,12 +26,11 @@ export async function createAppComposition(): Promise<AppComposition> {
   const thread = createThreadService({ events });
   const threadActions = createThreadActionsService({ runtime, events });
   const conversation = createConversationService({ events });
-  const runtimeRequests = createRuntimeRequestService({ events });
   const turn = createTurnService({ events });
   const workspace = createWorkspaceService({ runtime });
-  const application = createApplication({ conversation, runtime, runtimeRequests, slot, thread, threadActions, turn, workspace });
+  const application = createApplication({ conversation, runtime, slot, thread, threadActions, turn, workspace });
   const eventStream = createClientEventStream({ conversation, events });
-  const runtimeEvents = createRuntimeEventCoordinator({ conversation, runtimeRequests, thread, turn });
+  const runtimeEvents = createRuntimeEventCoordinator({ conversation, thread, turn });
   const unsubscribeRuntimeEvents = runtime.subscribe(runtimeEvents.receive);
   const http = createHttpApp({ application, eventStream });
 

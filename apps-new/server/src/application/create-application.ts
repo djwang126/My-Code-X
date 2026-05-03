@@ -1,6 +1,5 @@
 import type { ClientActionResult, ClientSnapshot } from '@my-code-x/contracts-new';
 import type { ConversationService } from '../features/conversation/index.js';
-import type { RuntimeRequestService } from '../features/runtime-request/index.js';
 import type { SlotService } from '../features/slot/index.js';
 import type { ThreadActionsService } from '../features/thread-actions/index.js';
 import type { ThreadService } from '../features/thread/index.js';
@@ -22,7 +21,6 @@ export type ApplicationInterruptClientTurnInput = InterruptClientTurnInput;
 export interface ApplicationInput {
   readonly conversation: ConversationService;
   readonly runtime: RuntimePort;
-  readonly runtimeRequests: RuntimeRequestService;
   readonly slot: SlotService;
   readonly thread: ThreadService;
   readonly threadActions: ThreadActionsService;

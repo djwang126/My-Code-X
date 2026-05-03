@@ -12,14 +12,14 @@ import {
   CodexRequestTimeoutError,
   CodexRpcError,
   CodexTransportClosedError,
-} from '../runtime/codex-runtime-error.js';
+} from '../errors/codex-runtime-error.js';
 import {
   createJsonlTransport,
   type CodexJsonlTransport,
   type CodexTransportTimer,
   type CodexTransportTimerHandle,
 } from './create-jsonl-transport.js';
-import type { CodexIncomingMessage } from './jsonl-message.js';
+import type { CodexIncomingMessage } from '../protocol/codex-message.js';
 
 interface FixtureRuntime {
   readonly cwd: string;
@@ -668,3 +668,4 @@ describe('createJsonlTransport', () => {
     }
   });
 });
+

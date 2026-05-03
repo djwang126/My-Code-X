@@ -1,0 +1,9 @@
+{
+  "method": "thread/status/changed",
+  "params": {
+    "threadId": "thread-fixture",
+    "status": {
+      "type": "running"
+    }
+  }
+}

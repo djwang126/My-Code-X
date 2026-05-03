@@ -1,6 +1,6 @@
-import { bootstrapCodexRuntime } from './protocol/bootstrap-codex-runtime.js';
-import { createCodexRuntimeClient } from './runtime/create-codex-runtime-client.js';
-import { createStderrCodexRuntimeLogger, type CodexRuntimeLogger } from './runtime/codex-runtime-logger.js';
+import { bootstrapCodexRuntime } from './gateway/bootstrap-codex-runtime.js';
+import { createCodexRuntimeGateway } from './gateway/create-codex-runtime-gateway.js';
+import { createStderrCodexRuntimeLogger, type CodexRuntimeLogger } from './diagnostics/codex-runtime-logger.js';
 import { createJsonlTransport } from './transport/create-jsonl-transport.js';
 import type { RuntimePort } from '../../ports/index.js';
 import type { JsonValue } from '@my-code-x/contracts-new/json';
@@ -32,7 +32,7 @@ export async function createCodexRuntime(input: CodexRuntimeInput): Promise<Runt
 
   try {
     await bootstrapCodexRuntime({ transport });
-    return createCodexRuntimeClient({
+    return createCodexRuntimeGateway({
       transport,
       dynamicTools: input.options.dynamicTools,
       logger,
@@ -42,3 +42,4 @@ export async function createCodexRuntime(input: CodexRuntimeInput): Promise<Runt
     throw error;
   }
 }
+

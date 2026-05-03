@@ -1,0 +1,15 @@
+{
+  "id": "3",
+  "result": {
+    "data": [
+      {
+        "id": "thread-fixture",
+        "name": "Fixture thread",
+        "cwd": "D:/workspace",
+        "updatedAt": "1770000000"
+      }
+    ],
+    "nextCursor": "next-1",
+    "backwardsCursor": null
+  }
+}

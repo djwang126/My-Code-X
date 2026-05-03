@@ -1,0 +1,13 @@
+{
+  "method": "item/completed",
+  "params": {
+    "threadId": "thread-fixture",
+    "turnId": "turn-fixture",
+    "item": {
+      "id": "item-command",
+      "type": "commandExecution",
+      "command": "npm test",
+      "exitCode": 0
+    }
+  }
+}

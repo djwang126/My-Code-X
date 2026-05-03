@@ -1,0 +1,10 @@
+{
+  "id": "host-request-fixture",
+  "method": "item/tool/requestUserInput",
+  "params": {
+    "threadId": "thread-fixture",
+    "turnId": "turn-fixture",
+    "itemId": "item-fixture",
+    "prompt": "This stays raw and is not modeled as UI text."
+  }
+}

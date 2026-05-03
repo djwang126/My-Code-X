@@ -1,0 +1,19 @@
+{
+  "id": "1",
+  "result": {
+    "thread": {
+      "id": "thread-fixture",
+      "name": "Fixture thread",
+      "cwd": "D:/workspace",
+      "updatedAt": "1770000000"
+    },
+    "model": "gpt-fixture",
+    "serviceTier": null,
+    "instructionSources": [],
+    "approvalPolicy": null,
+    "approvalsReviewer": null,
+    "sandbox": null,
+    "permissionProfile": null,
+    "reasoningEffort": null
+  }
+}

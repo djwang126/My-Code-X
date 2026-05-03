@@ -1,0 +1,11 @@
+{
+  "method": "thread/started",
+  "params": {
+    "thread": {
+      "id": "thread-fixture",
+      "name": "Fixture thread",
+      "cwd": "D:/workspace",
+      "updatedAt": "1770000000"
+    }
+  }
+}

@@ -6,8 +6,9 @@ import {
   CodexRequestTimeoutError,
   CodexRpcError,
   CodexTransportClosedError,
-} from '../runtime/codex-runtime-error.js';
-import { parseCodexIncomingMessage, readOptionalString, type CodexIncomingMessage } from './jsonl-message.js';
+} from '../errors/codex-runtime-error.js';
+import { parseCodexIncomingMessage, type CodexIncomingMessage } from '../protocol/codex-message.js';
+import { readOptionalString } from '../protocol/reader/index.js';
 import { startCodexProcess } from './start-codex-process.js';
 import type { JsonObject, JsonValue } from '@my-code-x/contracts-new/json';
 import type { EnvironmentVariables } from '../../../shared/index.js';
@@ -231,6 +232,8 @@ export function createJsonlTransport(input: CodexJsonlTransportInput): CodexJson
     },
 
     async respondToServerRequest(responseInput: CodexServerRequestResponse): Promise<void> {
+      // Host-request lifecycle is not modeled above the gateway yet.
+      // Keep pass-through responses possible for now; formal ownership should make unknown ids fail explicitly.
       const requestId = pendingServerRequestIds.get(responseInput.requestId) ?? responseInput.requestId;
       pendingServerRequestIds.delete(responseInput.requestId);
 
@@ -278,3 +281,4 @@ export function createJsonlTransport(input: CodexJsonlTransportInput): CodexJson
     },
   };
 }
+

@@ -1,0 +1,9 @@
+{
+  "method": "item/agentMessage/delta",
+  "params": {
+    "threadId": "thread-fixture",
+    "turnId": "turn-fixture",
+    "itemId": "item-agent",
+    "delta": "hello"
+  }
+}

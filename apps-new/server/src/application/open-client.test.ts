@@ -3,7 +3,6 @@ import { describe, test } from 'node:test';
 
 import { openClient } from './open-client.js';
 import type { ConversationService } from '../features/conversation/index.js';
-import type { RuntimeRequestService } from '../features/runtime-request/index.js';
 import { createSlotService } from '../features/slot/index.js';
 import type { ThreadActionsService } from '../features/thread-actions/index.js';
 import { createThreadService } from '../features/thread/index.js';
@@ -25,14 +24,6 @@ function createOpenClientDependencies() {
     },
     snapshot() {
       return { revision: 0, items: [] };
-    },
-  };
-  const runtimeRequests: RuntimeRequestService = {
-    apply() {
-      return { requests: [] };
-    },
-    snapshot() {
-      return { requests: [] };
     },
   };
   const turn: TurnService = {
@@ -108,7 +99,6 @@ function createOpenClientDependencies() {
   return {
     conversation,
     runtime,
-    runtimeRequests,
     slot: createSlotService({ events }),
     thread: createThreadService({ events }),
     threadActions,

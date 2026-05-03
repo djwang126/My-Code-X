@@ -1,0 +1,12 @@
+{
+  "method": "item/started",
+  "params": {
+    "threadId": "thread-fixture",
+    "turnId": "turn-fixture",
+    "item": {
+      "id": "item-agent",
+      "type": "agentMessage",
+      "text": "hello"
+    }
+  }
+}

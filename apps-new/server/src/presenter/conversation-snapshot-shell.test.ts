@@ -19,9 +19,6 @@ function createSnapshotInput() {
       revision: 0,
       items: [],
     },
-    runtimeRequests: {
-      requests: [],
-    },
     workspace: {
       workspace: null,
       available: false,

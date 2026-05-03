@@ -4,6 +4,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "strict": true,
+    "noImplicitReturns": true,
     "types": ["node"],
     "noEmit": true,
     "skipLibCheck": true,

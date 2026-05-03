@@ -27,7 +27,6 @@ const allowedBoundaryImports: Record<string, readonly string[]> = {
   config: ['config', 'shared', 'contracts/json'],
   'features/app-control': ['features/app-control', 'ports', 'shared'],
   'features/conversation': ['features/conversation', 'ports', 'shared'],
-  'features/runtime-request': ['features/runtime-request', 'ports', 'shared', 'contracts/json'],
   'features/slot': ['features/slot', 'ports', 'shared'],
   'features/thread': ['features/thread', 'ports', 'shared'],
   'features/thread-actions': ['features/thread-actions', 'ports', 'shared'],
@@ -159,8 +158,6 @@ test('server-new external contract imports are separated by client protocol and 
   assert.equal(isAllowedImport(allowedBoundaryImports['adapters/codex'] ?? [], 'contracts/json'), true);
   assert.equal(isAllowedImport(allowedBoundaryImports['adapters/codex'] ?? [], 'contracts/client'), false);
   assert.equal(isAllowedImport(allowedBoundaryImports.presenter ?? [], 'contracts/client'), true);
-  assert.equal(isAllowedImport(allowedBoundaryImports['features/runtime-request'] ?? [], 'contracts/json'), true);
-  assert.equal(isAllowedImport(allowedBoundaryImports['features/runtime-request'] ?? [], 'contracts/client'), false);
   assert.equal(isAllowedImport(allowedBoundaryImports.http ?? [], 'contracts/unknown'), false);
   assert.equal(toBoundary(path.join('http', 'node', 'node-http-server.ts')), 'http/node');
   assert.equal(isAllowedImport(allowedBoundaryImports.http ?? [], 'http/node'), false);

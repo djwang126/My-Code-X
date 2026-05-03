@@ -1,0 +1,9 @@
+{
+  "method": "item/commandExecution/outputDelta",
+  "params": {
+    "threadId": "thread-fixture",
+    "turnId": "turn-fixture",
+    "itemId": "item-command",
+    "delta": "ok"
+  }
+}

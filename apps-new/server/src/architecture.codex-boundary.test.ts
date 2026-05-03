@@ -82,16 +82,11 @@ function findForbiddenMatches(sourceFiles: readonly SourceFile[], forbiddenPatte
   return matches;
 }
 
-test('runtime port exposes internal runtime language without Codex transport vocabulary', async () => {
-  const source = await readFile(path.join(srcRoot, 'ports', 'runtime-port.ts'), 'utf-8');
+test('runtime port exposes internal runtime language without external transport vocabulary', async () => {
+  const sourceFiles = await readSourceFiles(['ports']);
   const matches = findForbiddenMatches(
-    [
-      {
-        relativePath: path.join('ports', 'runtime-port.ts'),
-        source,
-      },
-    ],
-    /\b(Codex|JSONL|jsonl|RPC|app-server|stdin|stdout)\b|method:\s*string|params:\s*unknown/g,
+    sourceFiles,
+    /\b(Codex|JSONL|jsonl|RPC|app-server|stdin|stdout|RuntimeCodex|runtime-codex)\b|method\??:\s*string|params:\s*unknown/g,
   );
 
   assert.deepEqual(matches, []);
@@ -116,10 +111,40 @@ test('codex adapter public entrypoint does not export transport, protocol, or no
         source,
       },
     ],
-    /from\s+['"](?:\.\/(?:transport|protocol)\/[^'"]+|\.\/runtime\/(?!codex-runtime-error\.js['"])[^'"]+)['"]/g,
+    /from\s+['"](?:\.\/(?:transport|protocol|codec|gateway|diagnostics)\/[^'"]+|\.\/runtime\/(?!codex-runtime-error\.js['"])[^'"]+)['"]/g,
   );
 
   assert.deepEqual(matches, []);
+});
+
+test('codex adapter internals keep transport, protocol, and codec dependency direction', async () => {
+  const sourceFiles = (await readSourceFiles([path.join('adapters', 'codex')])).filter(
+    sourceFile => !sourceFile.relativePath.endsWith('.test.ts'),
+  );
+  const violations: string[] = [];
+
+  for (const sourceFile of sourceFiles) {
+    const normalizedPath = sourceFile.relativePath.split(path.sep).join('/');
+    const source = sourceFile.source;
+
+    if (normalizedPath.includes('/protocol/') && /from\s+['"][^'"]*\/transport\//.test(source)) {
+      violations.push(`${sourceFile.relativePath} imports transport`);
+    }
+
+    if (normalizedPath.includes('/protocol/') && /from\s+['"][^'"]*\/ports\//.test(source)) {
+      violations.push(`${sourceFile.relativePath} imports ports`);
+    }
+
+    if (normalizedPath.includes('/codec/') && /from\s+['"][^'"]*\/transport\//.test(source)) {
+      violations.push(`${sourceFile.relativePath} imports transport`);
+    }
+
+    if (normalizedPath.includes('/transport/') && /from\s+['"][^'"]*\/ports\//.test(source)) {
+      violations.push(`${sourceFile.relativePath} imports ports`);
+    }
+  }
+
+  assert.deepEqual(violations, []);
 });
 
 test('codex adapter implementation does not mention conversation/slot ownership or HTTP boundary concepts', async () => {
@@ -155,6 +180,75 @@ test('client input boundary does not predeclare runtime command fields', async (
   );
 
   assert.deepEqual(matches, []);
+});
+
+test('runtime event coordinator is not wired to the pending request skeleton', async () => {
+  const source = await readFile(path.join(srcRoot, 'application', 'runtime-event-coordinator.ts'), 'utf-8');
+  const matches = findForbiddenMatches(
+    [
+      {
+        relativePath: path.join('application', 'runtime-event-coordinator.ts'),
+        source,
+      },
+    ],
+    /features\/runtime-request|RuntimeRequestService|runtimeRequests/g,
+  );
+
+  assert.deepEqual(matches, []);
+});
+
+test('server-new does not expose the old runtime request skeleton', async () => {
+  const sourceFiles = await readSourceFiles(['features', 'application', 'presenter', 'ports']);
+  const matches = findForbiddenMatches(
+    sourceFiles,
+    /\b(RuntimeRequestKind|RuntimeRequestService|createRuntimeRequestService|responseKind|tool-response)\b/g,
+  );
+
+  assert.deepEqual(matches, []);
+});
+
+test('presenter does not expose pending interaction skeleton presenters', async () => {
+  const source = await readFile(path.join(srcRoot, 'presenter', 'index.ts'), 'utf-8');
+  const matches = findForbiddenMatches(
+    [
+      {
+        relativePath: path.join('presenter', 'index.ts'),
+        source,
+      },
+    ],
+    /pending-interaction-presenter|presentPendingInteraction|presentPendingInteractions/g,
+  );
+
+  assert.deepEqual(matches, []);
+});
+
+test('runtime port does not expose placeholder host request presentation policy', async () => {
+  const sourceFiles = await readSourceFiles([path.join('ports', 'runtime')]);
+  const matches = findForbiddenMatches(
+    sourceFiles,
+    /\b(inputKind|responseKind|RuntimeRequestKind|tool-response)\b|kind:\s*['"](?:approval|form|auth)['"]/g,
+  );
+
+  assert.deepEqual(matches, []);
+});
+
+test('Codex server request placeholder handling stays in one codec file', async () => {
+  const sourceFiles = (await readSourceFiles([path.join('adapters', 'codex')])).filter(
+    sourceFile => !sourceFile.relativePath.endsWith('.test.ts'),
+  );
+  const matches = findForbiddenMatches(
+    sourceFiles,
+    /\bserver-request\b|runtime-host-requested/g,
+  );
+  const allowedFiles = [
+    path.join('adapters', 'codex', 'codec', 'event', 'decode-codex-message.ts'),
+    path.join('adapters', 'codex', 'codec', 'event', 'decode-server-request-placeholder.ts'),
+    path.join('adapters', 'codex', 'protocol', 'codex-message.ts'),
+    path.join('adapters', 'codex', 'transport', 'create-jsonl-transport.ts'),
+  ];
+  const violations = matches.filter(match => !allowedFiles.includes(match.relativePath));
+
+  assert.deepEqual(violations, []);
 });
 
 test('thread public state does not export runtime thread records', async () => {

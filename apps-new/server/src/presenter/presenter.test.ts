@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
-import { createClientSnapshot, presentConversationItem, presentPendingInteraction, presentTurn } from './index.js';
+import { createClientSnapshot, presentConversationItem, presentTurn } from './index.js';
 import type { ConversationItem } from '../features/conversation/index.js';
-import type { RuntimeRequest } from '../features/runtime-request/index.js';
-import { SkeletonMigrationPendingError } from '../shared/index.js';
 
 test('presenters create a client snapshot from feature-owned state', () => {
   const snapshot = createClientSnapshot({
@@ -33,9 +31,6 @@ test('presenters create a client snapshot from feature-owned state', () => {
           text: 'hello',
         },
       ],
-    },
-    runtimeRequests: {
-      requests: [],
     },
     workspace: {
       workspace: 'workspace-1',
@@ -80,9 +75,6 @@ test('client snapshot keeps slot selection separate from thread readiness', () =
       revision: 0,
       items: [],
     },
-    runtimeRequests: {
-      requests: [],
-    },
     workspace: {
       workspace: 'workspace-1',
       available: true,
@@ -110,23 +102,6 @@ test('conversation presenter exposes confirmed message timeline items', () => {
     role: 'assistant',
     text: 'hello',
   });
-});
-
-test('pending interaction presenter stays explicit until controls are migrated', () => {
-  const request: RuntimeRequest = {
-    id: 'request-1',
-    kind: 'approval',
-    lifecycle: 'open',
-    title: 'Approve action',
-    prompt: 'Review before continuing',
-    responseKind: 'decision',
-    data: {},
-  };
-
-  assert.throws(
-    () => presentPendingInteraction({ request }),
-    SkeletonMigrationPendingError,
-  );
 });
 
 test('turn presenter exposes the native turn snapshot shape', () => {

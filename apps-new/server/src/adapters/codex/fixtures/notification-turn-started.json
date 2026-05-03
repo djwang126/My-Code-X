@@ -1,0 +1,7 @@
+{
+  "method": "turn/started",
+  "params": {
+    "threadId": "thread-fixture",
+    "turnId": "turn-fixture"
+  }
+}
