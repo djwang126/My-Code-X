@@ -22,7 +22,7 @@ describe('createConversationService', () => {
     });
   });
 
-  test('replaces and upserts confirmed message timeline items while advancing revision', () => {
+  test('replace-conversation publishes an authoritative replacement event', () => {
     const events: ConversationDomainEvent[] = [];
     const service = createConversationService({
       events: {
@@ -61,34 +61,6 @@ describe('createConversationService', () => {
       },
     );
 
-    assert.deepEqual(
-      service.apply({
-        kind: 'record-runtime-thread-item',
-        threadId: 'thread-1',
-        item: createRuntimeAgentMessage({
-          itemId: 'item-2',
-          text: 'world',
-        }),
-      }),
-      {
-        revision: 2,
-        items: [
-          {
-            id: 'item-1',
-            kind: 'message',
-            role: 'user',
-            text: 'hello **assistant**',
-          },
-          {
-            id: 'item-2',
-            kind: 'message',
-            role: 'assistant',
-            text: 'world',
-          },
-        ],
-      },
-    );
-
     assert.deepEqual(events, [
       {
         kind: 'conversation-replaced',
@@ -102,17 +74,6 @@ describe('createConversationService', () => {
             text: 'hello **assistant**',
           },
         ],
-      },
-      {
-        kind: 'conversation-item-upserted',
-        threadId: 'thread-1',
-        revision: 2,
-        item: {
-          id: 'item-2',
-          kind: 'message',
-          role: 'assistant',
-          text: 'world',
-        },
       },
     ]);
   });
@@ -186,6 +147,159 @@ describe('createConversationService', () => {
           role: 'assistant',
           text: 'world',
         },
+      },
+    ]);
+  });
+
+  test('does not project user or assistant runtime items without text', () => {
+    const events: ConversationDomainEvent[] = [];
+    const service = createConversationService({
+      events: {
+        publish(event) {
+          events.push(event as ConversationDomainEvent);
+        },
+        subscribe() {
+          return () => {};
+        },
+      },
+    });
+
+    service.apply({
+      kind: 'record-runtime-thread-item',
+      threadId: 'thread-1',
+      item: createRuntimeUserMessage({
+        itemId: 'item-1',
+        text: null,
+      }),
+    });
+    service.apply({
+      kind: 'record-runtime-thread-item',
+      threadId: 'thread-1',
+      item: createRuntimeAgentMessage({
+        itemId: 'item-2',
+        text: null,
+      }),
+    });
+
+    assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      revision: 0,
+      items: [],
+    });
+    assert.deepEqual(events, []);
+  });
+
+  test('replace-runtime-conversation keeps confirmed messages in order and filters work traces', () => {
+    const events: ConversationDomainEvent[] = [];
+    const service = createConversationService({
+      events: {
+        publish(event) {
+          events.push(event as ConversationDomainEvent);
+        },
+        subscribe() {
+          return () => {};
+        },
+      },
+    });
+
+    assert.deepEqual(
+      service.apply({
+        kind: 'replace-runtime-conversation',
+        threadId: 'thread-1',
+        items: [
+          createRuntimeUserMessage({
+            itemId: 'user-1',
+            text: 'restored hello',
+          }),
+          createRuntimePlanItem({
+            itemId: 'plan-1',
+            text: 'Plan',
+          }),
+          createRuntimeAgentMessage({
+            itemId: 'assistant-1',
+            text: 'restored answer',
+          }),
+        ],
+      }),
+      {
+        revision: 1,
+        items: [
+          {
+            id: 'user-1',
+            kind: 'message',
+            role: 'user',
+            text: 'restored hello',
+          },
+          {
+            id: 'assistant-1',
+            kind: 'message',
+            role: 'assistant',
+            text: 'restored answer',
+          },
+        ],
+      },
+    );
+    assert.deepEqual(events, [
+      {
+        kind: 'conversation-replaced',
+        threadId: 'thread-1',
+        revision: 1,
+        items: [
+          {
+            id: 'user-1',
+            kind: 'message',
+            role: 'user',
+            text: 'restored hello',
+          },
+          {
+            id: 'assistant-1',
+            kind: 'message',
+            role: 'assistant',
+            text: 'restored answer',
+          },
+        ],
+      },
+    ]);
+  });
+
+  test('replace-runtime-conversation filters restored messages without text', () => {
+    const events: ConversationDomainEvent[] = [];
+    const service = createConversationService({
+      events: {
+        publish(event) {
+          events.push(event as ConversationDomainEvent);
+        },
+        subscribe() {
+          return () => {};
+        },
+      },
+    });
+
+    assert.deepEqual(
+      service.apply({
+        kind: 'replace-runtime-conversation',
+        threadId: 'thread-1',
+        items: [
+          createRuntimeUserMessage({
+            itemId: 'user-1',
+            text: null,
+          }),
+          createRuntimeAgentMessage({
+            itemId: 'assistant-1',
+            text: null,
+          }),
+        ],
+      }),
+      {
+        revision: 1,
+        items: [],
+      },
+    );
+    assert.deepEqual(events, [
+      {
+        kind: 'conversation-replaced',
+        threadId: 'thread-1',
+        revision: 1,
+        items: [],
       },
     ]);
   });
@@ -305,12 +419,10 @@ describe('createConversationService', () => {
       service.apply({
         kind: 'record-runtime-thread-item',
         threadId: 'thread-1',
-        item: {
+        item: createRuntimePlanItem({
           itemId: 'plan-1',
-          itemKind: 'plan',
-          status: null,
           text: 'Plan',
-        },
+        }),
       }),
       {
         revision: 0,
@@ -319,6 +431,7 @@ describe('createConversationService', () => {
     );
     assert.deepEqual(events, []);
   });
+
   test('keeps timelines isolated by thread id', () => {
     const service = createConversationService({
       events: {
@@ -373,7 +486,7 @@ describe('createConversationService', () => {
 
 interface CreateRuntimeMessageInput {
   readonly itemId: string;
-  readonly text: string;
+  readonly text: string | null;
 }
 
 function createRuntimeUserMessage(input: CreateRuntimeMessageInput): RuntimeThreadItem {
@@ -394,5 +507,14 @@ function createRuntimeAgentMessage(input: CreateRuntimeMessageInput): RuntimeThr
     text: input.text,
     phase: null,
     memoryCitation: null,
+  };
+}
+
+function createRuntimePlanItem(input: CreateRuntimeMessageInput): RuntimeThreadItem {
+  return {
+    itemId: input.itemId,
+    itemKind: 'plan',
+    status: null,
+    text: input.text,
   };
 }

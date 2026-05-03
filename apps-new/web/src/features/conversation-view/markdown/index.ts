@@ -1,8 +1,15 @@
 export {
   renderConversationMarkdown,
+  type ConversationMarkdownBlock,
+  type ConversationMarkdownCodeBlock,
+  type ConversationMarkdownCodeInline,
+  type ConversationMarkdownInline,
+  type ConversationMarkdownLinkInline,
+  type ConversationMarkdownListBlock,
+  type ConversationMarkdownParagraphBlock,
+  type ConversationMarkdownStrongInline,
+  type ConversationMarkdownTableBlock,
+  type ConversationMarkdownTextInline,
   type RenderConversationMarkdownInput,
   type RenderConversationMarkdownResult,
-  type RenderedCodeBlock,
-  type RenderedHtmlBlock,
-  type RenderedMarkdownBlock,
 } from './markdown-renderer.js';

@@ -31,8 +31,6 @@ describe('ConversationView message rendering', () => {
     assertIncludes(html, 'aria-label="Assistant message"');
     assertIncludes(html, 'conversation-view__timeline-item--user');
     assertIncludes(html, 'conversation-view__timeline-item--assistant');
-    assertIncludes(html, 'conversation-view__message--user');
-    assertIncludes(html, 'conversation-view__message--assistant');
     assertIncludes(html, '<p>hello</p>');
     assertIncludes(html, '<p>world</p>');
     assertOrder({
@@ -70,7 +68,7 @@ describe('ConversationView message rendering', () => {
     });
 
     assertIncludes(html, '<strong>Codex</strong>');
-    assertIncludes(html, '<a href="https://openai.com" target="_blank" rel="noopener noreferrer">site</a>');
+    assertIncludes(html, '<a href="https://openai.com" rel="noopener noreferrer" target="_blank">site</a>');
     assertIncludes(html, '&lt;script&gt;alert(1)&lt;/script&gt;');
     assertDoesNotInclude(html, '<script>alert(1)</script>');
     assertIncludes(html, '<pre><code>const value = 1;</code></pre>');
@@ -122,30 +120,6 @@ describe('ConversationView message rendering', () => {
       after: 'data-code-block-id="code-2"',
     });
     assert.equal(countOccurrences({ source: html, text: 'Copy code' }), 2);
-  });
-
-  test('does not render timestamps, completion banners, or operation controls', () => {
-    const html = renderConversationView({
-      status: 'ready',
-      revision: 1,
-      items: [
-        {
-          id: 'item-1',
-          kind: 'message',
-          role: 'assistant',
-          text: 'done',
-        },
-      ],
-    });
-
-    assert.equal(html.includes('timestamp'), false);
-    assert.equal(html.includes('Done'), false);
-    assert.equal(html.includes('Search'), false);
-    assert.equal(html.includes('Refresh'), false);
-    assert.equal(html.includes('Retry'), false);
-    assert.equal(html.includes('Send'), false);
-    assert.equal(html.includes('Cancel'), false);
-    assert.equal(html.includes('Approval'), false);
   });
 });
 

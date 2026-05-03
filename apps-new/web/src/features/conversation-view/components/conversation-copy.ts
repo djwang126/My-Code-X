@@ -16,5 +16,9 @@ export async function copyCodeBlockText(input: CopyConversationTextInput): Promi
 }
 
 export function readBrowserClipboard(): ConversationClipboard {
-  return globalThis.navigator.clipboard;
+  return {
+    async writeText(text: string): Promise<void> {
+      await globalThis.navigator.clipboard.writeText(text);
+    },
+  };
 }

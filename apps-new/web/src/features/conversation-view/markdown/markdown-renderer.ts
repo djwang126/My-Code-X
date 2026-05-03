@@ -2,33 +2,76 @@ export interface RenderConversationMarkdownInput {
   readonly text: string;
 }
 
-export interface RenderedCodeBlock {
-  readonly kind: 'code';
-  readonly id: string;
-  readonly html: string;
+export interface ConversationMarkdownTextInline {
+  readonly kind: 'text';
   readonly text: string;
 }
 
-export interface RenderedHtmlBlock {
-  readonly kind: 'html';
-  readonly id: string;
-  readonly html: string;
+export interface ConversationMarkdownStrongInline {
+  readonly kind: 'strong';
+  readonly inlines: readonly ConversationMarkdownInline[];
 }
 
-export type RenderedMarkdownBlock = RenderedCodeBlock | RenderedHtmlBlock;
+export interface ConversationMarkdownCodeInline {
+  readonly kind: 'code';
+  readonly text: string;
+}
+
+export interface ConversationMarkdownLinkInline {
+  readonly kind: 'link';
+  readonly href: string;
+  readonly inlines: readonly ConversationMarkdownInline[];
+}
+
+export type ConversationMarkdownInline =
+  | ConversationMarkdownTextInline
+  | ConversationMarkdownStrongInline
+  | ConversationMarkdownCodeInline
+  | ConversationMarkdownLinkInline;
+
+export interface ConversationMarkdownParagraphBlock {
+  readonly kind: 'paragraph';
+  readonly id: string;
+  readonly inlines: readonly ConversationMarkdownInline[];
+}
+
+export interface ConversationMarkdownListBlock {
+  readonly kind: 'list';
+  readonly id: string;
+  readonly items: readonly (readonly ConversationMarkdownInline[])[];
+}
+
+export interface ConversationMarkdownCodeBlock {
+  readonly kind: 'code';
+  readonly id: string;
+  readonly text: string;
+}
+
+export interface ConversationMarkdownTableBlock {
+  readonly kind: 'table';
+  readonly id: string;
+  readonly headers: readonly (readonly ConversationMarkdownInline[])[];
+  readonly rows: readonly (readonly (readonly ConversationMarkdownInline[])[])[];
+}
+
+export type ConversationMarkdownBlock =
+  | ConversationMarkdownParagraphBlock
+  | ConversationMarkdownListBlock
+  | ConversationMarkdownCodeBlock
+  | ConversationMarkdownTableBlock;
 
 export interface RenderConversationMarkdownResult {
-  readonly blocks: readonly RenderedMarkdownBlock[];
+  readonly blocks: readonly ConversationMarkdownBlock[];
 }
 
 interface RenderBlockResult {
-  readonly block: RenderedMarkdownBlock;
+  readonly block: ConversationMarkdownBlock;
   readonly nextLineIndex: number;
 }
 
 export function renderConversationMarkdown(input: RenderConversationMarkdownInput): RenderConversationMarkdownResult {
   const lines = input.text.split('\n');
-  const blocks: RenderedMarkdownBlock[] = [];
+  const blocks: ConversationMarkdownBlock[] = [];
   let codeBlockCount = 0;
   let lineIndex = 0;
 
@@ -98,15 +141,11 @@ function renderCodeBlock(input: RenderBlockInput): RenderBlockResult {
     lineIndex += 1;
   }
 
-  const text = codeLines.join('\n');
-  const id = `code-${input.codeBlockNumber}`;
-
   return {
     block: {
       kind: 'code',
-      id,
-      html: `<pre><code>${escapeHtml(text)}</code></pre>`,
-      text,
+      id: `code-${input.codeBlockNumber}`,
+      text: codeLines.join('\n'),
     },
     nextLineIndex: lineIndex,
   };
@@ -114,31 +153,19 @@ function renderCodeBlock(input: RenderBlockInput): RenderBlockResult {
 
 function renderTable(input: RenderBlockInput): RenderBlockResult {
   const headerCells = parseTableCells(input.lines[input.lineIndex] ?? '');
-  const bodyRows: readonly string[][] = readTableBodyRows({
+  const bodyRows = readTableBodyRows({
     lines: input.lines,
     lineIndex: input.lineIndex + 2,
   });
-  const bodyRowCount = bodyRows.length;
-
-  const headerHtml = headerCells.map(cell => `<th>${renderInline(cell)}</th>`).join('');
-  const bodyHtml = bodyRows
-    .map(row => `<tr>${row.map(cell => `<td>${renderInline(cell)}</td>`).join('')}</tr>`)
-    .join('');
 
   return {
     block: {
-      kind: 'html',
-      id: createHtmlBlockId(input.blockNumber),
-      html: [
-        '<div class="conversation-markdown__table-scroll">',
-        '<table>',
-        `<thead><tr>${headerHtml}</tr></thead>`,
-        `<tbody>${bodyHtml}</tbody>`,
-        '</table>',
-        '</div>',
-      ].join(''),
+      kind: 'table',
+      id: createBlockId(input.blockNumber),
+      headers: headerCells.map(cell => renderConversationMarkdownInlines({ text: cell })),
+      rows: bodyRows.map(row => row.map(cell => renderConversationMarkdownInlines({ text: cell }))),
     },
-    nextLineIndex: input.lineIndex + 2 + bodyRowCount,
+    nextLineIndex: input.lineIndex + 2 + bodyRows.length,
   };
 }
 
@@ -166,7 +193,7 @@ function readTableBodyRows(input: ReadTableBodyRowsInput): readonly string[][] {
 }
 
 function renderList(input: RenderBlockInput): RenderBlockResult {
-  const items: string[] = [];
+  const items: (readonly ConversationMarkdownInline[])[] = [];
   let lineIndex = input.lineIndex;
 
   while (lineIndex < input.lines.length) {
@@ -176,15 +203,15 @@ function renderList(input: RenderBlockInput): RenderBlockResult {
       break;
     }
 
-    items.push(`<li>${renderInline(line.slice(2))}</li>`);
+    items.push(renderConversationMarkdownInlines({ text: line.slice(2) }));
     lineIndex += 1;
   }
 
   return {
     block: {
-      kind: 'html',
-      id: createHtmlBlockId(input.blockNumber),
-      html: `<ul>${items.join('')}</ul>`,
+      kind: 'list',
+      id: createBlockId(input.blockNumber),
+      items,
     },
     nextLineIndex: lineIndex,
   };
@@ -210,16 +237,16 @@ function renderParagraph(input: RenderBlockInput): RenderBlockResult {
 
   return {
     block: {
-      kind: 'html',
-      id: createHtmlBlockId(input.blockNumber),
-      html: `<p>${renderInline(paragraphLines.join('\n'))}</p>`,
+      kind: 'paragraph',
+      id: createBlockId(input.blockNumber),
+      inlines: renderConversationMarkdownInlines({ text: paragraphLines.join('\n') }),
     },
     nextLineIndex: lineIndex,
   };
 }
 
-function createHtmlBlockId(blockNumber: number): string {
-  return `html-${blockNumber}`;
+function createBlockId(blockNumber: number): string {
+  return `block-${blockNumber}`;
 }
 
 interface IsTableStartInput {
@@ -250,26 +277,130 @@ function parseTableCells(line: string): string[] {
   return line.slice(1, -1).split('|').map(cell => cell.trim());
 }
 
-function renderInline(text: string): string {
-  const escaped = escapeHtml(text);
-  const linked = escaped.replace(
-    /\[([^\]]+)]\((https?:\/\/[^)\s]+)\)/g,
-    (_match: string, label: string, url: string) => (
-      `<a href="${escapeAttribute(url)}" target="_blank" rel="noopener noreferrer">${label}</a>`
-    ),
-  );
-  const bolded = linked.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
-  return bolded.replace(/`([^`]+)`/g, '<code>$1</code>');
+interface RenderConversationMarkdownInlinesInput {
+  readonly text: string;
 }
 
-function escapeHtml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('"', '&quot;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;');
+function renderConversationMarkdownInlines(
+  input: RenderConversationMarkdownInlinesInput,
+): readonly ConversationMarkdownInline[] {
+  const inlines: ConversationMarkdownInline[] = [];
+  let position = 0;
+
+  while (position < input.text.length) {
+    const match = findNextInlineToken({
+      text: input.text,
+      startIndex: position,
+    });
+
+    if (!match) {
+      inlines.push({
+        kind: 'text',
+        text: input.text.slice(position),
+      });
+      break;
+    }
+
+    if (match.startIndex > position) {
+      inlines.push({
+        kind: 'text',
+        text: input.text.slice(position, match.startIndex),
+      });
+    }
+
+    inlines.push(match.inline);
+    position = match.endIndex;
+  }
+
+  return inlines;
 }
 
-function escapeAttribute(value: string): string {
-  return escapeHtml(value).replaceAll("'", '&#39;');
+interface InlineTokenMatch {
+  readonly startIndex: number;
+  readonly endIndex: number;
+  readonly inline: ConversationMarkdownInline;
+}
+
+interface FindNextInlineTokenInput {
+  readonly text: string;
+  readonly startIndex: number;
+}
+
+function findNextInlineToken(input: FindNextInlineTokenInput): InlineTokenMatch | null {
+  const matches = [
+    findNextCodeInlineToken(input),
+    findNextLinkInlineToken(input),
+    findNextStrongInlineToken(input),
+  ].filter((match): match is InlineTokenMatch => match !== null);
+
+  if (matches.length === 0) {
+    return null;
+  }
+
+  return matches.reduce((left, right) => (right.startIndex < left.startIndex ? right : left));
+}
+
+function findNextCodeInlineToken(input: FindNextInlineTokenInput): InlineTokenMatch | null {
+  const match = /`([^`]+)`/.exec(input.text.slice(input.startIndex));
+
+  if (!match || match.index === undefined) {
+    return null;
+  }
+
+  const startIndex = input.startIndex + match.index;
+  const rawText = match[0] ?? '';
+  const codeText = match[1] ?? '';
+
+  return {
+    startIndex,
+    endIndex: startIndex + rawText.length,
+    inline: {
+      kind: 'code',
+      text: codeText,
+    },
+  };
+}
+
+function findNextLinkInlineToken(input: FindNextInlineTokenInput): InlineTokenMatch | null {
+  const match = /\[([^\]]+)]\((https?:\/\/[^)\s]+)\)/.exec(input.text.slice(input.startIndex));
+
+  if (!match || match.index === undefined) {
+    return null;
+  }
+
+  const startIndex = input.startIndex + match.index;
+  const rawText = match[0] ?? '';
+  const label = match[1] ?? '';
+  const href = match[2] ?? '';
+
+  return {
+    startIndex,
+    endIndex: startIndex + rawText.length,
+    inline: {
+      kind: 'link',
+      href,
+      inlines: renderConversationMarkdownInlines({ text: label }),
+    },
+  };
+}
+
+function findNextStrongInlineToken(input: FindNextInlineTokenInput): InlineTokenMatch | null {
+  const match = /\*\*([^*]+)\*\*/.exec(input.text.slice(input.startIndex));
+
+  if (!match || match.index === undefined) {
+    return null;
+  }
+
+  const startIndex = input.startIndex + match.index;
+  const rawText = match[0] ?? '';
+  const strongText = match[1] ?? '';
+
+  return {
+    startIndex,
+    endIndex: startIndex + rawText.length,
+    inline: {
+      kind: 'strong',
+      inlines: renderConversationMarkdownInlines({ text: strongText }),
+    },
+  };
 }

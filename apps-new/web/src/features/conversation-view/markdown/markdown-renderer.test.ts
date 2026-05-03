@@ -3,8 +3,8 @@ import { describe, test } from 'node:test';
 
 import { renderConversationMarkdown } from './markdown-renderer.js';
 
-describe('conversation markdown renderer', () => {
-  test('renders common markdown blocks without syntax highlighting', () => {
+describe('conversation markdown subset renderer', () => {
+  test('renders common markdown blocks as structured markdown data', () => {
     assert.deepEqual(renderConversationMarkdown({
       text: [
         'Hello **Codex**.',
@@ -21,45 +21,62 @@ describe('conversation markdown renderer', () => {
     }), {
       blocks: [
         {
-          kind: 'html',
-          id: 'html-1',
-          html: '<p>Hello <strong>Codex</strong>.</p>',
+          kind: 'paragraph',
+          id: 'block-1',
+          inlines: [
+            { kind: 'text', text: 'Hello ' },
+            {
+              kind: 'strong',
+              inlines: [{ kind: 'text', text: 'Codex' }],
+            },
+            { kind: 'text', text: '.' },
+          ],
         },
         {
-          kind: 'html',
-          id: 'html-2',
-          html: '<ul><li>one</li><li>two</li></ul>',
+          kind: 'list',
+          id: 'block-2',
+          items: [
+            [{ kind: 'text', text: 'one' }],
+            [{ kind: 'text', text: 'two' }],
+          ],
         },
         {
-          kind: 'html',
-          id: 'html-3',
-          html: '<p><code>inline</code> code</p>',
+          kind: 'paragraph',
+          id: 'block-3',
+          inlines: [
+            { kind: 'code', text: 'inline' },
+            { kind: 'text', text: ' code' },
+          ],
         },
         {
           kind: 'code',
           id: 'code-1',
-          html: '<pre><code>const value = 1;</code></pre>',
           text: 'const value = 1;',
         },
       ],
     });
   });
 
-  test('escapes raw HTML instead of returning trusted page HTML', () => {
+  test('keeps raw HTML as plain text inline data', () => {
     assert.deepEqual(renderConversationMarkdown({
       text: '<img src=x onerror="alert(1)"> <script>alert(2)</script>',
     }), {
       blocks: [
         {
-          kind: 'html',
-          id: 'html-1',
-          html: '<p>&lt;img src=x onerror=&quot;alert(1)&quot;&gt; &lt;script&gt;alert(2)&lt;/script&gt;</p>',
+          kind: 'paragraph',
+          id: 'block-1',
+          inlines: [
+            {
+              kind: 'text',
+              text: '<img src=x onerror="alert(1)"> <script>alert(2)</script>',
+            },
+          ],
         },
       ],
     });
   });
 
-  test('wraps markdown tables in a horizontal overflow container', () => {
+  test('renders markdown tables as structured table blocks', () => {
     assert.deepEqual(renderConversationMarkdown({
       text: [
         '| Package | Command |',
@@ -69,23 +86,140 @@ describe('conversation markdown renderer', () => {
     }), {
       blocks: [
         {
-          kind: 'html',
-          id: 'html-1',
-          html: '<div class="conversation-markdown__table-scroll"><table><thead><tr><th>Package</th><th>Command</th></tr></thead><tbody><tr><td>web</td><td>npm run test --workspace @my-code-x/web-new</td></tr></tbody></table></div>',
+          kind: 'table',
+          id: 'block-1',
+          headers: [
+            [{ kind: 'text', text: 'Package' }],
+            [{ kind: 'text', text: 'Command' }],
+          ],
+          rows: [
+            [
+              [{ kind: 'text', text: 'web' }],
+              [{ kind: 'text', text: 'npm run test --workspace @my-code-x/web-new' }],
+            ],
+          ],
         },
       ],
     });
   });
 
-  test('renders external links with new-tab behavior', () => {
+  test('renders external links as link inline data', () => {
     assert.deepEqual(renderConversationMarkdown({
       text: '[OpenAI](https://openai.com)',
     }), {
       blocks: [
         {
-          kind: 'html',
-          id: 'html-1',
-          html: '<p><a href="https://openai.com" target="_blank" rel="noopener noreferrer">OpenAI</a></p>',
+          kind: 'paragraph',
+          id: 'block-1',
+          inlines: [
+            {
+              kind: 'link',
+              href: 'https://openai.com',
+              inlines: [{ kind: 'text', text: 'OpenAI' }],
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  test('keeps non-http URLs as plain text', () => {
+    assert.deepEqual(renderConversationMarkdown({
+      text: [
+        '[bad](javascript:alert(1))',
+        '[file](file:///tmp/a.txt)',
+        '[mail](mailto:hello@example.com)',
+      ].join(' '),
+    }), {
+      blocks: [
+        {
+          kind: 'paragraph',
+          id: 'block-1',
+          inlines: [
+            {
+              kind: 'text',
+              text: '[bad](javascript:alert(1)) [file](file:///tmp/a.txt) [mail](mailto:hello@example.com)',
+            },
+          ],
+        },
+      ],
+    });
+  });
+
+  test('preserves raw code block text without inline markdown rendering', () => {
+    assert.deepEqual(renderConversationMarkdown({
+      text: [
+        '```html',
+        'const value = "<script>";',
+        '',
+        '**not strong**',
+        '```',
+      ].join('\n'),
+    }), {
+      blocks: [
+        {
+          kind: 'code',
+          id: 'code-1',
+          text: [
+            'const value = "<script>";',
+            '',
+            '**not strong**',
+          ].join('\n'),
+        },
+      ],
+    });
+  });
+
+  test('renders inline markdown inside table cells', () => {
+    assert.deepEqual(renderConversationMarkdown({
+      text: [
+        '| Name | Link |',
+        '| --- | --- |',
+        '| **Codex** | [OpenAI](https://openai.com) |',
+      ].join('\n'),
+    }), {
+      blocks: [
+        {
+          kind: 'table',
+          id: 'block-1',
+          headers: [
+            [{ kind: 'text', text: 'Name' }],
+            [{ kind: 'text', text: 'Link' }],
+          ],
+          rows: [
+            [
+              [
+                {
+                  kind: 'strong',
+                  inlines: [{ kind: 'text', text: 'Codex' }],
+                },
+              ],
+              [
+                {
+                  kind: 'link',
+                  href: 'https://openai.com',
+                  inlines: [{ kind: 'text', text: 'OpenAI' }],
+                },
+              ],
+            ],
+          ],
+        },
+      ],
+    });
+  });
+
+  test('handles unclosed code fences deterministically', () => {
+    assert.deepEqual(renderConversationMarkdown({
+      text: [
+        '```ts',
+        'const value = 1;',
+      ].join('\n'),
+    }), {
+      blocks: [
+        {
+          kind: 'code',
+          id: 'code-1',
+          text: 'const value = 1;',
         },
       ],
     });

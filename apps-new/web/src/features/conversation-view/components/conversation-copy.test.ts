@@ -1,51 +1,60 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
-import { copyCodeBlockText, copyMessageText } from './conversation-copy.js';
+import { copyCodeBlockText, copyMessageText, type ConversationClipboard } from './conversation-copy.js';
 
-interface ConversationClipboard {
-  writeText(text: string): Promise<void>;
-}
-
-describe('conversation copy actions', () => {
-  test('copies the raw markdown message text instead of rendered content', async () => {
-    const clipboard = createMemoryClipboard();
+describe('conversation copy behavior', () => {
+  test('copies the original message text', async () => {
+    const fixture = createClipboardRecorder();
+    const originalText = [
+      'Hello **Codex**',
+      '[site](https://openai.com)',
+      '<script>alert(1)</script>',
+    ].join('\n');
 
     await copyMessageText({
-      clipboard,
-      text: 'Hello **Codex**\n\n```ts\nconst value = 1;\n```',
+      clipboard: fixture.clipboard,
+      text: originalText,
     });
 
-    assert.deepEqual(clipboard.writes, [
-      'Hello **Codex**\n\n```ts\nconst value = 1;\n```',
+    assert.deepEqual(fixture.writes, [
+      originalText,
     ]);
   });
 
-  test('copies the raw fenced code text for a code block', async () => {
-    const clipboard = createMemoryClipboard();
+  test('copies the original code block text', async () => {
+    const fixture = createClipboardRecorder();
+    const originalText = [
+      'const value = "<script>";',
+      '',
+      'console.log(value);',
+    ].join('\n');
 
     await copyCodeBlockText({
-      clipboard,
-      text: 'const value = 1;',
+      clipboard: fixture.clipboard,
+      text: originalText,
     });
 
-    assert.deepEqual(clipboard.writes, [
-      'const value = 1;',
+    assert.deepEqual(fixture.writes, [
+      originalText,
     ]);
   });
 });
 
-interface MemoryClipboard extends ConversationClipboard {
+interface ClipboardRecorder {
+  readonly clipboard: ConversationClipboard;
   readonly writes: readonly string[];
 }
 
-function createMemoryClipboard(): MemoryClipboard {
+function createClipboardRecorder(): ClipboardRecorder {
   const writes: string[] = [];
 
   return {
-    writes,
-    async writeText(text: string): Promise<void> {
-      writes.push(text);
+    clipboard: {
+      async writeText(text: string): Promise<void> {
+        writes.push(text);
+      },
     },
+    writes,
   };
 }

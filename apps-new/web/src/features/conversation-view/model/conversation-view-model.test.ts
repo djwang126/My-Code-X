@@ -37,7 +37,7 @@ describe('conversation view model', () => {
             id: 'item-1',
             kind: 'message',
             role: 'user',
-            text: 'hello **Codex**',
+            text: 'hello **Codex**\n<script>alert(1)</script>',
           },
           {
             id: 'item-2',
@@ -55,41 +55,13 @@ describe('conversation view model', () => {
           id: 'item-1',
           kind: 'message',
           role: 'user',
-          text: 'hello **Codex**',
+          text: 'hello **Codex**\n<script>alert(1)</script>',
         },
         {
           id: 'item-2',
           kind: 'message',
           role: 'assistant',
           text: 'world',
-        },
-      ],
-    });
-  });
-
-  test('keeps message raw markdown as data instead of rendering HTML in the model', () => {
-    assert.deepEqual(createConversationViewModelFromSnapshot({
-      conversation: {
-        status: 'ready',
-        revision: 1,
-        items: [
-          {
-            id: 'item-1',
-            kind: 'message',
-            role: 'assistant',
-            text: 'Use `<button>` as text.',
-          },
-        ],
-      },
-    }), {
-      status: 'timeline',
-      revision: 1,
-      items: [
-        {
-          id: 'item-1',
-          kind: 'message',
-          role: 'assistant',
-          text: 'Use `<button>` as text.',
         },
       ],
     });
