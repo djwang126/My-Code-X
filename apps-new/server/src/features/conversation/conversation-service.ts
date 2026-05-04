@@ -1,5 +1,9 @@
 import { createConversationAggregation } from './conversation-aggregation.js';
-import type { ConversationCommand, ConversationDomainEvent, ConversationSnapshot } from './conversation-events.js';
+import type {
+  ConversationCommand,
+  ConversationDomainEvent,
+  ConversationSnapshot,
+} from './conversation-events.js';
 import { createTimeoutConversationScheduler, type ConversationDependencies } from './conversation-ports.js';
 import { projectRuntimeThreadItem, projectRuntimeTimeline } from './conversation-runtime-projection.js';
 import { applyConversationDomainEvent, createInitialConversationState, type ConversationState } from './conversation-state.js';
@@ -59,7 +63,11 @@ export function createConversationService(dependencies: ConversationDependencies
   function recordDelta(command: Extract<ConversationCommand, { readonly kind: 'record-runtime-item-delta' }>): ConversationSnapshot {
     const state = readState(command.threadId);
 
-    if (command.deltaKind !== 'agent-message' || command.text === null) {
+    if (command.deltaKind !== 'agent-message') {
+      return createConversationSnapshot({ state });
+    }
+
+    if (command.text === null) {
       return createConversationSnapshot({ state });
     }
 
@@ -104,7 +112,10 @@ export function createConversationService(dependencies: ConversationDependencies
           return createConversationSnapshot({ state: readState(input.threadId) });
         }
 
-        aggregation.discardItem({ threadId: input.threadId, itemId: item.id });
+        if (item.kind === 'message') {
+          aggregation.discardItem({ threadId: input.threadId, itemId: item.id });
+        }
+
         return publish({
           kind: 'conversation-item-upserted',
           threadId: input.threadId,

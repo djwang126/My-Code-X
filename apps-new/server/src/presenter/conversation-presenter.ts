@@ -22,5 +22,21 @@ export function presentConversationItem(input: PresentConversationItemInput): Cl
         role: input.item.role,
         text: input.item.text,
       };
+
+    case 'work-trace':
+      return {
+        id: input.item.id,
+        kind: 'work-trace',
+        codexType: input.item.codexType,
+        fields: input.item.fields,
+      };
+
+    case 'unknown':
+      return {
+        id: input.item.id,
+        kind: 'unknown',
+        codexType: input.item.codexType,
+        fields: input.item.fields,
+      };
   }
 }

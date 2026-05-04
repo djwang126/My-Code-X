@@ -121,6 +121,175 @@ describe('ConversationView message rendering', () => {
     });
     assert.equal(countOccurrences({ source: html, text: 'Copy code' }), 2);
   });
+
+  test('does not apply work trace line expansion controls to long messages', () => {
+    const html = renderConversationView({
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'assistant-long',
+          kind: 'message',
+          role: 'assistant',
+          text: createNumberedLines({ count: 50 }),
+        },
+      ],
+    });
+
+    assertIncludes(html, 'line 1');
+    assertIncludes(html, 'line 50');
+    assertDoesNotInclude(html, '展开剩余');
+  });
+
+  test('renders work trace items as default-collapsed Codex-side field cards', () => {
+    const html = renderConversationView({
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'plan-1',
+          kind: 'work-trace',
+          codexType: 'plan',
+          fields: [
+            { name: 'type', value: 'plan' },
+            { name: 'status', value: 'completed' },
+            { name: 'plan', value: [{ step: 'Read docs', status: 'completed' }] },
+          ],
+        },
+      ],
+    });
+
+    assertIncludes(html, 'conversation-view__timeline-item--trace');
+    assertIncludes(html, '<summary>plan</summary>');
+    assertIncludes(html, 'type');
+    assertIncludes(html, 'completed');
+    assertDoesNotInclude(html, '<details open');
+    assertDoesNotInclude(html, 'conversation-view__timeline-item--user');
+    assertDoesNotInclude(html, 'Copy message');
+    assertDoesNotInclude(html, 'Copy code');
+  });
+
+  test('renders long work trace field with a per-field remaining-lines entry', () => {
+    const html = renderConversationView({
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'command-1',
+          kind: 'work-trace',
+          codexType: 'commandExecution',
+          fields: [
+            {
+              name: 'aggregatedOutput',
+              value: createNumberedLines({ count: 50, prefix: 'trace line' }),
+            },
+          ],
+        },
+      ],
+    });
+
+    assertIncludes(html, 'trace line 1');
+    assertIncludes(html, 'trace line 30');
+    assertDoesNotInclude(html, 'trace line 31');
+    assertDoesNotInclude(html, 'trace line 50');
+    assertIncludes(html, '展开剩余 20 行');
+  });
+
+  test('renders arbitrary long work trace field values with per-field truncation', () => {
+    const html = renderConversationView({
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'command-1',
+          kind: 'work-trace',
+          codexType: 'commandExecution',
+          fields: [
+            {
+              name: 'runtimeDeltaText',
+              value: createNumberedLines({ count: 35, prefix: 'runtime output' }),
+            },
+            {
+              name: 'runtimeDeltaEvents',
+              value: [
+                {
+                  deltaKind: 'command-output',
+                  text: 'runtime output',
+                  data: { delta: 'runtime output' },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    });
+
+    assertIncludes(html, 'runtimeDeltaText');
+    assertIncludes(html, 'runtime output 30');
+    assertDoesNotInclude(html, 'runtime output 31');
+    assertIncludes(html, '展开剩余 5 行');
+    assertIncludes(html, 'runtimeDeltaEvents');
+    assertIncludes(html, '&quot;deltaKind&quot;: &quot;command-output&quot;');
+  });
+
+  test('does not truncate long messages while truncating long work trace fields', () => {
+    const html = renderConversationView({
+      status: 'ready',
+      revision: 4,
+      items: [
+        {
+          id: 'assistant-long',
+          kind: 'message',
+          role: 'assistant',
+          text: createNumberedLines({ count: 50, prefix: 'message line' }),
+        },
+        {
+          id: 'trace-1',
+          kind: 'work-trace',
+          codexType: 'commandExecution',
+          fields: [
+            {
+              name: 'aggregatedOutput',
+              value: createNumberedLines({ count: 50, prefix: 'trace line' }),
+            },
+          ],
+        },
+      ],
+    });
+
+    assertIncludes(html, 'message line 50');
+    assertIncludes(html, 'trace line 30');
+    assertDoesNotInclude(html, 'trace line 31');
+    assertIncludes(html, '展开剩余 20 行');
+  });
+
+  test('renders unknown items as default-collapsed fallback field cards without pretending they are work traces', () => {
+    const html = renderConversationView({
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'future-1',
+          kind: 'unknown',
+          codexType: 'futureCodexItem',
+          fields: [
+            { name: 'id', value: 'future-1' },
+            { name: 'type', value: 'futureCodexItem' },
+            { name: 'payload', value: { nested: true } },
+          ],
+        },
+      ],
+    });
+
+    assertIncludes(html, 'conversation-view__trace-card--unknown');
+    assertIncludes(html, '<summary>futureCodexItem</summary>');
+    assertIncludes(html, 'payload');
+    assertIncludes(html, '&quot;nested&quot;: true');
+    assertDoesNotInclude(html, '<details open');
+    assertDoesNotInclude(html, 'conversation-view__message--user');
+    assertDoesNotInclude(html, 'Copy message');
+    assertDoesNotInclude(html, 'Copy code');
+  });
 });
 
 function renderConversationView(conversation: ClientConversationView): string {
@@ -159,4 +328,14 @@ function assertOrder(input: AssertOrderInput): void {
 
 function countOccurrences(input: CountOccurrencesInput): number {
   return input.source.split(input.text).length - 1;
+}
+
+interface CreateNumberedLinesInput {
+  readonly count: number;
+  readonly prefix?: string;
+}
+
+function createNumberedLines(input: CreateNumberedLinesInput): string {
+  const prefix = input.prefix ?? 'line';
+  return Array.from({ length: input.count }, (_, index) => `${prefix} ${index + 1}`).join('\n');
 }

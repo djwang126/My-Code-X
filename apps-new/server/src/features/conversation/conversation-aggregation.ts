@@ -1,4 +1,4 @@
-import type { ConversationItem } from './conversation-events.js';
+import type { ConversationMessageItem } from './conversation-events.js';
 import type { ConversationScheduledTask, ConversationSchedulerPort } from './conversation-ports.js';
 
 export interface ConversationAggregation {
@@ -31,12 +31,12 @@ export interface DiscardPendingConversationThreadInput {
 
 export interface FlushPendingConversationItemInput {
   readonly threadId: string;
-  readonly item: ConversationItem;
+  readonly item: ConversationMessageItem;
 }
 
 interface PendingConversationItem {
   readonly threadId: string;
-  readonly item: ConversationItem;
+  readonly item: ConversationMessageItem;
   readonly task: ConversationScheduledTask;
 }
 
@@ -132,7 +132,7 @@ interface CreateAssistantMessageFromDeltaInput {
   readonly text: string;
 }
 
-function createAssistantMessageFromDelta(input: CreateAssistantMessageFromDeltaInput): ConversationItem {
+function createAssistantMessageFromDelta(input: CreateAssistantMessageFromDeltaInput): ConversationMessageItem {
   return {
     id: input.itemId,
     kind: 'message',

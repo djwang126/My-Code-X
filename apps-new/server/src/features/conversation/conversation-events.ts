@@ -1,4 +1,9 @@
-import type { RuntimeItemDeltaKind, RuntimeTimelineItem, RuntimeThreadItem } from '../../ports/index.js';
+import type {
+  JsonValue,
+  RuntimeItemDeltaKind,
+  RuntimeTimelineItem,
+  RuntimeThreadItem,
+} from '../../ports/index.js';
 
 export type ConversationCommand =
   | ReplaceConversationCommand
@@ -56,7 +61,10 @@ export interface ConversationSnapshot {
   readonly items: readonly ConversationItem[];
 }
 
-export type ConversationItem = ConversationMessageItem;
+export type ConversationItem =
+  | ConversationMessageItem
+  | ConversationWorkTraceItem
+  | ConversationUnknownItem;
 
 export interface ConversationMessageItem {
   readonly id: string;
@@ -66,6 +74,25 @@ export interface ConversationMessageItem {
 }
 
 export type ConversationMessageRole = 'user' | 'assistant';
+
+export interface ConversationItemField {
+  readonly name: string;
+  readonly value: JsonValue;
+}
+
+export interface ConversationWorkTraceItem {
+  readonly id: string;
+  readonly kind: 'work-trace';
+  readonly codexType: string;
+  readonly fields: readonly ConversationItemField[];
+}
+
+export interface ConversationUnknownItem {
+  readonly id: string;
+  readonly kind: 'unknown';
+  readonly codexType: string;
+  readonly fields: readonly ConversationItemField[];
+}
 
 export function isConversationDomainEvent(event: unknown): event is ConversationDomainEvent {
   if (!isRecord(event)) {

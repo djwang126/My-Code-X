@@ -1,5 +1,5 @@
 import type { ConversationDomainEvent, ConversationSnapshot } from './conversation-events.js';
-import type { ConversationItem } from './conversation-events.js';
+import type { ConversationItem, ConversationItemField } from './conversation-events.js';
 
 export type ConversationState = ConversationSnapshot;
 
@@ -67,5 +67,24 @@ function isSameConversationItem(left: ConversationItem, right: ConversationItem)
         && left.id === right.id
         && left.role === right.role
         && left.text === right.text;
+
+    case 'work-trace':
+      return right.kind === 'work-trace'
+        && left.id === right.id
+        && left.codexType === right.codexType
+        && areSameConversationItemFields(left.fields, right.fields);
+
+    case 'unknown':
+      return right.kind === 'unknown'
+        && left.id === right.id
+        && left.codexType === right.codexType
+        && areSameConversationItemFields(left.fields, right.fields);
   }
+}
+
+function areSameConversationItemFields(
+  left: readonly ConversationItemField[],
+  right: readonly ConversationItemField[],
+): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }

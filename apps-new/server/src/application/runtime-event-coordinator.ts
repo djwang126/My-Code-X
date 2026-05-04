@@ -60,7 +60,11 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
 
         case 'runtime-item-started':
         case 'runtime-item-completed':
-          recordConversationItem({ conversation: input.conversation, threadId: event.threadId, item: event.item });
+          recordConversationItem({
+            conversation: input.conversation,
+            threadId: event.threadId,
+            item: event.item,
+          });
           return;
 
         case 'runtime-item-delta':

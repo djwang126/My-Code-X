@@ -54,17 +54,23 @@ export {
 } from './client-snapshot.js';
 export {
   clientConversationErrorSchema,
+  clientConversationItemFieldSchema,
   clientConversationItemSchema,
   clientConversationMessageItemSchema,
   clientConversationReadyViewSchema,
+  clientConversationUnknownItemSchema,
   clientConversationViewSchema,
+  clientConversationWorkTraceItemSchema,
   type ClientConversationError,
   type ClientConversationFailedView,
+  type ClientConversationItemField,
   type ClientConversationItem,
   type ClientConversationLoadingView,
   type ClientConversationMessageItem,
   type ClientConversationReadyView,
+  type ClientConversationUnknownItem,
   type ClientConversationView,
+  type ClientConversationWorkTraceItem,
 } from './conversation-view.js';
 export {
   pendingInteractionControlSchema,

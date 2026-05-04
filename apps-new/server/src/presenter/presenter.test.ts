@@ -104,6 +104,60 @@ test('conversation presenter exposes confirmed message timeline items', () => {
   });
 });
 
+test('conversation presenter exposes work trace fields without summaries or reinterpretation', () => {
+  const item: ConversationItem = {
+    id: 'plan-1',
+    kind: 'work-trace',
+    codexType: 'plan',
+    fields: [
+      { name: 'type', value: 'plan' },
+      { name: 'id', value: 'plan-1' },
+      { name: 'status', value: 'completed' },
+      { name: 'plan', value: [{ step: 'Read docs', status: 'completed' }] },
+    ],
+  };
+
+  const presented = presentConversationItem({ item });
+
+  assert.deepEqual(presented, {
+    id: 'plan-1',
+    kind: 'work-trace',
+    codexType: 'plan',
+    fields: [
+      { name: 'type', value: 'plan' },
+      { name: 'id', value: 'plan-1' },
+      { name: 'status', value: 'completed' },
+      { name: 'plan', value: [{ step: 'Read docs', status: 'completed' }] },
+    ],
+  });
+});
+
+test('conversation presenter exposes unknown item fallback as unknown', () => {
+  const item: ConversationItem = {
+    id: 'future-1',
+    kind: 'unknown',
+    codexType: 'futureCodexItem',
+    fields: [
+      { name: 'id', value: 'future-1' },
+      { name: 'type', value: 'futureCodexItem' },
+      { name: 'payload', value: { nested: true } },
+    ],
+  };
+
+  const presented = presentConversationItem({ item });
+
+  assert.deepEqual(presented, {
+    id: 'future-1',
+    kind: 'unknown',
+    codexType: 'futureCodexItem',
+    fields: [
+      { name: 'id', value: 'future-1' },
+      { name: 'type', value: 'futureCodexItem' },
+      { name: 'payload', value: { nested: true } },
+    ],
+  });
+});
+
 test('turn presenter exposes the native turn snapshot shape', () => {
   assert.deepEqual(presentTurn({
     snapshot: {

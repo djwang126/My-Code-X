@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { jsonValueSchema, type JsonValue } from './json.js';
 
 export const clientConversationMessageItemSchema = z.object({
   id: z.string(),
@@ -7,12 +8,51 @@ export const clientConversationMessageItemSchema = z.object({
   text: z.string(),
 }).strict();
 
+export const clientConversationItemFieldSchema = z.object({
+  name: z.string(),
+  value: jsonValueSchema,
+}).strict();
+
+export const clientConversationWorkTraceItemSchema = z.object({
+  id: z.string(),
+  kind: z.literal('work-trace'),
+  codexType: z.string(),
+  fields: z.array(clientConversationItemFieldSchema),
+}).strict();
+
+export const clientConversationUnknownItemSchema = z.object({
+  id: z.string(),
+  kind: z.literal('unknown'),
+  codexType: z.string(),
+  fields: z.array(clientConversationItemFieldSchema),
+}).strict();
+
 export const clientConversationItemSchema = z.discriminatedUnion('kind', [
   clientConversationMessageItemSchema,
+  clientConversationWorkTraceItemSchema,
+  clientConversationUnknownItemSchema,
 ]);
 
 export type ClientConversationMessageItem = Readonly<z.infer<typeof clientConversationMessageItemSchema>>;
-export type ClientConversationItem = Readonly<z.infer<typeof clientConversationItemSchema>>;
+export type ClientConversationItemField = Readonly<
+  Omit<z.infer<typeof clientConversationItemFieldSchema>, 'value'> & {
+    readonly value: JsonValue;
+  }
+>;
+export type ClientConversationWorkTraceItem = Readonly<
+  Omit<z.infer<typeof clientConversationWorkTraceItemSchema>, 'fields'> & {
+    readonly fields: readonly ClientConversationItemField[];
+  }
+>;
+export type ClientConversationUnknownItem = Readonly<
+  Omit<z.infer<typeof clientConversationUnknownItemSchema>, 'fields'> & {
+    readonly fields: readonly ClientConversationItemField[];
+  }
+>;
+export type ClientConversationItem =
+  | ClientConversationMessageItem
+  | ClientConversationWorkTraceItem
+  | ClientConversationUnknownItem;
 
 export const clientConversationErrorSchema = z.object({
   message: z.string(),

@@ -34,6 +34,35 @@ function createCoordinatorFixture(): CoordinatorFixture {
   };
 }
 
+interface ConversationCommandCollector {
+  readonly commands: readonly ConversationCommand[];
+  readonly conversation: ConversationService;
+}
+
+function createConversationCommandCollector(): ConversationCommandCollector {
+  const commands: ConversationCommand[] = [];
+
+  return {
+    commands,
+    conversation: {
+      apply(input) {
+        commands.push(input);
+        return {
+          revision: 0,
+          items: [],
+        };
+      },
+
+      snapshot() {
+        return {
+          revision: 0,
+          items: [],
+        };
+      },
+    },
+  };
+}
+
 describe('createRuntimeEventCoordinator', () => {
   test('routes runtime-turn-started events to turn only', () => {
     const fixture = createCoordinatorFixture();
@@ -234,25 +263,9 @@ describe('createRuntimeEventCoordinator', () => {
   });
 
   test('routes runtime items to conversation without classifying them in application', () => {
-    const conversationCommands: ConversationCommand[] = [];
-    const conversation: ConversationService = {
-      apply(input) {
-        conversationCommands.push(input);
-        return {
-          revision: 0,
-          items: [],
-        };
-      },
-
-      snapshot() {
-        return {
-          revision: 0,
-          items: [],
-        };
-      },
-    };
+    const collector = createConversationCommandCollector();
     const coordinator = createRuntimeEventCoordinator({
-      conversation,
+      conversation: collector.conversation,
       turn: createNoopTurnService(),
     });
 
@@ -270,7 +283,7 @@ describe('createRuntimeEventCoordinator', () => {
       },
     });
 
-    assert.deepEqual(conversationCommands, [
+    assert.deepEqual(collector.commands, [
       {
         kind: 'record-runtime-thread-item',
         threadId: 'thread-1',
@@ -282,6 +295,39 @@ describe('createRuntimeEventCoordinator', () => {
           phase: null,
           memoryCitation: null,
         },
+      },
+    ]);
+  });
+
+  test('routes runtime item deltas to conversation without classifying them in application', () => {
+    const collector = createConversationCommandCollector();
+    const coordinator = createRuntimeEventCoordinator({
+      conversation: collector.conversation,
+      turn: createNoopTurnService(),
+    });
+
+    coordinator.receive({
+      kind: 'runtime-item-delta',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      itemId: 'command-1',
+      deltaKind: 'command-output',
+      text: 'ok',
+      data: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        itemId: 'command-1',
+        delta: 'ok',
+      },
+    });
+
+    assert.deepEqual(collector.commands, [
+      {
+        kind: 'record-runtime-item-delta',
+        threadId: 'thread-1',
+        itemId: 'command-1',
+        deltaKind: 'command-output',
+        text: 'ok',
       },
     ]);
   });
