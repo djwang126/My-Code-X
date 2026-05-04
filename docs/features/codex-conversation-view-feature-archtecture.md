@@ -40,27 +40,29 @@ Conversation item contract 必须采用 discriminated union，而不是用一组
 Conversation item 采用少量产品级分类：
 
 - Message item：用户消息或 assistant message。内容是原始 Markdown 文本，前端按 Markdown 语义渲染。
-- Work trace item：Codex 原生工作痕迹，例如计划、推理摘要、命令、工具、文件变更、网页搜索，或包含 stdout、stderr、diff、工具 payload 等内容的 app-server 结构。
-- Unknown item：My-Code-X 当前不认识的 Codex item。它保留原始 payload，前端展开后展示格式化 JSON。
+- Work trace item：Codex 原生工作痕迹，例如 hook prompt、计划、推理摘要、命令、工具、文件变更、网页搜索，或包含 stdout、stderr、diff、工具 payload 等内容的 app-server 结构。它使用 Codex 原生 item type 作为可识别标题，并把原始 payload 投影为通用字段列表。
+- Unknown item：My-Code-X 当前不认识的 Codex item。它保留 Codex 原生 item type，并把原始 payload 投影为同一套通用字段列表，前端展开后按字段名和值展示。
 - Error item：Codex/app-server 表示为 conversation item 的聊天过程错误。它保留原始错误信息，前端以错误卡片展示。
 
-分类只服务于产品渲染边界，不重新解释 Codex 业务语义。工作痕迹的标题、标签、摘要和状态优先使用 Codex 原生展示元数据。原生展示元数据不存在时，只退回显示原始 item type。
+分类只服务于产品渲染边界，不重新解释 Codex 业务语义。工作痕迹和未知 item 的卡片标题使用 Codex 原生 item type。My-Code-X 不从字段内容中自行生成标题、标签或摘要。状态等字段如果存在于 Codex payload 中，只作为通用字段列表的一项展示。
 
 Conversation feature 内部应拥有 server-side canonical conversation item concept。Runtime、domain、contract、UI 可以有边界 wrapper 或 projection shape，但不能在多个层里重复定义同一个产品概念并复制字段。已知 item 先进入 typed conversation domain model，再由 presenter 投影到 client contract；Web 不再重新定义一套等价 schema。
+
+通用字段列表是工作痕迹和未知 item 的共享 canonical concept。字段列表中的每一行包含原始字段名和 JSON value：`{ name, value }`。字段列表从 Codex item raw payload 的 object entries 生成，必须保留 raw payload 的字段顺序，前端按该顺序展示，不重新排序。字段列表保留原始字段，不过滤 `type`、`id`、`status` 等调试有用字段，也不把字段解释成 My-Code-X 自定义标题或摘要。
 
 ### Item content
 
 用户消息和 assistant message 保留原始文本。复制整条消息或代码块时使用原始文本，而不是渲染后的 DOM 内容。
 
-工作痕迹保留完整内容。30 行截断是前端阅读策略，不是后端数据截断。前端第一次展开长工作痕迹时显示前 30 行，并根据完整内容计算剩余行数。
+工作痕迹保留 Codex 原始 payload 中的字段名和值，并在 conversation contract 中投影为通用字段列表。30 行截断是前端阅读策略，不是后端数据截断。前端第一次展开长工作痕迹字段值时显示前 30 行，并根据完整字段值计算剩余行数。
 
-未知 item 保留格式化 JSON 所需的原始 payload。Unknown raw payload 是 contract 不暴露 raw Codex transport vocabulary 的受控例外：它只用于 fallback 可观察性，不代表已知 item 可以依赖 raw payload 渲染。已知 item 渲染必须依赖 boundary parsing 后的 typed fields。
+未知 item 使用与工作痕迹相同的通用字段列表策略。Unknown raw payload 不应被静默丢弃；projection boundary 把 raw object 转为 `{ name, value }` 字段行，复杂 value 仍保留为 JSON value。这样已知工作痕迹和未知 fallback 可以复用字段渲染，但仍通过 `kind` 区分产品语义。
 
 错误 item 保留原始错误 message。My-Code-X 不改写错误原因，也不补充推断性解释。
 
 ### Rendering metadata
 
-Client contract 可以携带渲染所需的轻量 metadata，例如 item category、message role、原生 item type、原生标题或标签、渲染格式、workspace reference 标记等。
+Client contract 可以携带渲染所需的轻量 metadata，例如 item category、message role、原生 item type、通用字段列表、渲染格式、workspace reference 标记等。
 
 Rendering metadata 必须保持最小。能从 item category 或 message role 推导出的纯布局信息，不需要进入 contract。只有来自 Codex/app-server 的语义标记，或 frontend 无法安全推导但渲染必须知道的信息，才进入 contract。纯 CSS/layout 决策留在 Web。
 
@@ -120,7 +122,7 @@ Frontend owns local display-only UI state: expanded cards, expanded line count, 
 
 ## Module Boundry
 
-Contracts define frontend-facing product shapes. They describe conversation snapshots, conversation items, client events and view states without generally exposing raw Codex transport vocabulary. Unknown item raw payload is the explicit fallback exception for observability.
+Contracts define frontend-facing product shapes. They describe conversation snapshots, conversation items, client events and view states without exposing raw Codex transport vocabulary as an untyped blob. Work trace and unknown items expose a controlled generic field list derived from Codex payloads for observability.
 
 Conversation feature is the only server feature that mutates conversation timeline state. Other features do not append, patch, replace or classify conversation items directly.
 
@@ -166,7 +168,7 @@ Application and projection layers preserve typed error semantics until the prese
 
 Message items declare Markdown rendering but never trusted HTML rendering. External links open in a new browser tab. Workspace references are visually distinct when contract metadata identifies them as workspace references.
 
-Work trace items declare whether they are foldable. The frontend applies the first-30-lines display rule to expanded long work trace content and computes remaining lines from the full content supplied by the contract.
+Work trace items declare foldable field rows derived from the Codex payload. The frontend applies the first-30-lines display rule to expanded long field values and computes remaining lines from the full field value supplied by the contract.
 
 Conversation View contracts do not include search, filter, jump, refresh, retry, send, cancel or approval controls.
 
@@ -178,10 +180,10 @@ Frontend rendering is intentionally dumb about Codex semantics. It can decide la
 
 Markdown rendering is client-side and safe by construction: Markdown syntax is rendered, raw HTML is escaped or treated as text, and code block highlighting is not part of this feature.
 
-Work trace folding is a UI presentation policy. Server state stores full content; the browser decides how much is visible at a time.
+Work trace folding is a UI presentation policy. Server state stores full field values; the browser decides how much is visible at a time.
 
 Completion is represented by the absence of further updates and by the final authoritative content. Conversation View does not add a separate done banner.
 
 Time exists outside the Conversation View product contract for this feature. Even if app-server supplies timestamps, this feature does not project them into the Conversation View UI.
 
-The implementation should follow the vertical slices: first establish the frontend host and snapshot shell, then confirmed messages, Markdown/link behavior, aggregated events, restore, work traces, long expansion, unknown JSON fallback and error surfaces.
+The implementation should follow the vertical slices: first establish the frontend host and snapshot shell, then confirmed messages, Markdown/link behavior, aggregated events, restore, work traces with generic field rows, long expansion, unknown fallback using the same field rows, and error surfaces.
