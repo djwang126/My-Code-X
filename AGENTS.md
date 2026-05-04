@@ -11,17 +11,16 @@ The original codex is at: ../codex (relative to this repository root). Learn the
 Codex sessions/past chats lives in ~/.codex/sessions/{YYYY}/{MM}/{DD}/rollout-{timestamp}-{session-id}.jsonl, usefull for debugging and real output checking
 When investigating workspace, 先理解文件目录，再定向阅读。不要暴力搜全局
 
-## core code principles
+## Core Code Principles
 
-- follow Rob Pike's coding philosophy to design code.
-- one file should do one job/responsibility
-- one folder should represent one responsibility
-- feature code should stay inside the feature unless it is clearly reused
-- private implementation files should not be imported across feature boundaries
-- imports follow fixed directions
+- YAGNI
+- Go style / Rob pike-style simplicity
+- Unix philosophy
+- Hexagonal Architecture
+- separation of concerns
 
 ## tests
 
 Full test commands for the old version: npm run test; npm run test:smoke; npm run lint
 Full test commands for the new version: npm run test:new; npm run typecheck:new; npm run lint:new
-Tests are colocated by default.
+
