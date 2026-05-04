@@ -20,8 +20,7 @@ function createSnapshotInput() {
       items: [],
     },
     workspace: {
-      workspace: null,
-      available: false,
+      status: 'none' as const,
     },
   };
 }

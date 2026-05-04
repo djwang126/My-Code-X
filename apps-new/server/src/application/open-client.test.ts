@@ -17,7 +17,12 @@ const events: EventBusPort = {
   },
 };
 
-function createOpenClientDependencies() {
+interface CreateOpenClientDependenciesInput {
+  readonly savedWorkspaceAvailable?: boolean;
+}
+
+function createOpenClientDependencies(input: CreateOpenClientDependenciesInput = {}) {
+  const threadOpenCalls: { readonly threadId: string; readonly workspace: string }[] = [];
   const conversation: ConversationService = {
     apply() {
       return { revision: 0, items: [] };
@@ -39,15 +44,66 @@ function createOpenClientDependencies() {
     },
   };
   const workspace: WorkspaceService = {
-    async inspect(input) {
+    async inspectSavedWorkspace(command) {
+      if (!command.workspaceId) {
+        return {
+          status: 'none',
+        };
+      }
+
+      if (input.savedWorkspaceAvailable === false) {
+        return {
+          status: 'unavailable',
+          workspaceId: command.workspaceId,
+          reason: 'not-saved',
+          message: 'Workspace 未保存',
+        };
+      }
+
       return {
-        available: Boolean(input.workspace),
-        workspace: input.workspace,
+        status: 'available',
+        workspaceId: command.workspaceId,
       };
     },
 
-    async listThreads() {
-      return [];
+    async openList() {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: null,
+        items: [],
+      };
+    },
+
+    async add() {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: null,
+        items: [],
+      };
+    },
+
+    async rename() {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: null,
+        items: [],
+      };
+    },
+
+    async editCwd() {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: null,
+        items: [],
+      };
+    },
+
+    async remove() {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: null,
+        items: [],
+      };
     },
   };
   const threadActions: ThreadActionsService = {
@@ -61,6 +117,7 @@ function createOpenClientDependencies() {
     },
 
     async open(input) {
+      threadOpenCalls.push(input);
       return {
         status: 'ready',
         thread: {
@@ -102,6 +159,7 @@ function createOpenClientDependencies() {
     slot: createSlotService({ events }),
     thread: createThreadService({ events }),
     threadActions,
+    threadOpenCalls,
     turn,
     workspace,
   };
@@ -132,8 +190,9 @@ describe('openClient', () => {
   });
 
   test('opens selected thread and presents its metadata', async () => {
+    const dependencies = createOpenClientDependencies();
     const snapshot = await openClient({
-      dependencies: createOpenClientDependencies(),
+      dependencies,
       input: {
         kind: 'open-client',
         payload: {},
@@ -153,5 +212,121 @@ describe('openClient', () => {
     assert.equal(snapshot.thread.status, 'ready');
     assert.equal(snapshot.thread.title, 'Thread one');
     assert.equal(snapshot.stream.status, 'disabled');
+    assert.deepEqual(dependencies.threadOpenCalls, [
+      {
+        threadId: 'thread-1',
+        workspace: 'workspace-1',
+      },
+    ]);
+  });
+
+  test('does not recognize unsaved workspace scope as a selected workspace', async () => {
+    const snapshot = await openClient({
+      dependencies: createOpenClientDependencies({
+        savedWorkspaceAvailable: false,
+      }),
+      input: {
+        kind: 'open-client',
+        payload: {},
+        scope: {
+          slotId: 'slot-1',
+          threadId: null,
+          workspaceId: 'D:\\workspaces\\unsaved',
+        },
+      },
+    });
+
+    assert.deepEqual(snapshot.selection, {
+      threadId: null,
+      workspaceId: 'D:\\workspaces\\unsaved',
+    });
+    assert.equal(snapshot.workspace.status, 'unavailable');
+    assert.equal(snapshot.thread.status, 'none');
+  });
+
+  test('does not open selected thread when scoped workspace is not saved', async () => {
+    const dependencies = createOpenClientDependencies({
+      savedWorkspaceAvailable: false,
+    });
+
+    const snapshot = await openClient({
+      dependencies,
+      input: {
+        kind: 'open-client',
+        payload: {},
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+          workspaceId: 'D:\\workspaces\\unsaved',
+        },
+      },
+    });
+
+    assert.deepEqual(dependencies.threadOpenCalls, []);
+    assert.deepEqual(snapshot.selection, {
+      threadId: 'thread-1',
+      workspaceId: 'D:\\workspaces\\unsaved',
+    });
+    assert.equal(snapshot.workspace.status, 'unavailable');
+    assert.equal(snapshot.thread.status, 'none');
+    assert.deepEqual(snapshot.conversation, {
+      status: 'failed',
+      error: {
+        message: 'Workspace 不可用或未保存，无法打开对话',
+      },
+    });
+  });
+
+  test('does not open selected thread when scoped workspace is unavailable', async () => {
+    const dependencies = createOpenClientDependencies({
+      savedWorkspaceAvailable: false,
+    });
+
+    const snapshot = await openClient({
+      dependencies,
+      input: {
+        kind: 'open-client',
+        payload: {},
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+          workspaceId: 'D:\\workspaces\\unavailable',
+        },
+      },
+    });
+
+    assert.deepEqual(dependencies.threadOpenCalls, []);
+    assert.equal(snapshot.workspace.status, 'unavailable');
+    assert.equal(snapshot.thread.status, 'none');
+    assert.deepEqual(snapshot.conversation, {
+      status: 'failed',
+      error: {
+        message: 'Workspace 不可用或未保存，无法打开对话',
+      },
+    });
+  });
+
+  test('recognizes saved available workspace scope as selected', async () => {
+    const snapshot = await openClient({
+      dependencies: createOpenClientDependencies({
+        savedWorkspaceAvailable: true,
+      }),
+      input: {
+        kind: 'open-client',
+        payload: {},
+        scope: {
+          slotId: 'slot-1',
+          threadId: null,
+          workspaceId: 'D:\\workspaces\\saved',
+        },
+      },
+    });
+
+    assert.deepEqual(snapshot.selection, {
+      threadId: null,
+      workspaceId: 'D:\\workspaces\\saved',
+    });
+    assert.equal(snapshot.workspace.status, 'selected');
+    assert.equal(snapshot.thread.status, 'none');
   });
 });

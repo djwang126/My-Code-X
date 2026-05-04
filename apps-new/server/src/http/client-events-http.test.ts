@@ -25,6 +25,26 @@ const noopApplication: ApplicationService = {
   async interruptClientTurn() {
     throw new Error('interruptClientTurn is outside this test');
   },
+
+  async openWorkspacePanel() {
+    throw new Error('openWorkspacePanel is outside this test');
+  },
+
+  async addWorkspace() {
+    throw new Error('addWorkspace is outside this test');
+  },
+
+  async renameWorkspace() {
+    throw new Error('renameWorkspace is outside this test');
+  },
+
+  async editWorkspaceCwd() {
+    throw new Error('editWorkspaceCwd is outside this test');
+  },
+
+  async removeWorkspace() {
+    throw new Error('removeWorkspace is outside this test');
+  },
 };
 
 describe('client event HTTP stream', () => {

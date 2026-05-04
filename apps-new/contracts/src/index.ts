@@ -12,9 +12,16 @@ export {
   type ClientRespondInteractionAction,
   type ClientResumeThreadAction,
   type ClientSendMessageAction,
+  type ClientOpenWorkspacePanelAction,
+  type ClientAddWorkspaceAction,
+  type ClientRenameWorkspaceAction,
+  type ClientEditWorkspaceCwdAction,
+  type ClientRemoveWorkspaceAction,
 } from './client-action.js';
 export {
+  clientActionErrorSchema,
   clientActionResultSchema,
+  type ClientActionError,
   type ClientActionResult,
 } from './action-result.js';
 export {
@@ -89,6 +96,24 @@ export {
   type PendingInteractionStructuredResponseShape,
   type ToolResponseInteraction,
 } from './pending-interaction.js';
+
+export {
+  clientWorkspaceAvailabilityViewSchema,
+  clientWorkspaceErrorViewSchema,
+  clientWorkspaceListItemViewSchema,
+  clientWorkspaceListViewSchema,
+  clientWorkspaceOperationSchema,
+  clientWorkspacePanelViewSchema,
+  clientWorkspacePersistenceViewSchema,
+  type ClientWorkspaceAvailabilityView,
+  type ClientWorkspaceErrorView,
+  type ClientWorkspaceListItemView,
+  type ClientWorkspaceListView,
+  type ClientWorkspaceOperation,
+  type ClientWorkspacePanelView,
+  type ClientWorkspacePersistenceView,
+} from './workspace-panel.js';
+
 export {
   clientTurnErrorSchema,
   clientTurnRecordSchema,

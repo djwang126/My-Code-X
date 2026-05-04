@@ -23,6 +23,7 @@ const importPattern = /^(?:import|export)\s+(?:type\s+)?(?:[^'";]+?\s+from\s+)?[
 const allowedBoundaryImports: Record<string, readonly string[]> = {
   'adapters/codex': ['adapters/codex', 'ports', 'shared', 'contracts/json'],
   'adapters/memory': ['adapters/memory', 'ports', 'shared'],
+  'adapters/node': ['adapters/node', 'ports', 'shared'],
   application: ['application', 'contracts/client', 'features/*', 'ports', 'presenter', 'shared'],
   config: ['config', 'shared', 'contracts/json'],
   'features/app-control': ['features/app-control', 'ports', 'shared'],

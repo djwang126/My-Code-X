@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ClientConversationView } from '@my-code-x/contracts-new';
 import { ConversationView } from '../features/conversation-view/index.js';
 import { applyConversationClientEvent } from '../features/conversation-view/model/index.js';
+import {
+  createWorkspacePanelApiBoundary,
+  useWorkspacePanelController,
+  WorkspacePanel,
+} from '../features/workspace-panel/index.js';
 import { readAppConfig } from './app-config.js';
 import { createClientSnapshotApiBoundary, type ClientEventSubscription } from './client-snapshot-api.js';
 import { readAppScope } from './app-scope.js';
@@ -11,7 +16,9 @@ export function AppShell() {
   const config = readAppConfig();
   const scope = useMemo(() => readAppScope(), []);
   const api = useMemo(() => createClientSnapshotApiBoundary(), []);
+  const workspaceApi = useMemo(() => createWorkspacePanelApiBoundary({ sendAction: action => api.sendAction(action) }), [api]);
   const [conversation, setConversation] = useState<ClientConversationView>(() => ({ status: 'loading' }));
+  const workspacePanel = useWorkspacePanelController({ scope, api: workspaceApi });
 
   useEffect(() => {
     let disposed = false;
@@ -67,8 +74,27 @@ export function AppShell() {
   }, [api, scope]);
 
   return (
-    <AppLayout appName={config.appName} scopeLabel={scope.label}>
+    <AppLayout appName={config.appName} scopeLabel={scope.label} onWorkspaceClick={workspacePanel.open}>
       <ConversationView conversation={conversation} />
+      {workspacePanel.state.status !== 'closed' ? (
+        <button
+          aria-label="关闭 Workspace panel overlay"
+          className="workspace-panel-overlay"
+          type="button"
+          onClick={workspacePanel.close}
+        />
+      ) : null}
+      <WorkspacePanel
+        state={workspacePanel.state}
+        onAddClick={workspacePanel.openAddModal}
+        onAddSubmit={workspacePanel.submitAdd}
+        onCloseRequest={workspacePanel.close}
+        onEditCwdClick={workspacePanel.openEditCwdModal}
+        onEditCwdSubmit={workspacePanel.submitEditCwd}
+        onRemoveClick={workspacePanel.remove}
+        onRenameClick={workspacePanel.openRenameModal}
+        onRenameSubmit={workspacePanel.submitRename}
+      />
     </AppLayout>
   );
 }

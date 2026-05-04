@@ -8,3 +8,4 @@ export type { CreateClientEventInput } from './create-client-event.js';
 export type { CreateClientSnapshotInput } from './create-client-snapshot.js';
 export type { PresentConversationInput, PresentConversationItemInput } from './conversation-presenter.js';
 export type { PresentTurnInput } from './turn-presenter.js';
+export { presentWorkspacePanel, type PresentWorkspacePanelInput } from './workspace-presenter.js';

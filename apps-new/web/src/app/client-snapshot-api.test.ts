@@ -189,6 +189,90 @@ describe('client snapshot api boundary', () => {
       },
     }));
   });
+
+  test('sends and validates client action results', async () => {
+    let requestBody: unknown = null;
+    installFetch(async (_resource, init) => {
+      requestBody = JSON.parse(String(init?.body));
+
+      return new globalThis.Response(JSON.stringify({
+        status: 'accepted',
+        snapshot: null,
+        events: [],
+        workspacePanel: {
+          status: 'ready',
+          list: {
+            persistence: {
+              status: 'persistent',
+            },
+            selectedWorkspaceId: null,
+            items: [],
+          },
+        },
+      }), {
+        status: 200,
+      });
+    });
+
+    const api = createClientSnapshotApiBoundary();
+    const result = await api.sendAction({
+      kind: 'open-workspace-panel',
+      scope: {
+        slotId: 'slot-1',
+        workspaceId: null,
+        threadId: null,
+      },
+      payload: {},
+    });
+
+    assert.deepEqual(requestBody, {
+      kind: 'open-workspace-panel',
+      scope: {
+        slotId: 'slot-1',
+        workspaceId: null,
+        threadId: null,
+      },
+      payload: {},
+    });
+    assert.deepEqual(result, {
+      status: 'accepted',
+      snapshot: null,
+      events: [],
+      workspacePanel: {
+        status: 'ready',
+        list: {
+          persistence: {
+            status: 'persistent',
+          },
+          selectedWorkspaceId: null,
+          items: [],
+        },
+      },
+    });
+  });
+
+  test('rejects invalid client action result shape at the boundary', async () => {
+    installFetch(async () => new globalThis.Response(JSON.stringify({
+      status: 'accepted',
+      snapshot: null,
+      events: [],
+    }), {
+      status: 200,
+    }));
+
+    const api = createClientSnapshotApiBoundary();
+
+    await assert.rejects(api.sendAction({
+      kind: 'open-workspace-panel',
+      scope: {
+        slotId: 'slot-1',
+        workspaceId: null,
+        threadId: null,
+      },
+      payload: {},
+    }));
+  });
+
   test('opens an event source for the current slot and thread', () => {
     const fixture = createSubscribedEventSourceFixture();
 

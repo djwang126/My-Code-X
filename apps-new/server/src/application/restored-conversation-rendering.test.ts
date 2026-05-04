@@ -9,7 +9,7 @@ import { createSlotService } from '../features/slot/index.js';
 import { createThreadActionsService } from '../features/thread-actions/index.js';
 import { createThreadService } from '../features/thread/index.js';
 import { createTurnService } from '../features/turn/index.js';
-import { createWorkspaceService } from '../features/workspace/index.js';
+import type { WorkspaceService } from '../features/workspace/index.js';
 import type { ConversationItem } from '../features/conversation/index.js';
 import type { DomainEvent, DomainEventHandler, EventBusPort, RuntimeCommand, RuntimeEventHandler, RuntimePort, RuntimeResult, Unsubscribe } from '../ports/index.js';
 
@@ -385,7 +385,7 @@ function createApplicationFixtureParts(
   const thread = createThreadService({ events });
   const threadActions = createThreadActionsService({ runtime, events });
   const turn = createTurnService({ events });
-  const workspace = createWorkspaceService({ runtime });
+  const workspace = createWorkspaceService();
 
   if (options.initialConversationItems) {
     conversation.apply({
@@ -421,6 +421,50 @@ function createRuntimePort(behavior: RuntimeBehavior): RuntimePort {
     },
 
     async close() {},
+  };
+}
+
+function createWorkspaceService(): WorkspaceService {
+  return {
+    async inspectSavedWorkspace(command) {
+      if (!command.workspaceId) { return { status: 'none' }; }
+      return { status: 'available', workspaceId: command.workspaceId };
+    },
+    async openList(command) {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: command.selectedWorkspaceId,
+        items: [],
+      };
+    },
+    async add(command) {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: command.selectedWorkspaceId,
+        items: [],
+      };
+    },
+    async rename(command) {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: command.selectedWorkspaceId,
+        items: [],
+      };
+    },
+    async editCwd(command) {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: command.selectedWorkspaceId,
+        items: [],
+      };
+    },
+    async remove(command) {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: command.selectedWorkspaceId,
+        items: [],
+      };
+    },
   };
 }
 

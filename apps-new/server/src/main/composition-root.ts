@@ -1,5 +1,7 @@
+import os from 'node:os';
 import { createCodexRuntime } from '../adapters/codex/index.js';
 import { createEventBus } from '../adapters/memory/index.js';
+import { createNodeAppDataStore, createNodePathComparison, createNodePathInspection, createRandomId, createSystemClock } from '../adapters/node/index.js';
 import { createApplication, createClientEventStream, createRuntimeEventCoordinator } from '../application/index.js';
 import { loadConfig } from '../config/index.js';
 import type { HttpServerConfig } from '../config/index.js';
@@ -27,7 +29,13 @@ export async function createAppComposition(): Promise<AppComposition> {
   const threadActions = createThreadActionsService({ runtime, events });
   const conversation = createConversationService({ events });
   const turn = createTurnService({ events });
-  const workspace = createWorkspaceService({ runtime });
+  const workspace = createWorkspaceService({
+    appData: createNodeAppDataStore({ homeDirectory: os.homedir() }),
+    paths: createNodePathInspection(),
+    pathComparison: createNodePathComparison({ platform: process.platform }),
+    clock: createSystemClock(),
+    ids: createRandomId(),
+  });
   const application = createApplication({ conversation, runtime, slot, thread, threadActions, turn, workspace });
   const eventStream = createClientEventStream({ conversation, events });
   const runtimeEvents = createRuntimeEventCoordinator({ conversation, thread, turn });

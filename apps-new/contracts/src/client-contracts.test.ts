@@ -70,6 +70,7 @@ describe('client protocol contracts', () => {
       status: 'accepted',
       snapshot: createClientSnapshot(),
       events: [],
+      workspacePanel: null,
     };
 
     assert.deepEqual(clientActionResultSchema.parse(result), result);

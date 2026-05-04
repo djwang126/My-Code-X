@@ -75,5 +75,5 @@ function presentWorkspaceStatus(input: CreateClientSnapshotInput): ClientSnapsho
     return 'none';
   }
 
-  return input.workspace.available ? 'selected' : 'unavailable';
+  return input.workspace.status === 'available' ? 'selected' : 'unavailable';
 }

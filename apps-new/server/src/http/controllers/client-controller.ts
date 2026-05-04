@@ -51,6 +51,36 @@ export function createClientController(input: ClientControllerInput): HttpHandle
             statusCode: 200,
             body: await input.application.interruptClientTurn(action),
           });
+
+        case 'open-workspace-panel':
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.openWorkspacePanel(action),
+          });
+
+        case 'add-workspace':
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.addWorkspace(action),
+          });
+
+        case 'rename-workspace':
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.renameWorkspace(action),
+          });
+
+        case 'edit-workspace-cwd':
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.editWorkspaceCwd(action),
+          });
+
+        case 'remove-workspace':
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.removeWorkspace(action),
+          });
       }
     },
   };

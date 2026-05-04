@@ -4,6 +4,7 @@ export interface AppLayoutProps {
   readonly appName: string;
   readonly scopeLabel: string;
   readonly children: ReactNode;
+  onWorkspaceClick(): void;
 }
 
 export function AppLayout(input: AppLayoutProps) {
@@ -14,6 +15,7 @@ export function AppLayout(input: AppLayoutProps) {
           <p className="app-shell__eyebrow">apps-new/web</p>
           <h1 className="app-shell__title">{input.appName}</h1>
         </div>
+        <button type="button" onClick={input.onWorkspaceClick}>Workspace</button>
         <p className="app-shell__scope">{input.scopeLabel}</p>
       </header>
       <main className="app-shell__main">{input.children}</main>

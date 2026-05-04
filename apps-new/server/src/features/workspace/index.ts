@@ -1,10 +1,20 @@
-export { createWorkspaceService } from './workspace-service.js';
+export { createWorkspaceService, WorkspaceConflictError, WorkspacePersistenceError, WorkspaceValidationError } from './workspace-service.js';
 export type {
-  InspectWorkspaceCommand,
-  ListWorkspaceThreadsCommand,
-  WorkspaceCommand,
+  AddWorkspaceCommand,
+  EditWorkspaceCwdCommand,
+  InspectSavedWorkspaceCommand,
+  OpenWorkspaceListCommand,
+  RemoveWorkspaceCommand,
+  RenameWorkspaceCommand,
+  WorkspaceAvailability,
   WorkspaceDependencies,
+  WorkspaceListItem,
+  WorkspaceListSnapshot,
+  WorkspaceMemoryModeReason,
+  WorkspaceOperation,
+  WorkspacePersistenceMode,
+  WorkspaceRecord,
+  WorkspaceRegistry,
   WorkspaceService,
   WorkspaceSnapshot,
-  WorkspaceThreadSummary,
 } from './workspace-service.js';

@@ -1,8 +1,17 @@
-import { clientEventSchema, clientSnapshotSchema, type ClientConversationView, type ClientEvent } from '@my-code-x/contracts-new';
+import {
+  clientActionResultSchema,
+  clientEventSchema,
+  clientSnapshotSchema,
+  type ClientAction,
+  type ClientActionResult,
+  type ClientConversationView,
+  type ClientEvent,
+} from '@my-code-x/contracts-new';
 import type { AppScope } from './app-scope.js';
 
 export interface ClientSnapshotApiBoundary {
   loadSnapshot(input: LoadClientSnapshotInput): Promise<ClientSnapshotResult>;
+  sendAction(action: ClientAction): Promise<ClientActionResult>;
   subscribeEvents(input: SubscribeClientEventsInput): ClientEventSubscription;
 }
 
@@ -30,10 +39,31 @@ export function createClientSnapshotApiBoundary(): ClientSnapshotApiBoundary {
       return loadClientSnapshot(input);
     },
 
+    sendAction(action: ClientAction): Promise<ClientActionResult> {
+      return sendClientAction(action);
+    },
+
     subscribeEvents(input: SubscribeClientEventsInput): ClientEventSubscription {
       return subscribeClientEvents(input);
     },
   };
+}
+
+async function sendClientAction(action: ClientAction): Promise<ClientActionResult> {
+  const response = await window.fetch('/client', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify(action),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Unable to send client action: HTTP ${response.status}`);
+  }
+
+  const rawResult: unknown = await response.json();
+  return clientActionResultSchema.parse(rawResult);
 }
 
 async function loadClientSnapshot(input: LoadClientSnapshotInput): Promise<ClientSnapshotResult> {

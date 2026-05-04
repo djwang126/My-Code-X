@@ -1,15 +1,25 @@
 export { createApplication } from './create-application.js';
 export { createClientEventStream } from './client-event-stream.js';
+export { addWorkspace } from './add-workspace.js';
+export { editWorkspaceCwd } from './edit-workspace-cwd.js';
 export { interruptClientTurn } from './interrupt-client-turn.js';
 export { openClient } from './open-client.js';
+export { openWorkspacePanel } from './open-workspace-panel.js';
 export { respondClientInteraction } from './respond-client-interaction.js';
 export { resumeClientThread } from './resume-client-thread.js';
+export { removeWorkspace } from './remove-workspace.js';
+export { renameWorkspace } from './rename-workspace.js';
 export { sendClientMessage } from './send-client-message.js';
 export type {
+  ApplicationAddWorkspaceInput,
+  ApplicationEditWorkspaceCwdInput,
   ApplicationInput,
   ApplicationInterruptClientTurnInput,
   ApplicationOpenClientInput,
+  ApplicationOpenWorkspacePanelInput,
   ApplicationRespondClientInteractionInput,
+  ApplicationRemoveWorkspaceInput,
+  ApplicationRenameWorkspaceInput,
   ApplicationResumeClientThreadInput,
   ApplicationSendClientMessageInput,
   ApplicationService,
@@ -27,3 +37,8 @@ export type { SendClientMessageDependencies, SendClientMessageInput, SendClientM
 export { createRuntimeEventCoordinator } from './runtime-event-coordinator.js';
 export type { RuntimeEventCoordinator, RuntimeEventCoordinatorInput } from './runtime-event-coordinator.js';
 
+export type { AddWorkspaceDependencies, AddWorkspaceInput, AddWorkspaceUseCaseInput } from './add-workspace.js';
+export type { EditWorkspaceCwdDependencies, EditWorkspaceCwdInput, EditWorkspaceCwdUseCaseInput } from './edit-workspace-cwd.js';
+export type { OpenWorkspacePanelDependencies, OpenWorkspacePanelInput, OpenWorkspacePanelUseCaseInput } from './open-workspace-panel.js';
+export type { RemoveWorkspaceDependencies, RemoveWorkspaceInput, RemoveWorkspaceUseCaseInput } from './remove-workspace.js';
+export type { RenameWorkspaceDependencies, RenameWorkspaceInput, RenameWorkspaceUseCaseInput } from './rename-workspace.js';

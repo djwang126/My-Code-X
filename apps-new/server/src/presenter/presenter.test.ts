@@ -33,8 +33,8 @@ test('presenters create a client snapshot from feature-owned state', () => {
       ],
     },
     workspace: {
-      workspace: 'workspace-1',
-      available: true,
+      status: 'available',
+      workspaceId: 'workspace-1',
     },
   });
 
@@ -76,8 +76,8 @@ test('client snapshot keeps slot selection separate from thread readiness', () =
       items: [],
     },
     workspace: {
-      workspace: 'workspace-1',
-      available: true,
+      status: 'available',
+      workspaceId: 'workspace-1',
     },
   });
 

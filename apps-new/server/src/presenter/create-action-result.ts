@@ -1,17 +1,24 @@
-import type { ClientActionResult, ClientEvent, ClientSnapshot } from '@my-code-x/contracts-new';
+import type { ClientActionError, ClientActionResult, ClientEvent, ClientSnapshot, ClientWorkspacePanelView } from '@my-code-x/contracts-new';
 
-export interface CreateActionResultInput {
-  readonly accepted: boolean;
-  readonly message: string | null;
+export type CreateActionResultInput = CreateAcceptedActionResultInput | CreateRejectedActionResultInput;
+
+export interface CreateAcceptedActionResultInput {
+  readonly status: 'accepted';
   readonly snapshot: ClientSnapshot | null;
   readonly events: readonly ClientEvent[];
+  readonly workspacePanel?: ClientWorkspacePanelView | null;
+}
+
+export interface CreateRejectedActionResultInput {
+  readonly status: 'rejected';
+  readonly error: ClientActionError;
 }
 
 export function createActionResult(input: CreateActionResultInput): ClientActionResult {
-  if (!input.accepted) {
+  if (input.status === 'rejected') {
     return {
       status: 'rejected',
-      message: input.message ?? 'Action rejected',
+      error: input.error,
     };
   }
 
@@ -19,5 +26,6 @@ export function createActionResult(input: CreateActionResultInput): ClientAction
     status: 'accepted',
     snapshot: input.snapshot,
     events: input.events,
+    workspacePanel: input.workspacePanel ?? null,
   };
 }

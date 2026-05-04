@@ -32,13 +32,13 @@ export async function openClient(useCase: OpenClientUseCaseInput): Promise<Clien
     workspace: useCase.input.scope.workspaceId,
     threadId: useCase.input.scope.threadId,
   });
-  const workspace = await useCase.dependencies.workspace.inspect({
-    kind: 'inspect-workspace',
-    workspace: useCase.input.scope.workspaceId,
+  const workspace = await useCase.dependencies.workspace.inspectSavedWorkspace({
+    workspaceId: useCase.input.scope.workspaceId,
   });
+  const usableWorkspace = workspace.status === 'available' ? workspace.workspaceId : null;
   const openedThread = await openSelectedThread({
     threadId: slot.threadId,
-    workspace: slot.workspace,
+    workspace: usableWorkspace,
     thread: useCase.dependencies.thread,
     threadActions: useCase.dependencies.threadActions,
   });
@@ -98,7 +98,13 @@ async function openSelectedThread(input: OpenSelectedThreadInput): Promise<OpenS
   }
 
   if (!input.workspace) {
-    throw new BoundaryError('client action scope.workspaceId is required when scope.threadId is provided');
+    return {
+      status: 'failed',
+      thread: null,
+      error: {
+        message: 'Workspace 不可用或未保存，无法打开对话',
+      },
+    };
   }
 
   const openedThread = await input.threadActions.open({

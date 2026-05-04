@@ -39,15 +39,55 @@ function createOpenClientDependencies() {
     },
   };
   const workspace: WorkspaceService = {
-    async inspect(input) {
+    async inspectSavedWorkspace(input) {
+      if (!input.workspaceId) {
+        return { status: 'none' };
+      }
+
       return {
-        available: Boolean(input.workspace),
-        workspace: input.workspace,
+        status: 'available',
+        workspaceId: input.workspaceId,
       };
     },
 
-    async listThreads() {
-      return [];
+    async openList() {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: null,
+        items: [],
+      };
+    },
+
+    async add() {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: null,
+        items: [],
+      };
+    },
+
+    async rename() {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: null,
+        items: [],
+      };
+    },
+
+    async editCwd() {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: null,
+        items: [],
+      };
+    },
+
+    async remove() {
+      return {
+        persistence: { status: 'persistent' },
+        selectedWorkspaceId: null,
+        items: [],
+      };
     },
   };
   const threadActions: ThreadActionsService = {
