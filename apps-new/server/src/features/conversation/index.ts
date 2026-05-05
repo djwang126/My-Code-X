@@ -3,6 +3,7 @@ export { isConversationDomainEvent } from './conversation-events.js';
 export type {
   ConversationCommand,
   ConversationDomainEvent,
+  ConversationErrorItem,
   ConversationItem,
   ConversationItemField,
   ConversationItemUpsertedEvent,
@@ -11,6 +12,7 @@ export type {
   ConversationUnknownItem,
   ConversationWorkTraceItem,
   RecordRuntimeItemDeltaCommand,
+  RecordRuntimeErrorCommand,
   RecordRuntimeThreadItemCommand,
   ReplaceRuntimeConversationCommand,
   ConversationReplacedEvent,

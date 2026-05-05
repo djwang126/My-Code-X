@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type {
+  ClientConversationErrorItem,
   ClientConversationItem,
   ClientConversationMessageItem,
   ClientConversationUnknownItem,
@@ -110,6 +111,11 @@ function ConversationTimelineItem(input: ConversationTimelineItemProps) {
         item: input.item,
       });
 
+    case 'error':
+      return renderConversationErrorTimelineItem({
+        item: input.item,
+      });
+
     default:
       return assertNever(input.item);
   }
@@ -158,6 +164,22 @@ function renderConversationUnknownTimelineItem(
         fields={input.item.fields}
         itemId={input.item.id}
       />
+    </li>
+  );
+}
+
+interface ConversationErrorTimelineItemRendererInput {
+  readonly item: ClientConversationErrorItem;
+}
+
+function renderConversationErrorTimelineItem(
+  input: ConversationErrorTimelineItemRendererInput,
+): ReactNode {
+  return (
+    <li className="conversation-view__timeline-item conversation-view__timeline-item--error">
+      <article className="conversation-view__error-card" aria-label="Conversation error" role="alert">
+        <p className="conversation-view__error-message">{input.item.message}</p>
+      </article>
     </li>
   );
 }

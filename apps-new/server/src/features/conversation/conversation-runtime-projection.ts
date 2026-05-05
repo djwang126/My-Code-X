@@ -1,9 +1,12 @@
 import type {
+  RuntimeErrorInfo,
   RuntimeFallbackThreadItem,
   RuntimeTimelineItem,
   RuntimeThreadItem,
+  RuntimeTurn,
 } from '../../ports/index.js';
 import type {
+  ConversationErrorItem,
   ConversationItem,
   ConversationItemField,
   ConversationMessageItem,
@@ -50,6 +53,40 @@ export function projectRuntimeTimeline(input: ProjectRuntimeTimelineInput): read
   }
 
   return items;
+}
+
+export interface ProjectRuntimeTurnsInput {
+  readonly turns: readonly RuntimeTurn[];
+}
+
+export function projectRuntimeTurns(input: ProjectRuntimeTurnsInput): readonly ConversationItem[] {
+  const items: ConversationItem[] = [];
+
+  for (const turn of input.turns) {
+    items.push(...projectRuntimeTimeline({ items: turn.items }));
+
+    if (turn.status === 'failed' && turn.error) {
+      items.push(projectRuntimeError({
+        turnId: turn.id,
+        error: turn.error,
+      }));
+    }
+  }
+
+  return items;
+}
+
+export interface ProjectRuntimeErrorInput {
+  readonly turnId: string;
+  readonly error: RuntimeErrorInfo;
+}
+
+export function projectRuntimeError(input: ProjectRuntimeErrorInput): ConversationErrorItem {
+  return {
+    id: `error:${input.turnId}`,
+    kind: 'error',
+    message: input.error.message,
+  };
 }
 
 function mapRuntimeThreadItemRole(item: RuntimeThreadItem): ConversationMessageRole | null {

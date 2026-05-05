@@ -79,6 +79,11 @@ function isSameConversationItem(left: ConversationItem, right: ConversationItem)
         && left.id === right.id
         && left.codexType === right.codexType
         && areSameConversationItemFields(left.fields, right.fields);
+
+    case 'error':
+      return right.kind === 'error'
+        && left.id === right.id
+        && left.message === right.message;
   }
 }
 

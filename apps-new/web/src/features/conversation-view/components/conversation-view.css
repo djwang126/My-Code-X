@@ -60,6 +60,10 @@
   justify-content: flex-start;
 }
 
+.conversation-view__timeline-item--error {
+  justify-content: flex-start;
+}
+
 .conversation-view__message {
   max-width: min(42rem, 86%);
   border-radius: 0.875rem;
@@ -133,6 +137,21 @@
 
 .conversation-view__trace-card--unknown {
   border-style: dashed;
+}
+
+.conversation-view__error-card {
+  max-width: min(42rem, 92%);
+  border: 1px solid rgba(185, 28, 28, 0.24);
+  border-radius: 0.875rem;
+  background: #fff7f7;
+  padding: 0.75rem 0.875rem;
+}
+
+.conversation-view__error-message {
+  margin: 0;
+  color: #b91c1c;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
 }
 
 .conversation-view__trace-card summary {

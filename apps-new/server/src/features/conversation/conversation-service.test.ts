@@ -3,7 +3,7 @@ import { describe, test } from 'node:test';
 
 import { createConversationService } from './conversation-service.js';
 import type { ConversationDomainEvent } from './index.js';
-import type { RuntimeThreadItem } from '../../ports/index.js';
+import type { RuntimeThreadItem, RuntimeTurn } from '../../ports/index.js';
 
 type JsonObject = NonNullable<RuntimeThreadItem['raw']>;
 
@@ -228,6 +228,7 @@ describe('createConversationService', () => {
             text: 'restored answer',
           }),
         ],
+        turns: null,
       }),
       {
         revision: 1,
@@ -335,6 +336,7 @@ describe('createConversationService', () => {
             text: null,
           }),
         ],
+        turns: null,
       }),
       {
         revision: 1,
@@ -710,6 +712,276 @@ describe('createConversationService', () => {
         },
       },
     ]);
+  });
+
+  test('records a turn-scoped runtime error as a conversation error timeline item', () => {
+    const fixture = createConversationServiceFixture();
+    const service = fixture.service;
+
+    assert.deepEqual(
+      service.apply({
+        kind: 'record-runtime-error',
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        error: {
+          message: 'runtime failed',
+          code: 'RUNTIME_FAILED',
+        },
+      }),
+      {
+        revision: 1,
+        items: [
+          {
+            id: 'error:turn-1',
+            kind: 'error',
+            message: 'runtime failed',
+          },
+        ],
+      },
+    );
+
+    assert.deepEqual(fixture.events, [
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 1,
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      },
+    ]);
+  });
+
+  test('updates the same conversation error item for repeated errors on the same turn', () => {
+    const fixture = createConversationServiceFixture();
+    const service = fixture.service;
+
+    service.apply({
+      kind: 'record-runtime-error',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      error: {
+        message: 'first error',
+        code: null,
+      },
+    });
+
+    assert.deepEqual(
+      service.apply({
+        kind: 'record-runtime-error',
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        error: {
+          message: 'final error',
+          code: null,
+        },
+      }),
+      {
+        revision: 2,
+        items: [
+          {
+            id: 'error:turn-1',
+            kind: 'error',
+            message: 'final error',
+          },
+        ],
+      },
+    );
+  });
+
+  test('does not advance revision or publish when the same conversation error is unchanged', () => {
+    const fixture = createConversationServiceFixture();
+    const service = fixture.service;
+
+    service.apply({
+      kind: 'record-runtime-error',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      error: {
+        message: 'runtime failed',
+        code: null,
+      },
+    });
+
+    assert.deepEqual(
+      service.apply({
+        kind: 'record-runtime-error',
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        error: {
+          message: 'runtime failed',
+          code: null,
+        },
+      }),
+      {
+        revision: 1,
+        items: [
+          {
+            id: 'error:turn-1',
+            kind: 'error',
+            message: 'runtime failed',
+          },
+        ],
+      },
+    );
+    assert.deepEqual(fixture.events, [
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 1,
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      },
+    ]);
+  });
+
+  test('records errors from different turns as separate conversation error items', () => {
+    const fixture = createConversationServiceFixture();
+    const service = fixture.service;
+
+    service.apply({
+      kind: 'record-runtime-error',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      error: {
+        message: 'first turn failed',
+        code: null,
+      },
+    });
+
+    assert.deepEqual(
+      service.apply({
+        kind: 'record-runtime-error',
+        threadId: 'thread-1',
+        turnId: 'turn-2',
+        error: {
+          message: 'second turn failed',
+          code: null,
+        },
+      }),
+      {
+        revision: 2,
+        items: [
+          {
+            id: 'error:turn-1',
+            kind: 'error',
+            message: 'first turn failed',
+          },
+          {
+            id: 'error:turn-2',
+            kind: 'error',
+            message: 'second turn failed',
+          },
+        ],
+      },
+    );
+  });
+
+  test('restores failed turn errors into the timeline after the restored turn items', () => {
+    const fixture = createConversationServiceFixture();
+    const service = fixture.service;
+    const turn: RuntimeTurn = {
+      id: 'turn-1',
+      status: 'failed',
+      error: {
+        message: 'restored turn failed',
+        code: 'RUNTIME_FAILED',
+      },
+      startedAt: null,
+      completedAt: null,
+      durationMs: null,
+      items: [
+        createRuntimeUserMessage({
+          itemId: 'user-1',
+          text: 'hello',
+        }),
+        createRuntimeAgentMessage({
+          itemId: 'assistant-1',
+          text: 'partial answer',
+        }),
+      ],
+    };
+
+    assert.deepEqual(
+      service.apply({
+        kind: 'replace-runtime-conversation',
+        threadId: 'thread-1',
+        items: [],
+        turns: [turn],
+      }),
+      {
+        revision: 1,
+        items: [
+          {
+            id: 'user-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello',
+          },
+          {
+            id: 'assistant-1',
+            kind: 'message',
+            role: 'assistant',
+            text: 'partial answer',
+          },
+          {
+            id: 'error:turn-1',
+            kind: 'error',
+            message: 'restored turn failed',
+          },
+        ],
+      },
+    );
+  });
+
+  test('keeps tool call payload errors as work trace fields instead of conversation error cards', () => {
+    const service = createConversationService({
+      events: {
+        publish() {},
+        subscribe() {
+          return () => {};
+        },
+      },
+    });
+
+    service.apply({
+      kind: 'record-runtime-thread-item',
+      threadId: 'thread-1',
+      item: createKnownRuntimeWorkTraceItem({
+        itemId: 'mcp-1',
+        itemKind: 'mcpToolCall',
+        raw: {
+          id: 'mcp-1',
+          type: 'mcpToolCall',
+          status: 'failed',
+          error: {
+            message: 'tool failed',
+          },
+        },
+      }),
+    });
+
+    assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      revision: 1,
+      items: [
+        {
+          id: 'mcp-1',
+          kind: 'work-trace',
+          codexType: 'mcpToolCall',
+          fields: [
+            { name: 'id', value: 'mcp-1' },
+            { name: 'type', value: 'mcpToolCall' },
+            { name: 'status', value: 'failed' },
+            { name: 'error', value: { message: 'tool failed' } },
+          ],
+        },
+      ],
+    });
   });
 
   test('uses a stable unknown codex type when the runtime fallback item has an empty unknown kind', () => {

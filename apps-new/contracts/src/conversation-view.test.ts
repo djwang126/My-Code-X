@@ -50,6 +50,128 @@ describe('client conversation view contract', () => {
     });
   });
 
+  test('accepts ready state with a conversation error item in the timeline', () => {
+    assert.deepEqual(clientConversationViewSchema.parse({
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      ],
+    }), {
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      ],
+    });
+  });
+
+  test('does not allow conversation error items to carry assistant message fields or controls', () => {
+    const parsed = clientConversationViewSchema.safeParse({
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+          role: 'assistant',
+          text: 'runtime failed',
+          timestamp: '2026-05-01T00:00:00.000Z',
+          retry: true,
+          copyable: true,
+        },
+      ],
+    });
+
+    assert.equal(parsed.success, false);
+  });
+
+  test('rejects conversation error items without an id', () => {
+    assertRejectsReadyItem({
+      kind: 'error',
+      message: 'runtime failed',
+    });
+  });
+
+  test('rejects conversation error items without a message', () => {
+    assertRejectsReadyItem({
+      id: 'error:turn-1',
+      kind: 'error',
+    });
+  });
+
+  const invalidConversationErrorItems = [
+    {
+      name: 'debug code',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        code: 'RUNTIME_FAILED',
+      },
+    },
+    {
+      name: 'debug details',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        details: 'raw upstream body',
+      },
+    },
+    {
+      name: 'reinterpretation explanation',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        explanation: 'The provider returned an error.',
+      },
+    },
+    {
+      name: 'timestamp',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        timestamp: '2026-05-01T00:00:00.000Z',
+      },
+    },
+    {
+      name: 'retry control',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        retry: true,
+      },
+    },
+    {
+      name: 'copy control',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        copyable: true,
+      },
+    },
+  ] as const;
+
+  for (const invalidCase of invalidConversationErrorItems) {
+    test(`rejects conversation error items with ${invalidCase.name}`, () => {
+      assertRejectsReadyItem(invalidCase.item);
+    });
+  }
+
   test('accepts ready state with ordered work trace fields from the Codex payload', () => {
     assert.deepEqual(clientConversationViewSchema.parse({
       status: 'ready',

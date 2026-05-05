@@ -92,10 +92,10 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 35. 未知 item type 禁止被丢弃。
 36. 未知 item type 默认必须折叠。
 37. 展开未知 item type 后，必须按 Codex 原始 payload 的字段名和值展示字段列表；复杂字段值必须以格式化 JSON 或等价安全文本展示。
-38. Codex/app-server 表示为 conversation item 的聊天过程错误，必须作为 timeline 中的错误卡片展示。
+38. Codex/app-server 表示为 conversation-scoped 的聊天过程错误，必须作为 timeline 中的错误卡片展示；包括带 thread 和 turn 归属的 runtime error、failed turn completed error，以及恢复历史中的 failed turn error；runtime error 不代表 turn lifecycle 终止，Conversation View 禁止据此推断 turn 状态。
 39. 错误卡片必须展示原始错误信息。
 40. 错误卡片中的错误文字必须使用红色。
-41. Conversation View 禁止改写、重新解释或推断原始错误的其他原因。
+41. Conversation View 禁止改写、重新解释或推断原始错误的其他原因；错误卡片只展示原始 error message。
 42. Conversation View 禁止显示额外的完成横幅或“done”提示。
 43. Conversation View 本功能中禁止显示消息、工作痕迹、错误或 turn 的时间戳。
 44. Conversation View 本功能中禁止提供搜索、筛选、item 跳转、手动刷新、重试、approval、取消或发送控件。
@@ -118,14 +118,15 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 12. 宽 Markdown 表格：提供横向滚动，不强行换行到不可读，也不破坏布局。
 13. 未知 Codex item type：保留为折叠卡片；展开后按原始字段名和值展示，复杂值使用格式化 JSON。
 14. 工作痕迹和未知 item 的卡片标题使用 Codex 原生 item type，不自行生成语义标题。
-15. Codex/app-server 错误 item：渲染为错误卡片，显示原始错误信息，错误文字为红色。
+15. Codex/app-server conversation-scoped 错误：带 thread 和 turn 归属的 runtime error、failed turn completed error、恢复历史 failed turn error 渲染为 timeline 中的错误卡片，显示原始 error message，错误文字为红色；同一个 turn 的错误更新同一个 error item；runtime error 不更新或推断 turn lifecycle。
 16. 非 conversation 基础设施错误：显示为 timeline 外的常规 UI 错误状态。
-17. 外部链接：在新标签页打开。
-18. workspace 文件引用：尽可能视觉区分，但本功能不打开本地文件。
-19. 工作痕迹复制：不需要专门复制按钮；浏览器自然文本选择可以保留。
-20. 完成状态：即使 turn 成功结束，也不增加额外完成提示或横幅。
-21. 后端存在时间戳数据：本功能不显示。
-22. Codex schema 演进：未知新 item type 通过通用字段列表和复杂字段的格式化 JSON 保持可观察，不隐藏。
+17. 无 thread 归属或无 turn 归属的 runtime/system/realtime 错误：不伪造成 conversation timeline item。
+18. 外部链接：在新标签页打开。
+19. workspace 文件引用：尽可能视觉区分，但本功能不打开本地文件。
+20. 工作痕迹复制：不需要专门复制按钮；浏览器自然文本选择可以保留。
+21. 完成状态：即使 turn 成功结束，也不增加额外完成提示或横幅。
+22. 后端存在时间戳数据：本功能不显示。
+23. Codex schema 演进：未知新 item type 通过通用字段列表和复杂字段的格式化 JSON 保持可观察，不隐藏。
 
 
 ## 不在本范围

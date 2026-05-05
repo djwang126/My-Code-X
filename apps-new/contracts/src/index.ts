@@ -53,6 +53,7 @@ export {
   type ClientWorkspaceView,
 } from './client-snapshot.js';
 export {
+  clientConversationErrorItemSchema,
   clientConversationErrorSchema,
   clientConversationItemFieldSchema,
   clientConversationItemSchema,
@@ -61,6 +62,7 @@ export {
   clientConversationUnknownItemSchema,
   clientConversationViewSchema,
   clientConversationWorkTraceItemSchema,
+  type ClientConversationErrorItem,
   type ClientConversationError,
   type ClientConversationFailedView,
   type ClientConversationItemField,

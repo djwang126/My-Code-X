@@ -70,6 +70,7 @@ function createOpenClientDependencies() {
           updatedAt: null,
         },
         restoredItems: [],
+        restoredTurns: null,
       };
     },
   };

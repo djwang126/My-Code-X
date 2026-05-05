@@ -5,7 +5,7 @@ import type { ThreadActionsService } from '../features/thread-actions/index.js';
 import type { ThreadRecord, ThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
 import type { WorkspaceService } from '../features/workspace/index.js';
-import type { RuntimeTimelineItem } from '../ports/index.js';
+import type { RuntimeTimelineItem, RuntimeTurn } from '../ports/index.js';
 import { createClientSnapshot } from '../presenter/index.js';
 import { BoundaryError } from '../shared/index.js';
 
@@ -77,6 +77,7 @@ interface OpenSelectedThreadReadyResult {
   readonly status: 'ready';
   readonly thread: ThreadRecord;
   readonly restoredItems: readonly RuntimeTimelineItem[];
+  readonly restoredTurns: readonly RuntimeTurn[] | null;
 }
 
 interface OpenSelectedThreadFailedResult {
@@ -128,6 +129,7 @@ async function openSelectedThread(input: OpenSelectedThreadInput): Promise<OpenS
     status: 'ready',
     thread,
     restoredItems: openedThread.restoredItems,
+    restoredTurns: openedThread.restoredTurns,
   };
 }
 
@@ -146,6 +148,7 @@ function restoreConversation(input: RestoreConversationInput): ClientConversatio
         kind: 'replace-runtime-conversation',
         threadId: input.openedThread.thread.threadId,
         items: input.openedThread.restoredItems,
+        turns: input.openedThread.restoredTurns,
       });
       return undefined;
 

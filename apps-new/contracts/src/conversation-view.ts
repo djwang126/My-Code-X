@@ -27,10 +27,17 @@ export const clientConversationUnknownItemSchema = z.object({
   fields: z.array(clientConversationItemFieldSchema),
 }).strict();
 
+export const clientConversationErrorItemSchema = z.object({
+  id: z.string(),
+  kind: z.literal('error'),
+  message: z.string(),
+}).strict();
+
 export const clientConversationItemSchema = z.discriminatedUnion('kind', [
   clientConversationMessageItemSchema,
   clientConversationWorkTraceItemSchema,
   clientConversationUnknownItemSchema,
+  clientConversationErrorItemSchema,
 ]);
 
 export type ClientConversationMessageItem = Readonly<z.infer<typeof clientConversationMessageItemSchema>>;
@@ -49,10 +56,12 @@ export type ClientConversationUnknownItem = Readonly<
     readonly fields: readonly ClientConversationItemField[];
   }
 >;
+export type ClientConversationErrorItem = Readonly<z.infer<typeof clientConversationErrorItemSchema>>;
 export type ClientConversationItem =
   | ClientConversationMessageItem
   | ClientConversationWorkTraceItem
-  | ClientConversationUnknownItem;
+  | ClientConversationUnknownItem
+  | ClientConversationErrorItem;
 
 export const clientConversationErrorSchema = z.object({
   message: z.string(),

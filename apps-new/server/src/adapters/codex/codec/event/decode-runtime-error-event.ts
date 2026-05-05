@@ -1,6 +1,7 @@
 import { readOptionalString } from '../reader/index.js';
 import type { RuntimeEvent } from '../../../../ports/index.js';
 import { readCodexRuntimeError, readCodexTextLike } from '../reader/index.js';
+import { cleanRuntimeEvent } from './clean-runtime-event.js';
 import type { DecodeCodexNotificationInput } from './codex-notification-input.js';
 
 export function decodeRuntimeErrorEvent(input: DecodeCodexNotificationInput): RuntimeEvent | null {
@@ -8,12 +9,12 @@ export function decodeRuntimeErrorEvent(input: DecodeCodexNotificationInput): Ru
 
   switch (input.method) {
     case 'error':
-      return {
+      return cleanRuntimeEvent({
         kind: 'runtime-error',
         threadId: readOptionalString(params.threadId, 'Codex error threadId'),
         turnId: readOptionalString(params.turnId, 'Codex error turnId'),
         error: readCodexRuntimeError(params.error ?? params),
-      };
+      });
 
     case 'thread/realtime/error':
       return {

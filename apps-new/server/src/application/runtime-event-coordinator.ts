@@ -1,7 +1,7 @@
 import type { ConversationService } from '../features/conversation/index.js';
 import type { ThreadRecord, ThreadService } from '../features/thread/index.js';
 import type { TurnService } from '../features/turn/index.js';
-import type { RuntimeEvent, RuntimeThread, RuntimeThreadItem } from '../ports/index.js';
+import type { RuntimeErrorInfo, RuntimeEvent, RuntimeThread, RuntimeThreadItem } from '../ports/index.js';
 import { assertNever } from '../shared/index.js';
 
 export interface RuntimeEventCoordinatorInput {
@@ -37,6 +37,14 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
             completedAt: event.turn?.completedAt ?? null,
             durationMs: event.turn?.durationMs ?? null,
           });
+          if (event.status === 'failed' && event.error) {
+            recordConversationError({
+              conversation: input.conversation,
+              threadId: event.threadId,
+              turnId: event.turnId,
+              error: event.error,
+            });
+          }
           return;
 
         case 'runtime-host-requested':
@@ -73,14 +81,11 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
 
         case 'runtime-error':
           if (event.threadId && event.turnId) {
-            input.turn.apply({
-              kind: 'turn-completed',
+            recordConversationError({
+              conversation: input.conversation,
               threadId: event.threadId,
               turnId: event.turnId,
-              status: 'failed',
               error: event.error,
-              completedAt: null,
-              durationMs: null,
             });
           }
           return;
@@ -169,8 +174,29 @@ function recordConversationDelta(input: RecordConversationDeltaInput): void {
   input.conversation.apply({
     kind: 'record-runtime-item-delta',
     threadId: input.threadId,
+    turnId: input.event.turnId,
     itemId: input.event.itemId,
     deltaKind: input.event.deltaKind,
     text: input.event.text,
+  });
+}
+
+interface RecordConversationErrorInput {
+  readonly conversation: ConversationService | undefined;
+  readonly threadId: string;
+  readonly turnId: string;
+  readonly error: RuntimeErrorInfo;
+}
+
+function recordConversationError(input: RecordConversationErrorInput): void {
+  if (!input.conversation) {
+    return;
+  }
+
+  input.conversation.apply({
+    kind: 'record-runtime-error',
+    threadId: input.threadId,
+    turnId: input.turnId,
+    error: input.error,
   });
 }

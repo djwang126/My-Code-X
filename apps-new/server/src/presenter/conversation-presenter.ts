@@ -38,5 +38,12 @@ export function presentConversationItem(input: PresentConversationItemInput): Cl
         codexType: input.item.codexType,
         fields: input.item.fields,
       };
+
+    case 'error':
+      return {
+        id: input.item.id,
+        kind: 'error',
+        message: input.item.message,
+      };
   }
 }

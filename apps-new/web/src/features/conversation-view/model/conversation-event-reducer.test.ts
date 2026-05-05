@@ -220,6 +220,103 @@ describe('conversation client event reducer', () => {
     });
   });
 
+  test('upsert appends a conversation error item in event order', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'ready',
+        revision: 1,
+        items: [
+          {
+            id: 'user-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello',
+          },
+        ],
+      },
+      event: {
+        kind: 'conversation-item-upserted',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '2',
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'user-1',
+          kind: 'message',
+          role: 'user',
+          text: 'hello',
+        },
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      ],
+    });
+  });
+
+  test('upsert updates an existing conversation error item without duplicating it', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'ready',
+        revision: 1,
+        items: [
+          {
+            id: 'error:turn-1',
+            kind: 'error',
+            message: 'first error',
+          },
+        ],
+      },
+      event: {
+        kind: 'conversation-item-upserted',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '2',
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'final error',
+        },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'final error',
+        },
+      ],
+    });
+  });
+
   test('replacement rebuilds the complete local timeline', () => {
     const conversation = applyConversationClientEvent({
       scope: {

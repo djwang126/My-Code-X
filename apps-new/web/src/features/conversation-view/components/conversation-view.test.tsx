@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, test } from 'node:test';
+import { URL } from 'node:url';
 import { renderToStaticMarkup } from 'react-dom/server';
 
 import type { ClientConversationView } from '@my-code-x/contracts-new';
@@ -289,6 +291,71 @@ describe('ConversationView message rendering', () => {
     assertDoesNotInclude(html, 'conversation-view__message--user');
     assertDoesNotInclude(html, 'Copy message');
     assertDoesNotInclude(html, 'Copy code');
+  });
+
+  test('renders conversation error items as timeline error cards', () => {
+    const html = renderConversationView({
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      ],
+    });
+
+    assertIncludes(html, 'aria-label="Conversation error"');
+    assertIncludes(html, 'role="alert"');
+    assertIncludes(html, 'conversation-view__error-message');
+    assertIncludes(html, 'runtime failed');
+    assertDoesNotInclude(html, 'aria-label="Assistant message"');
+    assertDoesNotInclude(html, 'conversation-view__message--assistant');
+    assertDoesNotInclude(html, 'Copy message');
+    assertDoesNotInclude(html, 'Copy code');
+  });
+
+  test('renders conversation error messages as plain text without markdown or trusted html', () => {
+    const html = renderConversationView({
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: '<strong>runtime</strong> **failed**',
+        },
+      ],
+    });
+
+    assertIncludes(html, '&lt;strong&gt;runtime&lt;/strong&gt; **failed**');
+    assertDoesNotInclude(html, '<strong>runtime</strong>');
+    assertDoesNotInclude(html, '<strong>failed</strong>');
+    assertDoesNotInclude(html, 'conversation-view__markdown');
+  });
+
+  test('styles conversation error message text in red', () => {
+    const css = readFileSync(new URL('./conversation-view.css', import.meta.url), 'utf8');
+
+    assert.match(css, /\.conversation-view__error-message\s*\{[^}]*color:\s*#b91c1c;/s);
+  });
+
+  test('renders failed resource errors outside the conversation timeline', () => {
+    const html = renderConversationView({
+      status: 'failed',
+      error: {
+        message: 'restore failed',
+      },
+    });
+
+    assertIncludes(html, 'role="alert"');
+    assertIncludes(html, 'conversation-view__body--error');
+    assertIncludes(html, 'restore failed');
+    assertDoesNotInclude(html, 'aria-label="Conversation timeline"');
+    assertDoesNotInclude(html, 'conversation-view__timeline-item--error');
+    assertDoesNotInclude(html, 'conversation-view__error-card');
+    assertDoesNotInclude(html, 'aria-label="Conversation error"');
   });
 });
 

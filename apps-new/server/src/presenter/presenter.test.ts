@@ -158,6 +158,22 @@ test('conversation presenter exposes unknown item fallback as unknown', () => {
   });
 });
 
+test('conversation presenter exposes conversation error items without reinterpretation', () => {
+  const item: ConversationItem = {
+    id: 'error:turn-1',
+    kind: 'error',
+    message: 'runtime failed',
+  };
+
+  const presented = presentConversationItem({ item });
+
+  assert.deepEqual(presented, {
+    id: 'error:turn-1',
+    kind: 'error',
+    message: 'runtime failed',
+  });
+});
+
 test('turn presenter exposes the native turn snapshot shape', () => {
   assert.deepEqual(presentTurn({
     snapshot: {
