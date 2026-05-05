@@ -58,6 +58,10 @@ Conversation feature 内部应拥有 server-side canonical conversation item con
 
 工作痕迹保留 Codex 原始 payload 中的字段名和值，并在 conversation contract 中投影为通用字段列表。30 行截断是前端阅读策略，不是后端数据截断。前端第一次展开长工作痕迹字段值时显示前 30 行，并根据完整字段值计算剩余行数。
 
+Runtime delta 不是新的 My-Code-X conversation 语义。Codex app-server 对部分同一个 item 的进度更新会按原生目标字段发送不同 notification，例如 `item/reasoning/summaryTextDelta` 更新 reasoning item 的 `summary[summaryIndex]`，`item/reasoning/textDelta` 更新 `content[contentIndex]`，`item/fileChange/patchUpdated` 携带 `changes`，`item/commandExecution/outputDelta` 更新命令输出。My-Code-X 后端可以维护 delta projection state，但该 state 必须按 Codex 原始 notification shape 和目标字段/index 累积，不能发明 `channels` 之类的产品语义，也不能把不同 delta kind 简单拼成单个 `text` 或用最后一个 delta 覆盖前一个 delta。
+
+对 runtime delta 形成的临时 work trace snapshot，projection boundary 应先构造 raw-like payload，再复用通用字段列表投影。Raw-like payload 的字段应对应 Codex 原生目标字段，例如 reasoning 使用 `summary` 和 `content`，command execution 使用 `aggregatedOutput` 或等价 Codex 输出字段，file change 使用 `changes`，MCP progress 使用 progress message 列表。前端只看到 `{ name, value }` 字段行，不知道也不恢复 delta 语义。Codex completed item 到来后，completed item payload 是更权威的 full item snapshot，应覆盖同 item 的临时 delta projection。
+
 未知 item 使用与工作痕迹相同的通用字段列表策略。Unknown raw payload 不应被静默丢弃；projection boundary 把 raw object 转为 `{ name, value }` 字段行，复杂 value 仍保留为 JSON value。这样已知工作痕迹和未知 fallback 可以复用字段渲染，但仍通过 `kind` 区分产品语义。
 
 错误 item 只保留原始错误 message。My-Code-X 不改写错误原因，也不补充推断性解释。除原始 message 外的调试字段即使存在于 app-server payload 中，也不进入本轮 Error Surfaces 的错误卡片 contract。
@@ -85,6 +89,8 @@ Conversation View 收到 snapshot 后只渲染其中的 conversation view。加�
 Codex app-server 的输出先由 Codex adapter 转为 normalized runtime events。外部 raw data 必须在 adapter/runtime boundary 或 conversation projection boundary 被解析和校验一次。解析后，内部代码使用 typed values，不依赖层层 optional chaining 防御未知 shape。
 
 Application 只负责把 runtime events 路由给对应 feature，不在 application 层实现 conversation item 分类和展示语义。Conversation feature 接收与 timeline 有关的 runtime input，基于 Codex 原生 item identity 和 item/update 方式更新 conversation projection。它负责后端聚合，避免前端直接消费高频 token 级流式输出。
+
+Runtime delta projection 必须以 Codex protocol 为依据，而不是以 My-Code-X 自创的通用 delta 模型为依据。对于同一个 itemId 的多个 delta notification，Conversation feature 维护的是 Codex delta projection state：按 notification type、目标字段和 index 累积到 raw-like item payload，再输出 full conversation item snapshot。`channel` 可以作为局部实现变量名，但不能进入产品 contract、feature 文档语义或 UI 展示语义。
 
 Codex item type 到 conversation item category 的映射必须集中在 conversation projection policy 中。新增一个已知 Codex item type 时，应该修改一个集中 policy，而不是在 presenter、UI 和多个 feature 中散落 switch 判断。
 
@@ -183,6 +189,8 @@ Conversation View contracts do not include search, filter, jump, refresh, retry,
 ## Other Architectural decisions
 
 Backend aggregation is part of the conversation projection. It may coalesce many runtime deltas into lower-frequency item snapshots, but the final projected item content must remain complete and ordered according to Codex/app-server authority.
+
+Aggregation coalesces already-projected full item snapshots; it does not define delta semantics. Delta semantics live in the Codex-aware projection policy, where each runtime notification is mapped back to the Codex item field it updates. This prevents implementation conveniences such as generic `channels[]` from becoming product semantics.
 
 Frontend rendering is intentionally dumb about Codex semantics. It can decide layout and interaction details, but semantic facts come from contract fields.
 

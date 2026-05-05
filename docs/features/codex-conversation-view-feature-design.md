@@ -50,7 +50,8 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 40. 作为 My-Code-X 开发者，我希望 Codex 原生是同一个 item 更新时，My-Code-X 也更新同一个 item；Codex 原生是多个 item 时，My-Code-X 也展示多个 item，这样数据模型与 Codex 保持一致。
 41. 作为 My-Code-X 开发者，我希望后端负责聚合 Codex app-server 的高频原始事件，前端只消费聚合后的 conversation events，这样前端不会被高频流式输出拖垮。
 42. 作为 My-Code-X 开发者，我希望后端聚合不改变 Codex 原生语义、不丢失内容、不打乱顺序，这样 Conversation View 展示仍然可信。
-43. 作为 My-Code-X 开发者，我希望 pending request 和 approval 可以在视觉上与对话关联，但不由 Conversation View 处理业务逻辑，这样职责边界清晰。
+43. 作为 My-Code-X 开发者，我希望 runtime delta 按 Codex 原生 notification shape 和目标字段/index 投影，而不是按 My-Code-X 自创的 `channel`、单一 `text` 或 last-delta-wins 规则投影，这样 reasoning summary/content、file changes、command output、tool progress 等信息不会互相覆盖。
+44. 作为 My-Code-X 开发者，我希望 pending request 和 approval 可以在视觉上与对话关联，但不由 Conversation View 处理业务逻辑，这样职责边界清晰。
 
 
 ## 功能需求
@@ -79,27 +80,28 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 22. 后端聚合必须保留 Codex app-server 的权威性、顺序、item identity 和内容完整性。
 23. 如果 Codex/app-server 把更新表示为同一个 item，Conversation View 必须更新同一个 item。
 24. 如果 Codex/app-server 把更新表示为多个 item，Conversation View 必须按多个 timeline item 展示。
-25. Conversation View 禁止发明 Codex/app-server 没有提供的 item 生命周期、turn 状态、标题、摘要、字段或关系。
-26. Conversation View 必须渲染 Codex 提供的工作痕迹 item，包括 hook prompt、计划、推理摘要、命令、工具、文件变更、网页搜索，或包含 stdout、stderr、diff、工具 payload 等内容的其他 app-server 结构。
-27. 工作痕迹 item 必须按后端提供的权威顺序逐条展示。
-28. 工作痕迹 item 默认必须折叠。
-29. 展开后的长工作痕迹内容首次最多显示 30 行。
-30. 如果展开后的工作痕迹内容超过 30 行，界面必须显示等价于“展开剩余 xxx 行”的入口。
-31. 用户必须能够继续展开被截断的工作痕迹，以查看剩余内容。
-32. 工作痕迹 item 不需要专门的复制按钮。
-33. 对 Codex 结构化工作痕迹 item，Conversation View 必须使用 Codex 原生 item type 作为卡片标题。
-34. 展开工作痕迹 item 后，Conversation View 必须按 Codex 原始 payload 的字段名和值展示字段列表；复杂字段值必须以格式化 JSON 或等价安全文本展示。
-35. 未知 item type 禁止被丢弃。
-36. 未知 item type 默认必须折叠。
-37. 展开未知 item type 后，必须按 Codex 原始 payload 的字段名和值展示字段列表；复杂字段值必须以格式化 JSON 或等价安全文本展示。
-38. Codex/app-server 表示为 conversation-scoped 的聊天过程错误，必须作为 timeline 中的错误卡片展示；包括带 thread 和 turn 归属的 runtime error、failed turn completed error，以及恢复历史中的 failed turn error；runtime error 不代表 turn lifecycle 终止，Conversation View 禁止据此推断 turn 状态。
-39. 错误卡片必须展示原始错误信息。
-40. 错误卡片中的错误文字必须使用红色。
-41. Conversation View 禁止改写、重新解释或推断原始错误的其他原因；错误卡片只展示原始 error message。
-42. Conversation View 禁止显示额外的完成横幅或“done”提示。
-43. Conversation View 本功能中禁止显示消息、工作痕迹、错误或 turn 的时间戳。
-44. Conversation View 本功能中禁止提供搜索、筛选、item 跳转、手动刷新、重试、approval、取消或发送控件。
-45. pending request 和 approval 的 UI 可以在 Conversation View 外部做视觉相邻或关联，但业务逻辑不属于 Conversation View。
+25. Conversation View 禁止发明 Codex/app-server 没有提供的 item 生命周期、turn 状态、标题、摘要、字段、delta channel 或关系。
+26. Runtime delta projection 必须按 Codex 原生 notification shape 和目标字段/index 累积：例如 reasoning summary delta 更新 `summary`，reasoning text delta 更新 `content`，file change patch 更新 `changes`，命令输出 delta 更新命令输出字段；禁止把不同 delta kind 简单拼成单个 `text` 或用最后一个 delta 覆盖前一个 delta。
+27. Conversation View 必须渲染 Codex 提供的工作痕迹 item，包括 hook prompt、计划、推理摘要、命令、工具、文件变更、网页搜索，或包含 stdout、stderr、diff、工具 payload 等内容的其他 app-server 结构。
+28. 工作痕迹 item 必须按后端提供的权威顺序逐条展示。
+29. 工作痕迹 item 默认必须折叠。
+30. 展开后的长工作痕迹内容首次最多显示 30 行。
+31. 如果展开后的工作痕迹内容超过 30 行，界面必须显示等价于“展开剩余 xxx 行”的入口。
+32. 用户必须能够继续展开被截断的工作痕迹，以查看剩余内容。
+33. 工作痕迹 item 不需要专门的复制按钮。
+34. 对 Codex 结构化工作痕迹 item，Conversation View 必须使用 Codex 原生 item type 作为卡片标题。
+35. 展开工作痕迹 item 后，Conversation View 必须按 Codex 原始 payload 的字段名和值展示字段列表；复杂字段值必须以格式化 JSON 或等价安全文本展示。
+36. 未知 item type 禁止被丢弃。
+37. 未知 item type 默认必须折叠。
+38. 展开未知 item type 后，必须按 Codex 原始 payload 的字段名和值展示字段列表；复杂字段值必须以格式化 JSON 或等价安全文本展示。
+39. Codex/app-server 表示为 conversation-scoped 的聊天过程错误，必须作为 timeline 中的错误卡片展示；包括带 thread 和 turn 归属的 runtime error、failed turn completed error，以及恢复历史中的 failed turn error；runtime error 不代表 turn lifecycle 终止，Conversation View 禁止据此推断 turn 状态。
+40. 错误卡片必须展示原始错误信息。
+41. 错误卡片中的错误文字必须使用红色。
+42. Conversation View 禁止改写、重新解释或推断原始错误的其他原因；错误卡片只展示原始 error message。
+43. Conversation View 禁止显示额外的完成横幅或“done”提示。
+44. Conversation View 本功能中禁止显示消息、工作痕迹、错误或 turn 的时间戳。
+45. Conversation View 本功能中禁止提供搜索、筛选、item 跳转、手动刷新、重试、approval、取消或发送控件。
+46. pending request 和 approval 的 UI 可以在 Conversation View 外部做视觉相邻或关联，但业务逻辑不属于 Conversation View。
 
 
 ## 边界情况和错误处理
@@ -111,22 +113,23 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 5. 恢复出的已完成 thread：展示恢复出的完整历史 conversation，不额外制造完成提示。
 6. 后端确认用户消息延迟：后端确认前，不把用户消息显示进 timeline。
 7. Codex 高频输出：前端消费后端聚合后的 events，不要求 token 级渲染。
-8. 弱网或多页签：优先保证稳定的进度刷新体验和完整最终内容，而不是高频实时渲染。
-9. 长 stdout、stderr、diff、工具输出、搜索输出或类似工作痕迹：默认折叠；展开后先显示 30 行；通过“展开剩余 xxx 行”查看剩余内容。
-10. 长 assistant/user Markdown 消息：正常按 Markdown 阅读，不套用 30 行工作痕迹截断规则。
-11. Markdown 中的原始 HTML：不执行、不信任为 HTML；只安全处理 Markdown 语义。
-12. 宽 Markdown 表格：提供横向滚动，不强行换行到不可读，也不破坏布局。
-13. 未知 Codex item type：保留为折叠卡片；展开后按原始字段名和值展示，复杂值使用格式化 JSON。
-14. 工作痕迹和未知 item 的卡片标题使用 Codex 原生 item type，不自行生成语义标题。
-15. Codex/app-server conversation-scoped 错误：带 thread 和 turn 归属的 runtime error、failed turn completed error、恢复历史 failed turn error 渲染为 timeline 中的错误卡片，显示原始 error message，错误文字为红色；同一个 turn 的错误更新同一个 error item；runtime error 不更新或推断 turn lifecycle。
-16. 非 conversation 基础设施错误：显示为 timeline 外的常规 UI 错误状态。
-17. 无 thread 归属或无 turn 归属的 runtime/system/realtime 错误：不伪造成 conversation timeline item。
-18. 外部链接：在新标签页打开。
-19. workspace 文件引用：尽可能视觉区分，但本功能不打开本地文件。
-20. 工作痕迹复制：不需要专门复制按钮；浏览器自然文本选择可以保留。
-21. 完成状态：即使 turn 成功结束，也不增加额外完成提示或横幅。
-22. 后端存在时间戳数据：本功能不显示。
-23. Codex schema 演进：未知新 item type 通过通用字段列表和复杂字段的格式化 JSON 保持可观察，不隐藏。
+8. Codex runtime delta：后端可以把高频 delta 合并成低频 item snapshot，但必须按 Codex 原生目标字段保留信息；同一 item 的 summary/content、output/changes、progress 等不同原生字段不能互相覆盖。
+9. 弱网或多页签：优先保证稳定的进度刷新体验和完整最终内容，而不是高频实时渲染。
+10. 长 stdout、stderr、diff、工具输出、搜索输出或类似工作痕迹：默认折叠；展开后先显示 30 行；通过“展开剩余 xxx 行”查看剩余内容。
+11. 长 assistant/user Markdown 消息：正常按 Markdown 阅读，不套用 30 行工作痕迹截断规则。
+12. Markdown 中的原始 HTML：不执行、不信任为 HTML；只安全处理 Markdown 语义。
+13. 宽 Markdown 表格：提供横向滚动，不强行换行到不可读，也不破坏布局。
+14. 未知 Codex item type：保留为折叠卡片；展开后按原始字段名和值展示，复杂值使用格式化 JSON。
+15. 工作痕迹和未知 item 的卡片标题使用 Codex 原生 item type，不自行生成语义标题。
+16. Codex/app-server conversation-scoped 错误：带 thread 和 turn 归属的 runtime error、failed turn completed error、恢复历史 failed turn error 渲染为 timeline 中的错误卡片，显示原始 error message，错误文字为红色；同一个 turn 的错误更新同一个 error item；runtime error 不更新或推断 turn lifecycle。
+17. 非 conversation 基础设施错误：显示为 timeline 外的常规 UI 错误状态。
+18. 无 thread 归属或无 turn 归属的 runtime/system/realtime 错误：不伪造成 conversation timeline item。
+19. 外部链接：在新标签页打开。
+20. workspace 文件引用：尽可能视觉区分，但本功能不打开本地文件。
+21. 工作痕迹复制：不需要专门复制按钮；浏览器自然文本选择可以保留。
+22. 完成状态：即使 turn 成功结束，也不增加额外完成提示或横幅。
+23. 后端存在时间戳数据：本功能不显示。
+24. Codex schema 演进：未知新 item type 通过通用字段列表和复杂字段的格式化 JSON 保持可观察，不隐藏。
 
 
 ## 不在本范围

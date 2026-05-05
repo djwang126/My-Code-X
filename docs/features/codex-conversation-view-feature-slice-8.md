@@ -15,6 +15,7 @@
 - 工作痕迹 contract 使用 `codexType` 表示 Codex 原生 item type。
 - 工作痕迹 contract 使用通用字段列表 `fields: { name, value }[]` 展示 Codex 原始 payload 中的字段名和值。
 - 通用字段列表按 Codex raw payload object entries 的顺序生成和展示，保留 `type`、`id`、`status` 等原始字段，不过滤、不改名、不重新排序、不解释为 My-Code-X 自定义标题或摘要。
+- Runtime delta 形成临时工作痕迹 snapshot 时，Server 先按 Codex 原生 notification shape 和目标字段/index 构造 raw-like payload，再从该 payload 生成通用字段列表；不得把实现层的 `channels`、单一 `text` 或 last-delta-wins 结果暴露为工作痕迹语义。
 - 已知工作痕迹 item type 包括 `hookPrompt`、`plan`、`reasoning`、`commandExecution`、`fileChange`、`mcpToolCall`、`dynamicToolCall`、`collabAgentToolCall`、`webSearch`、`imageView`、`imageGeneration`、`enteredReviewMode`、`exitedReviewMode`、`contextCompaction`。
 - `userMessage` 仍投影为 user message；`agentMessage` 仍投影为 assistant message；`unknown` 不伪装成 work-trace，留给 Slice 10 的 unknown fallback。
 - 工作痕迹按后端权威顺序逐条进入 timeline。
@@ -60,3 +61,5 @@ interface ConversationItemField {
 ```
 
 `codexType` 来自 Codex `ThreadItem.type` / runtime `itemKind`。`fields` 从 Codex raw payload 的 object entries 生成，并保留 raw payload 字段顺序。My-Code-X 不需要理解每个字段含义，也不从字段中提炼 title、label 或 summary。
+
+对 runtime delta 投影出的临时工作痕迹，`fields` 来自 Codex-aware raw-like payload，而不是来自 My-Code-X 自创的 delta channel。示例：reasoning delta 应投影为包含 `summary` / `content` 的 payload；file change patch 应投影为包含 `changes` 的 payload；command output 应投影为包含输出字段的 payload。completed item 到来后，以 completed item 的 Codex raw payload 为准。
