@@ -81,6 +81,18 @@ export function createClientController(input: ClientControllerInput): HttpHandle
             statusCode: 200,
             body: await input.application.removeWorkspace(action),
           });
+
+        case 'open-workspace-active-threads':
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.openWorkspaceActiveThreads(action),
+          });
+
+        case 'load-more-workspace-active-threads':
+          return jsonResponse({
+            statusCode: 200,
+            body: await input.application.loadMoreWorkspaceActiveThreads(action),
+          });
       }
     },
   };

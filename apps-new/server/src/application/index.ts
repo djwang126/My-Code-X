@@ -42,3 +42,8 @@ export type { EditWorkspaceCwdDependencies, EditWorkspaceCwdInput, EditWorkspace
 export type { OpenWorkspacePanelDependencies, OpenWorkspacePanelInput, OpenWorkspacePanelUseCaseInput } from './open-workspace-panel.js';
 export type { RemoveWorkspaceDependencies, RemoveWorkspaceInput, RemoveWorkspaceUseCaseInput } from './remove-workspace.js';
 export type { RenameWorkspaceDependencies, RenameWorkspaceInput, RenameWorkspaceUseCaseInput } from './rename-workspace.js';
+
+export { openWorkspaceActiveThreads } from './open-workspace-active-threads.js';
+export type { OpenWorkspaceActiveThreadsInput } from './open-workspace-active-threads.js';
+export { loadMoreWorkspaceActiveThreads } from './load-more-workspace-active-threads.js';
+export type { LoadMoreWorkspaceActiveThreadsInput } from './load-more-workspace-active-threads.js';

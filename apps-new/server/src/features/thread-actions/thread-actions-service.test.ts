@@ -62,7 +62,7 @@ describe('createThreadActionsService', () => {
     assert.deepEqual(thread, {
       threadId: 'thread-1',
       workspace: 'workspace-1',
-      title: null,
+      name: null,
       updatedAt: null,
     });
     assert.deepEqual(runtime.calls, [
@@ -86,7 +86,7 @@ describe('createThreadActionsService', () => {
         threadId: 'thread-1',
         snapshot: {
           threadId: 'thread-1',
-          title: 'Thread one',
+          name: 'Thread one',
           items: [],
           pendingInputs: [],
         },
@@ -101,7 +101,7 @@ describe('createThreadActionsService', () => {
       thread: {
         threadId: 'thread-1',
         workspace: 'workspace-1',
-        title: 'Thread one',
+        name: 'Thread one',
         updatedAt: null,
       },
       restoredItems: [],
@@ -122,7 +122,7 @@ describe('createThreadActionsService', () => {
       thread: {
         threadId: 'thread-1',
         workspace: 'workspace-1',
-        title: 'Thread one',
+        name: 'Thread one',
         updatedAt: null,
       },
     }]);

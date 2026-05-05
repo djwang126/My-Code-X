@@ -111,7 +111,7 @@ function createOpenClientDependencies(input: CreateOpenClientDependenciesInput =
       return {
         threadId: 'created-thread',
         workspace: 'workspace-1',
-        title: null,
+        name: null,
         updatedAt: null,
       };
     },
@@ -123,7 +123,7 @@ function createOpenClientDependencies(input: CreateOpenClientDependenciesInput =
         thread: {
           threadId: input.threadId,
           workspace: input.workspace,
-          title: 'Thread one',
+          name: 'Thread one',
           updatedAt: '2026-04-29T00:00:00.000Z',
         },
         restoredItems: [],
@@ -138,7 +138,7 @@ function createOpenClientDependencies(input: CreateOpenClientDependenciesInput =
           threadId: input.threadId,
           snapshot: {
             threadId: input.threadId,
-            title: 'Thread one',
+            name: 'Thread one',
             items: [],
             pendingInputs: [],
           },

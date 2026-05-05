@@ -12,6 +12,8 @@ export const clientActionKindSchema = z.enum([
   'rename-workspace',
   'edit-workspace-cwd',
   'remove-workspace',
+  'open-workspace-active-threads',
+  'load-more-workspace-active-threads',
 ]);
 
 export type ClientActionKind = z.infer<typeof clientActionKindSchema>;
@@ -39,7 +41,7 @@ const clientSendMessageActionSchema = z.object({
 const clientResumeThreadActionSchema = z.object({
   kind: z.literal('resume-thread'),
   scope: clientActionScopeSchema,
-  payload: jsonObjectSchema,
+  payload: z.object({}).strict(),
 }).strict();
 
 const clientRespondInteractionActionSchema = z.object({
@@ -98,6 +100,23 @@ const clientRemoveWorkspaceActionSchema = z.object({
   }).strict(),
 }).strict();
 
+const clientOpenWorkspaceActiveThreadsActionSchema = z.object({
+  kind: z.literal('open-workspace-active-threads'),
+  scope: clientActionScopeSchema,
+  payload: z.object({
+    workspaceId: z.string(),
+  }).strict(),
+}).strict();
+
+const clientLoadMoreWorkspaceActiveThreadsActionSchema = z.object({
+  kind: z.literal('load-more-workspace-active-threads'),
+  scope: clientActionScopeSchema,
+  payload: z.object({
+    workspaceId: z.string(),
+    cursor: z.string(),
+  }).strict(),
+}).strict();
+
 export const clientActionSchema = z.discriminatedUnion('kind', [
   clientOpenActionSchema,
   clientSendMessageActionSchema,
@@ -109,6 +128,8 @@ export const clientActionSchema = z.discriminatedUnion('kind', [
   clientRenameWorkspaceActionSchema,
   clientEditWorkspaceCwdActionSchema,
   clientRemoveWorkspaceActionSchema,
+  clientOpenWorkspaceActiveThreadsActionSchema,
+  clientLoadMoreWorkspaceActiveThreadsActionSchema,
 ]);
 
 export type ClientAction = Readonly<z.infer<typeof clientActionSchema>>;
@@ -122,3 +143,5 @@ export type ClientAddWorkspaceAction = Readonly<z.infer<typeof clientAddWorkspac
 export type ClientRenameWorkspaceAction = Readonly<z.infer<typeof clientRenameWorkspaceActionSchema>>;
 export type ClientEditWorkspaceCwdAction = Readonly<z.infer<typeof clientEditWorkspaceCwdActionSchema>>;
 export type ClientRemoveWorkspaceAction = Readonly<z.infer<typeof clientRemoveWorkspaceActionSchema>>;
+export type ClientOpenWorkspaceActiveThreadsAction = Readonly<z.infer<typeof clientOpenWorkspaceActiveThreadsActionSchema>>;
+export type ClientLoadMoreWorkspaceActiveThreadsAction = Readonly<z.infer<typeof clientLoadMoreWorkspaceActiveThreadsActionSchema>>;

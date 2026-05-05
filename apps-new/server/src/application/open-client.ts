@@ -125,7 +125,7 @@ async function openSelectedThread(input: OpenSelectedThreadInput): Promise<OpenS
     thread: {
       threadId: openedThread.thread.threadId,
       workspace: openedThread.thread.workspace,
-      title: openedThread.thread.title,
+      name: openedThread.thread.name,
       updatedAt: openedThread.thread.updatedAt,
     },
   });

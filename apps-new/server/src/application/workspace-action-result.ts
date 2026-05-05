@@ -21,6 +21,13 @@ export function workspaceActionRejected(error: unknown): ClientActionResult {
   throw error;
 }
 
+export function workspaceUnavailableRejected(): ClientActionResult {
+  return rejected({
+    code: 'workspace-unavailable',
+    message: 'Workspace 不可用',
+  });
+}
+
 function rejected(error: ClientActionError): ClientActionResult {
   return {
     status: 'rejected',

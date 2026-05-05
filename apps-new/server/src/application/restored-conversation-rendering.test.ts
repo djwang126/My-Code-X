@@ -40,7 +40,7 @@ describe('restored conversation rendering application flow', () => {
           threadId: 'thread-1',
           snapshot: {
             threadId: 'thread-1',
-            title: 'Restored thread',
+            name: 'Restored thread',
             pendingInputs: [],
             items: [
               {
@@ -136,7 +136,7 @@ describe('restored conversation rendering application flow', () => {
             threadId: 'thread-1',
             snapshot: {
               threadId: 'thread-1',
-              title: 'Restored thread',
+              name: 'Restored thread',
               pendingInputs: [],
               items: [
                 {
@@ -199,7 +199,7 @@ describe('restored conversation rendering application flow', () => {
           threadId: 'thread-1',
           snapshot: {
             threadId: 'thread-1',
-            title: 'Restored thread',
+            name: 'Restored thread',
             pendingInputs: [],
             items: [
               {
@@ -317,7 +317,7 @@ describe('restored conversation rendering application flow', () => {
           threadId: 'thread-1',
           snapshot: {
             threadId: 'thread-1',
-            title: 'Restored thread',
+            name: 'Restored thread',
             pendingInputs: [],
             items: [
               {

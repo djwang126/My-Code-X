@@ -15,7 +15,7 @@ test('presenters create a client snapshot from feature-owned state', () => {
     selectedThread: {
       threadId: 'thread-1',
       workspace: 'workspace-1',
-      title: 'Thread one',
+      name: 'Thread one',
       updatedAt: null,
     },
     turn: {

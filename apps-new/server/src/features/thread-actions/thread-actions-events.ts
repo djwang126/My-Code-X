@@ -26,7 +26,7 @@ export interface ThreadOpenedEvent {
 export interface ThreadActionResult {
   readonly threadId: string;
   readonly workspace: string;
-  readonly title: string | null;
+  readonly name: string | null;
   readonly updatedAt: string | null;
 }
 

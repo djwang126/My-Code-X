@@ -60,7 +60,7 @@ function presentThread(input: CreateClientSnapshotInput): ClientSnapshot['thread
   if (input.selectedThread) {
     return {
       status: 'ready',
-      title: input.selectedThread.title,
+      title: input.selectedThread.name,
     };
   }
 

@@ -1,11 +1,24 @@
-import type { ClientWorkspaceListItemView } from '@my-code-x/contracts-new';
+import type {
+  ClientWorkspaceActiveThreadResourceView,
+  ClientWorkspaceListItemView,
+  ClientWorkspaceThreadItemView,
+} from '@my-code-x/contracts-new';
 import type { FormEvent } from 'react';
-import type { WorkspaceAddSubmitInput, WorkspaceEditCwdSubmitInput, WorkspaceRenameSubmitInput } from '../model/workspace-panel-inputs.js';
+import type {
+  WorkspaceAddSubmitInput,
+  WorkspaceEditCwdSubmitInput,
+  WorkspaceRenameSubmitInput,
+  WorkspaceResumeThreadInput,
+} from '../model/workspace-panel-inputs.js';
 import type { WorkspacePanelModalState, WorkspacePanelState } from '../model/workspace-panel-reducer.js';
 
 export interface WorkspacePanelProps {
   readonly state: WorkspacePanelState;
   onAddClick(): void;
+  onOpenActiveThreadsClick(item: ClientWorkspaceListItemView): void;
+  onBackToWorkspaceList(): void;
+  onLoadMoreActiveThreads(): void;
+  onResumeThread(item: WorkspaceResumeThreadInput): void;
   onRenameClick(item: ClientWorkspaceListItemView): void;
   onEditCwdClick(item: ClientWorkspaceListItemView): void;
   onRemoveClick(item: ClientWorkspaceListItemView): void;
@@ -35,6 +48,29 @@ export function WorkspacePanel(input: WorkspacePanelProps) {
   }
 
   if (input.state.status === 'ready') {
+    if (input.state.panel.page.kind === 'active-threads') {
+      return (
+        <aside aria-label="Workspace panel">
+          <button type="button" onClick={input.onCloseRequest}>关闭</button>
+          <WorkspaceActiveThreadsPage
+            cwd={input.state.panel.page.cwd}
+            name={input.state.panel.page.name}
+            resource={input.state.panel.page.resource}
+            onBackToWorkspaceList={input.onBackToWorkspaceList}
+            onLoadMoreActiveThreads={input.onLoadMoreActiveThreads}
+            onResumeThread={input.onResumeThread}
+          />
+          <WorkspaceModal
+            modal={input.state.modal}
+            onAddSubmit={input.onAddSubmit}
+            onCloseRequest={input.onCloseRequest}
+            onEditCwdSubmit={input.onEditCwdSubmit}
+            onRenameSubmit={input.onRenameSubmit}
+          />
+        </aside>
+      );
+    }
+
     return (
       <aside aria-label="Workspace panel">
         <button type="button" onClick={input.onCloseRequest}>关闭</button>
@@ -48,6 +84,7 @@ export function WorkspacePanel(input: WorkspacePanelProps) {
               key={item.recordRef}
               item={item}
               onEditCwdClick={input.onEditCwdClick}
+              onOpenActiveThreadsClick={input.onOpenActiveThreadsClick}
               onRemoveClick={input.onRemoveClick}
               onRenameClick={input.onRenameClick}
             />
@@ -67,8 +104,103 @@ export function WorkspacePanel(input: WorkspacePanelProps) {
   return null;
 }
 
+interface WorkspaceActiveThreadsPageProps {
+  readonly name: string;
+  readonly cwd: string;
+  readonly resource: ClientWorkspaceActiveThreadResourceView;
+  onBackToWorkspaceList(): void;
+  onLoadMoreActiveThreads(): void;
+  onResumeThread(item: WorkspaceResumeThreadInput): void;
+}
+
+function WorkspaceActiveThreadsPage(input: WorkspaceActiveThreadsPageProps) {
+  return (
+    <section aria-label="Active threads">
+      <header>
+        <h2 aria-label="Active workspace name">{input.name}</h2>
+        <p aria-label="Active workspace cwd">{input.cwd}</p>
+        <button type="button" onClick={input.onBackToWorkspaceList}>切换 Workspace</button>
+      </header>
+      <WorkspaceActiveThreadsResource
+        resource={input.resource}
+        onLoadMoreActiveThreads={input.onLoadMoreActiveThreads}
+        onResumeThread={input.onResumeThread}
+      />
+    </section>
+  );
+}
+
+interface WorkspaceActiveThreadsResourceProps {
+  readonly resource: WorkspaceActiveThreadsPageProps['resource'];
+  onLoadMoreActiveThreads(): void;
+  onResumeThread(item: WorkspaceResumeThreadInput): void;
+}
+
+function WorkspaceActiveThreadsResource(input: WorkspaceActiveThreadsResourceProps) {
+  if (input.resource.status === 'loading') {
+    return <p>加载对话...</p>;
+  }
+
+  if (input.resource.status === 'failed') {
+    return <p>{input.resource.error.message}</p>;
+  }
+
+  if (input.resource.items.length === 0) {
+    return <p>暂无对话</p>;
+  }
+
+  return (
+    <>
+      <ul>
+        {input.resource.items.map(item => (
+          <WorkspaceThreadCard key={item.threadId} item={item} onResumeThread={input.onResumeThread} />
+        ))}
+      </ul>
+      {input.resource.loadMore.status === 'failed' ? <p aria-label="Load more error">{input.resource.loadMore.error.message}</p> : null}
+      {input.resource.nextCursor !== null ? (
+        <button
+          type="button"
+          disabled={input.resource.loadMore.status === 'loading'}
+          onClick={input.onLoadMoreActiveThreads}
+        >
+          加载更多
+        </button>
+      ) : null}
+    </>
+  );
+}
+
+interface WorkspaceThreadCardProps {
+  readonly item: ClientWorkspaceThreadItemView;
+  onResumeThread(item: WorkspaceResumeThreadInput): void;
+}
+
+function WorkspaceThreadCard(input: WorkspaceThreadCardProps) {
+  return (
+    <li>
+      <button
+        type="button"
+        aria-label={`Thread card ${input.item.threadId}`}
+        aria-current={input.item.current ? 'true' : undefined}
+        disabled={input.item.current || input.item.operation === 'resuming'}
+        onClick={() => {
+          if (!input.item.current) {
+            input.onResumeThread({ threadId: input.item.threadId, current: input.item.current });
+          }
+        }}
+      >
+        <span aria-label={`Thread name ${input.item.threadId}`}>{input.item.name}</span>
+      </button>
+      <span aria-label={`Thread preview ${input.item.threadId}`}>{input.item.preview}</span>
+      <span aria-label={`Thread updated time ${input.item.threadId}`}>{formatWorkspaceThreadTime(input.item.updatedAtIso)}</span>
+      {input.item.cardError ? <p aria-label={`Thread error ${input.item.threadId}`}>{input.item.cardError.message}</p> : null}
+    </li>
+  );
+}
+
 interface WorkspaceListItemProps {
   readonly item: ClientWorkspaceListItemView;
+  onOpenActiveThreadsClick(item: ClientWorkspaceListItemView): void;
   onRenameClick(item: ClientWorkspaceListItemView): void;
   onEditCwdClick(item: ClientWorkspaceListItemView): void;
   onRemoveClick(item: ClientWorkspaceListItemView): void;
@@ -80,6 +212,9 @@ function WorkspaceListItem(input: WorkspaceListItemProps) {
       <div aria-label="Workspace name">{input.item.name}</div>
       <div aria-label="Workspace cwd">{input.item.cwd}</div>
       {input.item.availability.status === 'unavailable' ? <div>不可用：{input.item.availability.reason}</div> : null}
+      {input.item.availability.status === 'available' ? (
+        <button type="button" onClick={() => input.onOpenActiveThreadsClick(input.item)}>进入</button>
+      ) : null}
       <div>
         {input.item.operations.map(operation => (
           <button key={operation} type="button" onClick={() => handleOperationClick({ operation, input })}>
@@ -229,6 +364,25 @@ function hasStringValue(value: unknown): value is { readonly value: string } {
     && value !== null
     && 'value' in value
     && typeof value.value === 'string';
+}
+
+function formatWorkspaceThreadTime(updatedAtIso: string | null): string {
+  if (updatedAtIso === null) {
+    return '';
+  }
+
+  const date = new Date(updatedAtIso);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(date);
 }
 
 function readOperationLabel(operation: ClientWorkspaceListItemView['operations'][number]): string {

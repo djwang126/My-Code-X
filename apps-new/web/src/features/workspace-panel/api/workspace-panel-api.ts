@@ -3,6 +3,9 @@ import type { AppScope } from '../../../app/app-scope.js';
 
 export interface WorkspacePanelApiBoundary {
   open(input: OpenWorkspacePanelInput): Promise<ClientWorkspacePanelView>;
+  openActiveThreads(input: OpenWorkspaceActiveThreadsInput): Promise<ClientWorkspacePanelView>;
+  loadMoreActiveThreads(input: LoadMoreWorkspaceActiveThreadsInput): Promise<ClientWorkspacePanelView>;
+  resumeThread(input: ResumeWorkspaceThreadInput): Promise<ClientActionResult>;
   add(input: AddWorkspaceInput): Promise<ClientWorkspacePanelView>;
   rename(input: RenameWorkspaceInput): Promise<ClientWorkspacePanelView>;
   editCwd(input: EditWorkspaceCwdInput): Promise<ClientWorkspacePanelView>;
@@ -33,6 +36,23 @@ export interface AddWorkspaceInput {
   readonly name: string;
 }
 
+export interface OpenWorkspaceActiveThreadsInput {
+  readonly scope: AppScope;
+  readonly workspaceId: string;
+}
+
+export interface LoadMoreWorkspaceActiveThreadsInput {
+  readonly scope: AppScope;
+  readonly workspaceId: string;
+  readonly cursor: string;
+}
+
+export interface ResumeWorkspaceThreadInput {
+  readonly scope: AppScope;
+  readonly workspaceId: string;
+  readonly threadId: string;
+}
+
 export interface RenameWorkspaceInput {
   readonly scope: AppScope;
   readonly recordRef: string | null;
@@ -59,6 +79,42 @@ export function createWorkspacePanelApiBoundary(dependencies: WorkspacePanelApiD
       return sendWorkspaceAction(dependencies, {
         kind: 'open-workspace-panel',
         scope: createActionScope(input.scope),
+        payload: {},
+      });
+    },
+    openActiveThreads(input) {
+      return sendWorkspaceAction(dependencies, {
+        kind: 'open-workspace-active-threads',
+        scope: createActionScope({
+          ...input.scope,
+          workspaceId: input.workspaceId,
+        }),
+        payload: {
+          workspaceId: input.workspaceId,
+        },
+      });
+    },
+    loadMoreActiveThreads(input) {
+      return sendWorkspaceAction(dependencies, {
+        kind: 'load-more-workspace-active-threads',
+        scope: createActionScope({
+          ...input.scope,
+          workspaceId: input.workspaceId,
+        }),
+        payload: {
+          workspaceId: input.workspaceId,
+          cursor: input.cursor,
+        },
+      });
+    },
+    resumeThread(input) {
+      return dependencies.sendAction({
+        kind: 'resume-thread',
+        scope: createActionScope({
+          ...input.scope,
+          workspaceId: input.workspaceId,
+          threadId: input.threadId,
+        }),
         payload: {},
       });
     },

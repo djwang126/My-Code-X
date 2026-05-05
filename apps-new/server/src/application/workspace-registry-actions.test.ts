@@ -24,20 +24,17 @@ describe('workspace registry application actions', () => {
 
     const result = await fixture.application.openWorkspacePanel({
       kind: 'open-workspace-panel',
-      scope: createScope({ workspaceId: 'D:\\workspaces\\demo' }),
+      scope: createScope({ workspaceId: null }),
       payload: {},
     });
 
     assert.deepEqual(result, createAcceptedWorkspacePanel({
-      selectedWorkspaceId: 'D:\\workspaces\\demo',
       items: [
         createPanelItem({
           workspaceId: 'D:\\workspaces\\demo',
           recordRef: 'workspace-record-1',
           name: 'Demo',
           cwd: 'D:\\workspaces\\demo',
-          selected: true,
-          operations: ['rename', 'edit-cwd'],
         }),
       ],
     }));
@@ -490,6 +487,9 @@ function createAcceptedWorkspacePanel(input: CreateAcceptedWorkspacePanelInput):
         persistence: createExpectedPersistence(input),
         selectedWorkspaceId: input.selectedWorkspaceId ?? null,
         items: input.items,
+      },
+      page: {
+        kind: 'workspace-list',
       },
     },
   };

@@ -7,6 +7,7 @@ export type {
   WorkspaceAddSubmitInput,
   WorkspaceEditCwdSubmitInput,
   WorkspaceRenameSubmitInput,
+  WorkspaceResumeThreadInput,
 } from './model/workspace-panel-inputs.js';
 export {
   createInitialWorkspacePanelState,

@@ -17,6 +17,8 @@ export {
   type ClientRenameWorkspaceAction,
   type ClientEditWorkspaceCwdAction,
   type ClientRemoveWorkspaceAction,
+  type ClientOpenWorkspaceActiveThreadsAction,
+  type ClientLoadMoreWorkspaceActiveThreadsAction,
 } from './client-action.js';
 export {
   clientActionErrorSchema,
@@ -103,14 +105,22 @@ export {
   clientWorkspaceListItemViewSchema,
   clientWorkspaceListViewSchema,
   clientWorkspaceOperationSchema,
+  clientWorkspaceActiveThreadResourceViewSchema,
+  clientWorkspaceActiveThreadsPageViewSchema,
+  clientWorkspacePanelPageViewSchema,
   clientWorkspacePanelViewSchema,
+  clientWorkspaceThreadItemViewSchema,
   clientWorkspacePersistenceViewSchema,
   type ClientWorkspaceAvailabilityView,
   type ClientWorkspaceErrorView,
   type ClientWorkspaceListItemView,
   type ClientWorkspaceListView,
   type ClientWorkspaceOperation,
+  type ClientWorkspaceActiveThreadResourceView,
+  type ClientWorkspaceActiveThreadsPageView,
+  type ClientWorkspacePanelPageView,
   type ClientWorkspacePanelView,
+  type ClientWorkspaceThreadItemView,
   type ClientWorkspacePersistenceView,
 } from './workspace-panel.js';
 

@@ -45,7 +45,8 @@ describe('codex protocol readers', () => {
     );
 
     assert.equal(thread.threadId, 'thread-1');
-    assert.equal(thread.title, 'Thread title');
+    assert.equal(thread.name, 'Thread title');
+    assert.equal('title' in thread, false);
     assert.equal(thread.turns?.[0]?.items[0]?.text, 'Hello');
     assert.equal(thread.turns?.[0]?.items[1]?.text, 'Hi');
   });
@@ -232,4 +233,3 @@ describe('codex protocol readers', () => {
     });
   });
 });
-

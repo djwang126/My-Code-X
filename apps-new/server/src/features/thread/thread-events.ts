@@ -35,7 +35,7 @@ export interface ThreadForgottenEvent {
 export interface ThreadRecord {
   readonly threadId: string;
   readonly workspace: string | null;
-  readonly title: string | null;
+  readonly name: string | null;
   readonly updatedAt: string | null;
 }
 

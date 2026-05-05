@@ -11,7 +11,7 @@ import { readCodexTurn } from './read-turn.js';
 import { readString } from '../../protocol/reader/index.js';
 
 export function isRichCodexThreadPayload(payload: JsonObject): boolean {
-  const summaryKeys = new Set(['id', 'threadId', 'title', 'name', 'threadName', 'cwd', 'workspace', 'updatedAt', 'updated_at']);
+  const summaryKeys = new Set(['id', 'threadId', 'name', 'threadName', 'cwd', 'workspace', 'updatedAt', 'updated_at']);
   return Object.keys(payload).some(key => !summaryKeys.has(key));
 }
 
@@ -20,11 +20,11 @@ export function readCodexThread(value: JsonValue | undefined, fieldName: string)
   const threadId = readString(payload.id, `${fieldName}.id`);
   const turns = readCodexJsonArray(payload.turns, `${fieldName}.turns`).map(item => readCodexTurn(item, `${fieldName}.turns[]`));
   const updatedAtUnix = readCodexNumberLike(payload.updatedAt);
-  const title = readCodexTextLike(payload.name);
+  const name = readCodexTextLike(payload.name);
   const cwd = readCodexTextLike(payload.cwd);
   const thread: Record<string, JsonValue | readonly RuntimeTurn[]> = {
     threadId,
-    title,
+    name,
     workspace: cwd,
     updatedAt: updatedAtUnix === null ? readCodexTextLike(payload.updatedAt) ?? readCodexTextLike(payload.updated_at) : String(updatedAtUnix),
   };
@@ -46,7 +46,6 @@ export function readCodexThread(value: JsonValue | undefined, fieldName: string)
     setDefined(thread, 'agentNickname', readCodexTextLike(payload.agentNickname));
     setDefined(thread, 'agentRole', readCodexTextLike(payload.agentRole));
     setDefined(thread, 'gitInfo', payload.gitInfo);
-    setDefined(thread, 'name', readCodexTextLike(payload.name));
   }
   if (turns.length) {
     thread.turns = turns;
@@ -61,7 +60,7 @@ export function readCodexThread(value: JsonValue | undefined, fieldName: string)
 export function createRuntimeThreadSnapshot(thread: RuntimeThread): RuntimeThreadSnapshot {
   return cleanThreadSnapshot({
     threadId: thread.threadId,
-    title: thread.title,
+    name: thread.name,
     items: flattenTurnItems(thread.turns ?? []),
     pendingInputs: [],
     turns: thread.turns,

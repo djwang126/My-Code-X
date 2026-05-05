@@ -44,6 +44,51 @@ export const clientWorkspaceListViewSchema = z.object({
   items: z.array(clientWorkspaceListItemViewSchema),
 }).strict();
 
+export const clientWorkspaceThreadItemViewSchema = z.object({
+  threadId: z.string(),
+  name: z.string(),
+  preview: z.string(),
+  updatedAtIso: z.string().nullable(),
+  current: z.boolean(),
+  cardError: clientWorkspaceErrorViewSchema.nullable(),
+  operation: z.enum(['idle', 'resuming']),
+}).strict();
+
+export const clientWorkspaceActiveThreadResourceViewSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('loading'),
+  }).strict(),
+  z.object({
+    status: z.literal('failed'),
+    error: clientWorkspaceErrorViewSchema,
+  }).strict(),
+  z.object({
+    status: z.literal('ready'),
+    items: z.array(clientWorkspaceThreadItemViewSchema),
+    nextCursor: z.string().nullable(),
+    loadMore: z.discriminatedUnion('status', [
+      z.object({ status: z.literal('idle') }).strict(),
+      z.object({ status: z.literal('loading') }).strict(),
+      z.object({ status: z.literal('failed'), error: clientWorkspaceErrorViewSchema }).strict(),
+    ]),
+  }).strict(),
+]);
+
+export const clientWorkspaceActiveThreadsPageViewSchema = z.object({
+  kind: z.literal('active-threads'),
+  workspaceId: z.string(),
+  name: z.string(),
+  cwd: z.string(),
+  resource: clientWorkspaceActiveThreadResourceViewSchema,
+}).strict();
+
+export const clientWorkspacePanelPageViewSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('workspace-list'),
+  }).strict(),
+  clientWorkspaceActiveThreadsPageViewSchema,
+]);
+
 export const clientWorkspacePanelViewSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('loading'),
@@ -55,11 +100,16 @@ export const clientWorkspacePanelViewSchema = z.discriminatedUnion('status', [
   z.object({
     status: z.literal('ready'),
     list: clientWorkspaceListViewSchema,
+    page: clientWorkspacePanelPageViewSchema,
   }).strict(),
 ]);
 
 type ClientWorkspaceListItemViewShape = z.infer<typeof clientWorkspaceListItemViewSchema>;
 type ClientWorkspaceListViewShape = z.infer<typeof clientWorkspaceListViewSchema>;
+type ClientWorkspaceThreadItemViewShape = z.infer<typeof clientWorkspaceThreadItemViewSchema>;
+type ClientWorkspaceActiveThreadResourceViewShape = z.infer<typeof clientWorkspaceActiveThreadResourceViewSchema>;
+type ClientWorkspaceActiveThreadsPageViewShape = z.infer<typeof clientWorkspaceActiveThreadsPageViewSchema>;
+type ClientWorkspacePanelPageViewShape = z.infer<typeof clientWorkspacePanelPageViewSchema>;
 type ClientWorkspacePanelViewShape = z.infer<typeof clientWorkspacePanelViewSchema>;
 
 export type ClientWorkspaceErrorView = Readonly<z.infer<typeof clientWorkspaceErrorViewSchema>>;
@@ -78,10 +128,32 @@ export type ClientWorkspaceListView = Readonly<
     readonly items: readonly ClientWorkspaceListItemView[];
   }
 >;
+export type ClientWorkspaceThreadItemView = Readonly<
+  Omit<ClientWorkspaceThreadItemViewShape, 'cardError'> & {
+    readonly cardError: ClientWorkspaceErrorView | null;
+  }
+>;
+export type ClientWorkspaceActiveThreadResourceView = Readonly<
+  | Extract<ClientWorkspaceActiveThreadResourceViewShape, { readonly status: 'loading' }>
+  | Extract<ClientWorkspaceActiveThreadResourceViewShape, { readonly status: 'failed' }>
+  | (Omit<Extract<ClientWorkspaceActiveThreadResourceViewShape, { readonly status: 'ready' }>, 'items'> & {
+    readonly items: readonly ClientWorkspaceThreadItemView[];
+  })
+>;
+export type ClientWorkspaceActiveThreadsPageView = Readonly<
+  Omit<ClientWorkspaceActiveThreadsPageViewShape, 'resource'> & {
+    readonly resource: ClientWorkspaceActiveThreadResourceView;
+  }
+>;
+export type ClientWorkspacePanelPageView = Readonly<
+  | Extract<ClientWorkspacePanelPageViewShape, { readonly kind: 'workspace-list' }>
+  | ClientWorkspaceActiveThreadsPageView
+>;
 export type ClientWorkspacePanelView = Readonly<
   | Extract<ClientWorkspacePanelViewShape, { readonly status: 'loading' }>
   | Extract<ClientWorkspacePanelViewShape, { readonly status: 'failed' }>
-  | (Omit<Extract<ClientWorkspacePanelViewShape, { readonly status: 'ready' }>, 'list'> & {
+  | (Omit<Extract<ClientWorkspacePanelViewShape, { readonly status: 'ready' }>, 'list' | 'page'> & {
     readonly list: ClientWorkspaceListView;
+    readonly page: ClientWorkspacePanelPageView;
   })
 >;

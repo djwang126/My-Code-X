@@ -72,6 +72,51 @@ describe('workspace panel contracts', () => {
     assert.deepEqual(clientActionSchema.parse(action), action);
   });
 
+  test('parses open workspace active threads action', () => {
+    const action = {
+      kind: 'open-workspace-active-threads',
+      scope: createScope({ workspaceId: 'D:\\workspaces\\demo' }),
+      payload: {
+        workspaceId: 'D:\\workspaces\\demo',
+      },
+    };
+
+    assert.deepEqual(clientActionSchema.parse(action), action);
+  });
+
+  test('parses load more workspace active threads action', () => {
+    const action = {
+      kind: 'load-more-workspace-active-threads',
+      scope: createScope({ workspaceId: 'D:\\workspaces\\demo' }),
+      payload: {
+        workspaceId: 'D:\\workspaces\\demo',
+        cursor: 'next-1',
+      },
+    };
+
+    assert.deepEqual(clientActionSchema.parse(action), action);
+  });
+
+  test('parses resume thread action with strict empty payload', () => {
+    const action = {
+      kind: 'resume-thread',
+      scope: {
+        slotId: 'slot-1',
+        workspaceId: 'D:\\workspaces\\demo',
+        threadId: 'thread-2',
+      },
+      payload: {},
+    };
+
+    assert.deepEqual(clientActionSchema.parse(action), action);
+    assert.equal(clientActionSchema.safeParse({
+      ...action,
+      payload: {
+        threadId: 'thread-2',
+      },
+    }).success, false);
+  });
+
   test('rejects add workspace action with invalid payload', () => {
     assert.equal(clientActionSchema.safeParse({
       kind: 'add-workspace',
@@ -183,6 +228,140 @@ describe('workspace panel contracts', () => {
     assert.deepEqual(clientWorkspacePanelViewSchema.parse(panel), panel);
   });
 
+  test('parses ready workspace panel with active threads page', () => {
+    const panel = createReadyWorkspacePanel({
+      persistence: 'persistent',
+      page: {
+        kind: 'active-threads',
+        workspaceId: 'D:\\workspaces\\demo',
+        name: 'Demo',
+        cwd: 'D:\\workspaces\\demo',
+        resource: {
+          status: 'ready',
+          items: [
+            {
+              threadId: 'thread-1',
+              name: '',
+              preview: '',
+              updatedAtIso: null,
+              current: false,
+              cardError: null,
+              operation: 'idle',
+            },
+          ],
+          nextCursor: 'next-1',
+          loadMore: {
+            status: 'idle',
+          },
+        },
+      },
+    });
+
+    assert.deepEqual(clientWorkspacePanelViewSchema.parse(panel), panel);
+  });
+
+  test('parses active threads loading and failed resource states', () => {
+    const loading = createReadyWorkspacePanel({
+      persistence: 'persistent',
+      page: {
+        kind: 'active-threads',
+        workspaceId: 'D:\\workspaces\\demo',
+        name: 'Demo',
+        cwd: 'D:\\workspaces\\demo',
+        resource: {
+          status: 'loading',
+        },
+      },
+    });
+    const failed = createReadyWorkspacePanel({
+      persistence: 'persistent',
+      page: {
+        kind: 'active-threads',
+        workspaceId: 'D:\\workspaces\\demo',
+        name: 'Demo',
+        cwd: 'D:\\workspaces\\demo',
+        resource: {
+          status: 'failed',
+          error: {
+            code: 'thread-list-failed',
+            message: 'Active thread 列表加载失败',
+          },
+        },
+      },
+    });
+
+    assert.deepEqual(clientWorkspacePanelViewSchema.parse(loading), loading);
+    assert.deepEqual(clientWorkspacePanelViewSchema.parse(failed), failed);
+  });
+
+  test('parses active threads load more failure without replacing ready items', () => {
+    const panel = createReadyWorkspacePanel({
+      persistence: 'persistent',
+      page: {
+        kind: 'active-threads',
+        workspaceId: 'D:\\workspaces\\demo',
+        name: 'Demo',
+        cwd: 'D:\\workspaces\\demo',
+        resource: {
+          status: 'ready',
+          items: [
+            {
+              threadId: 'thread-1',
+              name: 'Thread',
+              preview: 'Preview',
+              updatedAtIso: null,
+              current: false,
+              cardError: null,
+              operation: 'idle',
+            },
+          ],
+          nextCursor: 'next-1',
+          loadMore: {
+            status: 'failed',
+            error: {
+              code: 'thread-list-failed',
+              message: '加载更多失败',
+            },
+          },
+        },
+      },
+    });
+
+    assert.deepEqual(clientWorkspacePanelViewSchema.parse(panel), panel);
+  });
+
+  test('rejects numeric updatedAt on active thread item', () => {
+    const panel = createReadyWorkspacePanel({
+      persistence: 'persistent',
+      page: {
+        kind: 'active-threads',
+        workspaceId: 'D:\\workspaces\\demo',
+        name: 'Demo',
+        cwd: 'D:\\workspaces\\demo',
+        resource: {
+          status: 'ready',
+          items: [
+            {
+              threadId: 'thread-1',
+              name: 'Thread',
+              preview: 'Preview',
+              updatedAtIso: 1770000000,
+              current: false,
+              cardError: null,
+              operation: 'idle',
+            },
+          ],
+          nextCursor: null,
+          loadMore: {
+            status: 'idle',
+          },
+        },
+      },
+    });
+
+    assert.equal(clientWorkspacePanelViewSchema.safeParse(panel).success, false);
+  });
+
   test('parses workspace action result with and without panel projection', () => {
     const withPanel = {
       status: 'accepted',
@@ -201,12 +380,14 @@ describe('workspace panel contracts', () => {
     assert.deepEqual(clientActionResultSchema.parse(withoutPanel), withoutPanel);
   });
 
-  test('rejects inconsistent workspace list resource states', () => {
+  test('rejects memory persistence without warning', () => {
     assert.equal(clientWorkspacePanelViewSchema.safeParse(createReadyWorkspacePanel({
       persistence: 'memory',
       omitMemoryWarning: true,
     })).success, false);
+  });
 
+  test('rejects persistent persistence with memory warning', () => {
     assert.equal(clientWorkspacePanelViewSchema.safeParse({
       status: 'ready',
       list: {
@@ -218,7 +399,9 @@ describe('workspace panel contracts', () => {
         items: [],
       },
     }).success, false);
+  });
 
+  test('rejects memory persistence without error', () => {
     assert.equal(clientWorkspacePanelViewSchema.safeParse({
       status: 'ready',
       list: {
@@ -264,7 +447,7 @@ describe('workspace panel contracts', () => {
     }).success, false);
   });
 
-  test('rejects invalid workspace list item states and operations', () => {
+  test('rejects available workspace item with unavailable reason', () => {
     assert.equal(clientWorkspacePanelViewSchema.safeParse({
       status: 'ready',
       list: {
@@ -286,7 +469,9 @@ describe('workspace panel contracts', () => {
         ],
       },
     }).success, false);
+  });
 
+  test('rejects unavailable workspace item without reason', () => {
     assert.equal(clientWorkspacePanelViewSchema.safeParse({
       status: 'ready',
       list: {
@@ -307,7 +492,9 @@ describe('workspace panel contracts', () => {
         ],
       },
     }).success, false);
+  });
 
+  test('rejects unknown workspace operation', () => {
     assert.equal(clientWorkspacePanelViewSchema.safeParse({
       status: 'ready',
       list: {
@@ -331,10 +518,14 @@ describe('workspace panel contracts', () => {
   });
 });
 
-function createScope() {
+interface CreateScopeInput {
+  readonly workspaceId?: string | null;
+}
+
+function createScope(input: CreateScopeInput = {}) {
   return {
     slotId: 'slot-1',
-    workspaceId: null,
+    workspaceId: input.workspaceId ?? null,
     threadId: null,
   };
 }
@@ -342,6 +533,7 @@ function createScope() {
 interface CreateReadyWorkspacePanelInput {
   readonly persistence: 'persistent' | 'memory';
   readonly omitMemoryWarning?: boolean;
+  readonly page?: unknown;
 }
 
 function createReadyWorkspacePanel(input: CreateReadyWorkspacePanelInput) {
@@ -382,5 +574,9 @@ function createReadyWorkspacePanel(input: CreateReadyWorkspacePanelInput) {
         },
       ],
     },
+    page: {
+      kind: 'workspace-list',
+    },
+    ...(input.page === undefined ? {} : { page: input.page }),
   };
 }

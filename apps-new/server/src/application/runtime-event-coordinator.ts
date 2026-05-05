@@ -118,7 +118,7 @@ function rememberThreadName(thread: ThreadService | undefined, threadId: string,
     thread: {
       threadId,
       workspace: existing?.workspace ?? null,
-      title: name,
+      name,
       updatedAt: existing?.updatedAt ?? null,
     },
   });
@@ -128,7 +128,7 @@ function mapRuntimeThreadRecord(thread: RuntimeThread): ThreadRecord {
   return {
     threadId: thread.threadId,
     workspace: thread.workspace,
-    title: thread.title,
+    name: thread.name,
     updatedAt: thread.updatedAt,
   };
 }

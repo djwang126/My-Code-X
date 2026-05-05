@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 import { isValidElement, type ReactElement, type ReactNode } from 'react';
-import type { ClientWorkspaceListItemView } from '@my-code-x/contracts-new';
+import type { ClientWorkspaceActiveThreadResourceView, ClientWorkspaceListItemView } from '@my-code-x/contracts-new';
 
 import { WorkspacePanel, type WorkspacePanelProps } from './workspace-panel.js';
 import type { ReadyWorkspacePanelView } from '../model/workspace-panel-reducer.js';
@@ -40,7 +40,7 @@ describe('WorkspacePanel rendering and interactions', () => {
     assert.equal(text.includes('Workspace 配置不可读'), true);
     assert.equal(text.includes('Demo'), true);
     assert.equal(text.includes('D:\\workspaces\\demo'), true);
-    assert.equal(text.includes('进入'), false);
+    assert.equal(text.includes('进入'), true);
     assert.equal(text.includes('重命名'), true);
     assert.equal(text.includes('编辑 cwd'), true);
     assert.equal(text.includes('移除'), false);
@@ -229,6 +229,20 @@ describe('WorkspacePanel rendering and interactions', () => {
     assert.deepEqual(readFormLabels(root), []);
   });
 
+  test('clicking an available workspace requests opening its active threads', () => {
+    const item = createAvailableItem({ workspaceId: 'D:\\workspaces\\demo', recordRef: 'workspace-record-1', name: 'Demo', cwd: 'D:\\workspaces\\demo' });
+    const calls = createCallRecorder();
+    const root = renderWorkspacePanel(createPanelProps({
+      state: createReadyState({ items: [item] }),
+      onOpenActiveThreadsClick: calls.recordOpenActiveThreads,
+    }));
+
+    clickButton(root, '进入');
+
+    assert.deepEqual(calls.openActiveThreads, [item]);
+  });
+
+
   test('submitting modal disables cancel and save buttons', () => {
     const root = renderWorkspacePanel(createPanelProps({
       state: {
@@ -248,6 +262,157 @@ describe('WorkspacePanel rendering and interactions', () => {
       '保存': true,
     });
   });
+
+  test('renders active thread page header and thread fields without fallback text', () => {
+    const root = renderWorkspacePanel(createPanelProps({
+      state: createActiveReadyState(),
+    }));
+    const text = textContent(root);
+
+    assert.equal(readTextByLabel(root, 'Active workspace name'), 'Demo');
+    assert.equal(readTextByLabel(root, 'Active workspace cwd'), 'D:\\workspaces\\demo');
+    assert.equal(readTextByLabel(root, 'Thread name thread-2'), 'Second');
+    assert.equal(readTextByLabel(root, 'Thread preview thread-2'), 'Second preview');
+    assert.equal(readTextByLabel(root, 'Thread updated time thread-2'), '');
+    assert.equal(text.includes('未命名对话'), false);
+    assert.equal(text.includes('切换 Workspace'), true);
+  });
+
+  test('renders active thread loading state', () => {
+    const root = renderWorkspacePanel(createPanelProps({
+      state: createActiveStateWithResource({
+        status: 'loading',
+      }),
+    }));
+
+    assert.equal(textContent(root).includes('加载对话'), true);
+    assert.equal(textContent(root).includes('切换 Workspace'), true);
+  });
+
+  test('renders active thread failed state', () => {
+    const root = renderWorkspacePanel(createPanelProps({
+      state: createActiveStateWithResource({
+        status: 'failed',
+        error: {
+          code: 'thread-list-failed',
+          message: 'Active threads 加载失败',
+        },
+      }),
+    }));
+
+    assert.equal(textContent(root).includes('Active threads 加载失败'), true);
+    assert.equal(textContent(root).includes('切换 Workspace'), true);
+  });
+
+  test('renders active empty state without new thread entry', () => {
+    const root = renderWorkspacePanel(createPanelProps({
+      state: createActiveStateWithResource({
+        status: 'ready',
+        items: [],
+        nextCursor: null,
+        loadMore: {
+          status: 'idle',
+        },
+      }),
+    }));
+    const text = textContent(root);
+
+    assert.equal(text.includes('暂无对话'), true);
+    assert.equal(text.includes('新建'), false);
+  });
+
+  test('renders load more button only when a cursor exists', () => {
+    const calls = createCallRecorder();
+    const withCursor = renderWorkspacePanel(createPanelProps({
+      state: createActiveReadyState(),
+      onLoadMoreActiveThreads: calls.recordLoadMoreActiveThreads,
+    }));
+    const withoutCursor = renderWorkspacePanel(createPanelProps({
+      state: createActiveStateWithResource({
+        status: 'ready',
+        items: createActiveReadyItems(),
+        nextCursor: null,
+        loadMore: {
+          status: 'idle',
+        },
+      }),
+    }));
+
+    clickButton(withCursor, '加载更多');
+
+    assert.deepEqual(calls.loadMoreClicks, ['load-more']);
+    assert.equal(textContent(withCursor).includes('加载更多'), true);
+    assert.equal(textContent(withoutCursor).includes('加载更多'), false);
+  });
+
+  test('renders load more and card scoped errors without dropping active cards', () => {
+    const root = renderWorkspacePanel(createPanelProps({
+      state: createActiveStateWithResource({
+        status: 'ready',
+        items: [
+          createThreadItem({ threadId: 'thread-1', name: 'Current', preview: '', current: true }),
+          createThreadItem({
+            threadId: 'thread-2',
+            name: 'Second',
+            preview: 'Second preview',
+            cardError: {
+              code: 'thread-resume-failed',
+              message: 'Thread 恢复失败',
+            },
+          }),
+        ],
+        nextCursor: 'next-1',
+        loadMore: {
+          status: 'failed',
+          error: {
+            code: 'thread-list-failed',
+            message: '加载更多失败',
+          },
+        },
+      }),
+    }));
+
+    assert.equal(readTextByLabel(root, 'Thread name thread-2'), 'Second');
+    assert.equal(readTextByLabel(root, 'Thread error thread-2'), 'Thread 恢复失败');
+    assert.equal(readTextByLabel(root, 'Load more error'), '加载更多失败');
+  });
+
+  test('marks the current active thread with aria-current', () => {
+    const root = renderWorkspacePanel(createPanelProps({
+      state: createActiveReadyState(),
+    }));
+
+    assert.equal(readProps(findElementByLabel(root, 'Thread card thread-1'))['aria-current'], 'true');
+  });
+
+  test('does not dispatch resume for current active thread card', () => {
+    const calls = createCallRecorder();
+    const root = renderWorkspacePanel(createPanelProps({
+      state: createActiveReadyState(),
+      onResumeThread: calls.recordResumeThread,
+    }));
+
+    clickButton(root, 'Current');
+
+    assert.deepEqual(calls.resumeThreads, []);
+  });
+
+  test('dispatches resume for non-current active thread card', () => {
+    const calls = createCallRecorder();
+    const root = renderWorkspacePanel(createPanelProps({
+      state: createActiveReadyState(),
+      onResumeThread: calls.recordResumeThread,
+    }));
+
+    clickButton(root, 'Second');
+
+    assert.deepEqual(calls.resumeThreads, [
+      {
+        threadId: 'thread-2',
+        current: false,
+      },
+    ]);
+  });
 });
 
 function renderWorkspacePanel(props: WorkspacePanelProps): ReactElement {
@@ -259,6 +424,10 @@ function renderWorkspacePanel(props: WorkspacePanelProps): ReactElement {
 interface CreatePanelPropsInput {
   readonly state: WorkspacePanelProps['state'];
   onAddClick?(): void;
+  onOpenActiveThreadsClick?(item: ClientWorkspaceListItemView): void;
+  onBackToWorkspaceList?(): void;
+  onLoadMoreActiveThreads?(): void;
+  onResumeThread?: WorkspacePanelProps['onResumeThread'];
   onRenameClick?(item: ClientWorkspaceListItemView): void;
   onEditCwdClick?(item: ClientWorkspaceListItemView): void;
   onRemoveClick?(item: ClientWorkspaceListItemView): void;
@@ -273,12 +442,16 @@ function createPanelProps(input: CreatePanelPropsInput): WorkspacePanelProps {
     state: input.state,
     onAddClick: input.onAddClick ?? (() => undefined),
     onAddSubmit: input.onAddSubmit ?? (() => undefined),
+    onBackToWorkspaceList: input.onBackToWorkspaceList ?? (() => undefined),
     onCloseRequest: input.onCloseRequest ?? (() => undefined),
     onEditCwdClick: input.onEditCwdClick ?? (() => undefined),
     onEditCwdSubmit: input.onEditCwdSubmit ?? (() => undefined),
+    onLoadMoreActiveThreads: input.onLoadMoreActiveThreads ?? (() => undefined),
+    onOpenActiveThreadsClick: input.onOpenActiveThreadsClick ?? (() => undefined),
     onRemoveClick: input.onRemoveClick ?? (() => undefined),
     onRenameClick: input.onRenameClick ?? (() => undefined),
     onRenameSubmit: input.onRenameSubmit ?? (() => undefined),
+    onResumeThread: input.onResumeThread ?? (() => undefined),
   };
 }
 
@@ -297,9 +470,67 @@ function createReadyState(input: CreateReadyStateInput = {}): Extract<WorkspaceP
   };
 }
 
+function createActiveReadyState(): Extract<WorkspacePanelProps['state'], { readonly status: 'ready' }> {
+  return createActiveStateWithResource({
+    status: 'ready',
+    items: createActiveReadyItems(),
+    nextCursor: 'next-1',
+    loadMore: {
+      status: 'idle',
+    },
+  });
+}
+
+function createActiveStateWithResource(resource: ClientWorkspaceActiveThreadResourceView): Extract<WorkspacePanelProps['state'], { readonly status: 'ready' }> {
+  return {
+    status: 'ready',
+    panel: createReadyPanel({
+      page: {
+        kind: 'active-threads',
+        workspaceId: 'D:\\workspaces\\demo',
+        name: 'Demo',
+        cwd: 'D:\\workspaces\\demo',
+        resource,
+      },
+    }),
+    modal: {
+      status: 'none',
+    },
+    listError: null,
+  };
+}
+
+function createActiveReadyItems() {
+  return [
+    createThreadItem({ threadId: 'thread-1', name: 'Current', preview: '', current: true }),
+    createThreadItem({ threadId: 'thread-2', name: 'Second', preview: 'Second preview' }),
+  ];
+}
+
+interface CreateThreadItemInput {
+  readonly threadId: string;
+  readonly name: string;
+  readonly preview: string;
+  readonly current?: boolean;
+  readonly cardError?: { readonly code: string; readonly message: string } | null;
+}
+
+function createThreadItem(input: CreateThreadItemInput) {
+  return {
+    threadId: input.threadId,
+    name: input.name,
+    preview: input.preview,
+    updatedAtIso: null,
+    current: input.current ?? false,
+    cardError: input.cardError ?? null,
+    operation: 'idle' as const,
+  };
+}
+
 interface CreateReadyPanelInput {
   readonly persistence?: 'persistent' | 'memory';
-    readonly items?: readonly ClientWorkspaceListItemView[];
+  readonly items?: readonly ClientWorkspaceListItemView[];
+  readonly page?: ReadyWorkspacePanelView['page'];
 }
 
 function createReadyPanel(input: CreateReadyPanelInput = {}): ReadyWorkspacePanelView {
@@ -316,6 +547,10 @@ function createReadyPanel(input: CreateReadyPanelInput = {}): ReadyWorkspacePane
       selectedWorkspaceId: null,
       items: input.items ?? [],
     },
+    page: {
+      kind: 'workspace-list',
+    },
+    ...(input.page === undefined ? {} : { page: input.page }),
   };
 }
 
@@ -363,6 +598,9 @@ function createCallRecorder() {
   const renameSubmits: Parameters<WorkspacePanelProps['onRenameSubmit']>[0][] = [];
   const editCwdSubmits: Parameters<WorkspacePanelProps['onEditCwdSubmit']>[0][] = [];
   const removeClicks: ClientWorkspaceListItemView[] = [];
+  const openActiveThreads: ClientWorkspaceListItemView[] = [];
+  const resumeThreads: Parameters<WorkspacePanelProps['onResumeThread']>[0][] = [];
+  const loadMoreClicks: string[] = [];
 
   return {
     addClicks,
@@ -370,6 +608,9 @@ function createCallRecorder() {
     renameSubmits,
     editCwdSubmits,
     removeClicks,
+    openActiveThreads,
+    resumeThreads,
+    loadMoreClicks,
     recordAddClick() {
       addClicks.push('add-clicked');
     },
@@ -385,6 +626,15 @@ function createCallRecorder() {
     recordRemoveClick(item: ClientWorkspaceListItemView) {
       removeClicks.push(item);
     },
+    recordOpenActiveThreads(item: ClientWorkspaceListItemView) {
+      openActiveThreads.push(item);
+    },
+    recordResumeThread(item: Parameters<WorkspacePanelProps['onResumeThread']>[0]) {
+      resumeThreads.push(item);
+    },
+    recordLoadMoreActiveThreads() {
+      loadMoreClicks.push('load-more');
+    },
   };
 }
 
@@ -394,6 +644,7 @@ interface TestElementProps {
   readonly onSubmit?: (event: TestSubmitEvent) => void;
   readonly disabled?: boolean;
   readonly 'aria-label'?: string;
+  readonly 'aria-current'?: string;
 }
 
 interface TestSubmitEvent {
@@ -444,9 +695,13 @@ function findForm(root: ReactElement, label: string): ReactElement {
 }
 
 function readTextByLabel(root: ReactElement, label: string): string {
+  return textContent(findElementByLabel(root, label));
+}
+
+function findElementByLabel(root: ReactElement, label: string): ReactElement {
   const element = collectElements(root).find(candidate => readProps(candidate)['aria-label'] === label);
   assert.notEqual(element, undefined);
-  return textContent(element);
+  return element as ReactElement;
 }
 
 function readFormLabels(root: ReactElement): string[] {

@@ -1,8 +1,9 @@
-import type { ClientWorkspacePanelView } from '@my-code-x/contracts-new';
+import type { ClientWorkspacePanelPageView, ClientWorkspacePanelView } from '@my-code-x/contracts-new';
 import type { WorkspaceListSnapshot } from '../features/workspace/index.js';
 
 export interface PresentWorkspacePanelInput {
   readonly list: WorkspaceListSnapshot;
+  readonly page?: ClientWorkspacePanelPageView;
 }
 
 export function presentWorkspacePanel(input: PresentWorkspacePanelInput): ClientWorkspacePanelView {
@@ -31,6 +32,9 @@ export function presentWorkspacePanel(input: PresentWorkspacePanelInput): Client
         selected: item.selected,
         operations: [...item.operations],
       })),
+    },
+    page: input.page ?? {
+      kind: 'workspace-list',
     },
   };
 }

@@ -11,6 +11,8 @@ import { openClient, type OpenClientInput } from './open-client.js';
 import { addWorkspace, type AddWorkspaceInput } from './add-workspace.js';
 import { editWorkspaceCwd, type EditWorkspaceCwdInput } from './edit-workspace-cwd.js';
 import { openWorkspacePanel, type OpenWorkspacePanelInput } from './open-workspace-panel.js';
+import { openWorkspaceActiveThreads, type OpenWorkspaceActiveThreadsInput } from './open-workspace-active-threads.js';
+import { loadMoreWorkspaceActiveThreads, type LoadMoreWorkspaceActiveThreadsInput } from './load-more-workspace-active-threads.js';
 import { removeWorkspace, type RemoveWorkspaceInput } from './remove-workspace.js';
 import { renameWorkspace, type RenameWorkspaceInput } from './rename-workspace.js';
 import { respondClientInteraction, type RespondClientInteractionInput } from './respond-client-interaction.js';
@@ -23,6 +25,8 @@ export type ApplicationResumeClientThreadInput = ResumeClientThreadInput;
 export type ApplicationRespondClientInteractionInput = RespondClientInteractionInput;
 export type ApplicationInterruptClientTurnInput = InterruptClientTurnInput;
 export type ApplicationOpenWorkspacePanelInput = OpenWorkspacePanelInput;
+export type ApplicationOpenWorkspaceActiveThreadsInput = OpenWorkspaceActiveThreadsInput;
+export type ApplicationLoadMoreWorkspaceActiveThreadsInput = LoadMoreWorkspaceActiveThreadsInput;
 export type ApplicationAddWorkspaceInput = AddWorkspaceInput;
 export type ApplicationRenameWorkspaceInput = RenameWorkspaceInput;
 export type ApplicationEditWorkspaceCwdInput = EditWorkspaceCwdInput;
@@ -45,6 +49,8 @@ export interface ApplicationService {
   respondClientInteraction(input: ApplicationRespondClientInteractionInput): Promise<ClientActionResult>;
   interruptClientTurn(input: ApplicationInterruptClientTurnInput): Promise<ClientActionResult>;
   openWorkspacePanel(input: ApplicationOpenWorkspacePanelInput): Promise<ClientActionResult>;
+  openWorkspaceActiveThreads(input: ApplicationOpenWorkspaceActiveThreadsInput): Promise<ClientActionResult>;
+  loadMoreWorkspaceActiveThreads(input: ApplicationLoadMoreWorkspaceActiveThreadsInput): Promise<ClientActionResult>;
   addWorkspace(input: ApplicationAddWorkspaceInput): Promise<ClientActionResult>;
   renameWorkspace(input: ApplicationRenameWorkspaceInput): Promise<ClientActionResult>;
   editWorkspaceCwd(input: ApplicationEditWorkspaceCwdInput): Promise<ClientActionResult>;
@@ -75,6 +81,14 @@ export function createApplication(input: ApplicationInput): ApplicationService {
 
     openWorkspacePanel(command: ApplicationOpenWorkspacePanelInput): Promise<ClientActionResult> {
       return openWorkspacePanel({ input: command, dependencies: input });
+    },
+
+    openWorkspaceActiveThreads(command: ApplicationOpenWorkspaceActiveThreadsInput): Promise<ClientActionResult> {
+      return openWorkspaceActiveThreads({ input: command, dependencies: input });
+    },
+
+    loadMoreWorkspaceActiveThreads(command: ApplicationLoadMoreWorkspaceActiveThreadsInput): Promise<ClientActionResult> {
+      return loadMoreWorkspaceActiveThreads({ input: command, dependencies: input });
     },
 
     addWorkspace(command: ApplicationAddWorkspaceInput): Promise<ClientActionResult> {

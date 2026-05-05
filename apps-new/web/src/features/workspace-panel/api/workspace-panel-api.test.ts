@@ -88,6 +88,60 @@ describe('workspace panel api boundary', () => {
     ]);
   });
 
+  test('sends active thread panel actions with current workspace and cursor', async () => {
+    const fixture = createApiFixture();
+
+    await fixture.api.openActiveThreads({
+      scope: createScope({ workspaceId: null }),
+      workspaceId: 'D:\\workspaces\\demo',
+    });
+    await fixture.api.loadMoreActiveThreads({
+      scope: createScope({ workspaceId: 'D:\\workspaces\\demo' }),
+      workspaceId: 'D:\\workspaces\\demo',
+      cursor: 'next-1',
+    });
+
+    assert.deepEqual(fixture.actions, [
+      {
+        kind: 'open-workspace-active-threads',
+        scope: createActionScope({ workspaceId: 'D:\\workspaces\\demo' }),
+        payload: {
+          workspaceId: 'D:\\workspaces\\demo',
+        },
+      },
+      {
+        kind: 'load-more-workspace-active-threads',
+        scope: createActionScope({ workspaceId: 'D:\\workspaces\\demo' }),
+        payload: {
+          workspaceId: 'D:\\workspaces\\demo',
+          cursor: 'next-1',
+        },
+      },
+    ]);
+  });
+
+  test('sends resume thread action with thread in scope and strict empty payload', async () => {
+    const fixture = createApiFixture();
+
+    await fixture.api.resumeThread({
+      scope: createScope({ workspaceId: null }),
+      workspaceId: 'D:\\workspaces\\demo',
+      threadId: 'thread-2',
+    });
+
+    assert.deepEqual(fixture.actions, [
+      {
+        kind: 'resume-thread',
+        scope: {
+          slotId: 'slot-1',
+          workspaceId: 'D:\\workspaces\\demo',
+          threadId: 'thread-2',
+        },
+        payload: {},
+      },
+    ]);
+  });
+
   test('returns workspace panel from accepted action result', async () => {
     const fixture = createApiFixture({ result: createAcceptedActionResult({ persistence: 'memory' }) });
 
@@ -120,6 +174,46 @@ describe('workspace panel api boundary', () => {
       code: 'missing',
       message: '路径不存在',
     });
+  });
+
+  test('throws typed error when opening active threads is rejected', async () => {
+    const fixture = createApiFixture({
+      result: {
+        status: 'rejected',
+        error: {
+          code: 'workspace-unavailable',
+          message: 'Workspace 不可用',
+        },
+      },
+    });
+
+    await assert.rejects(fixture.api.openActiveThreads({
+      scope: createScope({ workspaceId: null }),
+      workspaceId: 'D:\\workspaces\\missing',
+    }), {
+      name: 'WorkspacePanelApiError',
+      code: 'workspace-unavailable',
+      message: 'Workspace 不可用',
+    });
+  });
+
+  test('returns rejected resume action result for controller-level card errors', async () => {
+    const result: ClientActionResult = {
+      status: 'rejected',
+      error: {
+        code: 'thread-resume-failed',
+        message: 'Thread 恢复失败',
+      },
+    };
+    const fixture = createApiFixture({ result });
+
+    const actual = await fixture.api.resumeThread({
+      scope: createScope({ workspaceId: null }),
+      workspaceId: 'D:\\workspaces\\demo',
+      threadId: 'thread-2',
+    });
+
+    assert.deepEqual(actual, result);
   });
 
   test('exposes typed workspace panel api errors', () => {
@@ -171,6 +265,9 @@ function createAcceptedActionResult(input: CreateAcceptedActionResultInput): Ext
           : { status: 'persistent' },
         selectedWorkspaceId: null,
         items: [],
+      },
+      page: {
+        kind: 'workspace-list',
       },
     },
   };

@@ -9,7 +9,7 @@ export type RuntimeThreadStatus = JsonValue;
 
 export interface RuntimeThread {
   readonly threadId: string;
-  readonly title: string | null;
+  readonly name: string | null;
   readonly workspace: string | null;
   readonly updatedAt: string | null;
   readonly id?: string;
@@ -27,14 +27,13 @@ export interface RuntimeThread {
   readonly agentNickname?: string | null;
   readonly agentRole?: string | null;
   readonly gitInfo?: JsonValue;
-  readonly name?: string | null;
   readonly turns?: readonly RuntimeTurn[];
   readonly raw?: JsonObject;
 }
 
 export interface RuntimeThreadSnapshot {
   readonly threadId: string;
-  readonly title: string | null;
+  readonly name: string | null;
   readonly items: readonly RuntimeTimelineItem[];
   readonly pendingInputs: readonly RuntimeHostRequest[];
   readonly turns?: readonly RuntimeTurn[];

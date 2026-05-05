@@ -14,3 +14,8 @@ export interface WorkspaceEditCwdSubmitInput {
   readonly item: ClientWorkspaceListItemView;
   readonly cwd: string;
 }
+
+export interface WorkspaceResumeThreadInput {
+  readonly threadId: string;
+  readonly current: boolean;
+}

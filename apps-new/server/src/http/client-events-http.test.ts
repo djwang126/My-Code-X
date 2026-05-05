@@ -30,6 +30,14 @@ const noopApplication: ApplicationService = {
     throw new Error('openWorkspacePanel is outside this test');
   },
 
+  async openWorkspaceActiveThreads() {
+    throw new Error('openWorkspaceActiveThreads is outside this test');
+  },
+
+  async loadMoreWorkspaceActiveThreads() {
+    throw new Error('loadMoreWorkspaceActiveThreads is outside this test');
+  },
+
   async addWorkspace() {
     throw new Error('addWorkspace is outside this test');
   },

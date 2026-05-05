@@ -28,7 +28,7 @@ describe('createThreadService', () => {
     const thread = {
       threadId: 'thread-1',
       workspace: 'workspace-1',
-      title: 'Thread one',
+      name: 'Thread one',
       updatedAt: '2026-04-29T00:00:00.000Z',
     };
 
@@ -52,7 +52,7 @@ describe('createThreadService', () => {
       thread: {
         threadId: 'thread-1',
         workspace: 'workspace-1',
-        title: null,
+        name: null,
         updatedAt: null,
       },
     });

@@ -192,7 +192,7 @@ describe('createRuntimeEventCoordinator', () => {
       kind: 'runtime-thread-started',
       thread: {
         threadId: 'thread-1',
-        title: null,
+        name: null,
         workspace: '/workspace',
         updatedAt: '1770000000',
       },
@@ -212,7 +212,7 @@ describe('createRuntimeEventCoordinator', () => {
         kind: 'remember-thread',
         thread: {
           threadId: 'thread-1',
-          title: null,
+          name: null,
           updatedAt: '1770000000',
           workspace: '/workspace',
         },
@@ -221,7 +221,7 @@ describe('createRuntimeEventCoordinator', () => {
         kind: 'remember-thread',
         thread: {
           threadId: 'thread-1',
-          title: 'Named thread',
+          name: 'Named thread',
           updatedAt: '1770000000',
           workspace: '/workspace',
         },

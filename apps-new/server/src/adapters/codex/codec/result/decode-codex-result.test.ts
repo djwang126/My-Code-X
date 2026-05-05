@@ -117,7 +117,8 @@ describe('decodeCodexResultToRuntimeResult', () => {
     assert.equal(result.kind, 'thread-resumed');
     assert.equal(result.threadId, 'thread-1');
     assert.equal(result.snapshot.threadId, 'thread-1');
-    assert.equal(result.snapshot.title, 'Thread title');
+    assert.equal(result.snapshot.name, 'Thread title');
+    assert.equal('title' in result.snapshot, false);
     assert.equal(result.snapshot.turns?.[0]?.id, 'turn-1');
     assert.deepEqual(
       result.snapshot.items.map(item => [item.itemKind, item.text]),
@@ -146,7 +147,8 @@ describe('decodeCodexResultToRuntimeResult', () => {
 
     assert.equal(result.kind, 'threads-listed');
     assert.equal(result.threads[0]?.threadId, 'thread-1');
-    assert.equal(result.threads[0]?.title, 'First');
+    assert.equal(result.threads[0]?.name, 'First');
+    assert.equal('title' in result.threads[0]!, false);
     assert.equal(result.nextCursor, 'next-1');
     assert.equal(result.backwardsCursor, 'back-1');
   });

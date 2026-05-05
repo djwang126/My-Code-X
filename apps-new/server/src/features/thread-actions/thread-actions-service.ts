@@ -34,7 +34,7 @@ export function createThreadActionsService(dependencies: ThreadActionsDependenci
       const thread = {
         threadId: result.threadId,
         workspace: input.workspace,
-        title: null,
+        name: null,
         updatedAt: null,
       };
       publishThreadActionEvent(dependencies, { kind: 'thread-created', thread });
@@ -62,7 +62,7 @@ export function createThreadActionsService(dependencies: ThreadActionsDependenci
       const thread = {
         threadId: result.threadId,
         workspace: input.workspace,
-        title: result.snapshot.title,
+        name: result.snapshot.name,
         updatedAt: null,
       };
       publishThreadActionEvent(dependencies, { kind: 'thread-opened', thread });

@@ -11,14 +11,30 @@ import { readAppConfig } from './app-config.js';
 import { createClientSnapshotApiBoundary, type ClientEventSubscription } from './client-snapshot-api.js';
 import { readAppScope } from './app-scope.js';
 import { AppLayout } from './app-layout.js';
+import { applyResumeSnapshotToAppShellState, createScopeFromSnapshot } from './app-shell-state.js';
 
 export function AppShell() {
   const config = readAppConfig();
-  const scope = useMemo(() => readAppScope(), []);
+  const [scope, setScope] = useState(() => readAppScope());
   const api = useMemo(() => createClientSnapshotApiBoundary(), []);
   const workspaceApi = useMemo(() => createWorkspacePanelApiBoundary({ sendAction: action => api.sendAction(action) }), [api]);
   const [conversation, setConversation] = useState<ClientConversationView>(() => ({ status: 'loading' }));
-  const workspacePanel = useWorkspacePanelController({ scope, api: workspaceApi });
+  const workspacePanel = useWorkspacePanelController({
+    scope,
+    api: workspaceApi,
+    onResumeAccepted(snapshot) {
+      const nextState = applyResumeSnapshotToAppShellState({
+        state: {
+          scope,
+          conversation,
+        },
+        snapshot,
+      });
+      setConversation(nextState.conversation);
+      writeBrowserScope(nextState.scope);
+      setScope(nextState.scope);
+    },
+  });
 
   useEffect(() => {
     let disposed = false;
@@ -88,12 +104,16 @@ export function AppShell() {
         state={workspacePanel.state}
         onAddClick={workspacePanel.openAddModal}
         onAddSubmit={workspacePanel.submitAdd}
+        onBackToWorkspaceList={workspacePanel.showWorkspaceList}
         onCloseRequest={workspacePanel.close}
         onEditCwdClick={workspacePanel.openEditCwdModal}
         onEditCwdSubmit={workspacePanel.submitEditCwd}
+        onLoadMoreActiveThreads={workspacePanel.loadMoreActiveThreads}
+        onOpenActiveThreadsClick={workspacePanel.openActiveThreads}
         onRemoveClick={workspacePanel.remove}
         onRenameClick={workspacePanel.openRenameModal}
         onRenameSubmit={workspacePanel.submitRename}
+        onResumeThread={workspacePanel.resumeThread}
       />
     </AppLayout>
   );
@@ -105,4 +125,26 @@ function readErrorMessage(error: unknown): string {
   }
 
   return 'Unable to load conversation';
+}
+
+function writeBrowserScope(scope: ReturnType<typeof createScopeFromSnapshot>): void {
+  const params = new URLSearchParams();
+  appendNullableSearchParam({ params, name: 'slotId', value: scope.slotId });
+  appendNullableSearchParam({ params, name: 'workspaceId', value: scope.workspaceId });
+  appendNullableSearchParam({ params, name: 'threadId', value: scope.threadId });
+  const query = params.toString();
+  const nextUrl = query ? `${window.location.pathname}?${query}` : window.location.pathname;
+  window.history.replaceState(null, '', nextUrl);
+}
+
+function appendNullableSearchParam(input: {
+  readonly params: URLSearchParams;
+  readonly name: string;
+  readonly value: string | null;
+}): void {
+  if (input.value === null) {
+    return;
+  }
+
+  input.params.set(input.name, input.value);
 }

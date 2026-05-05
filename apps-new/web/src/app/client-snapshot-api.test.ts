@@ -208,6 +208,9 @@ describe('client snapshot api boundary', () => {
             selectedWorkspaceId: null,
             items: [],
           },
+          page: {
+            kind: 'workspace-list',
+          },
         },
       }), {
         status: 200,
@@ -246,6 +249,9 @@ describe('client snapshot api boundary', () => {
           },
           selectedWorkspaceId: null,
           items: [],
+        },
+        page: {
+          kind: 'workspace-list',
         },
       },
     });
