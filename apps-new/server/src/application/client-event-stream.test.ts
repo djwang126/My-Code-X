@@ -165,6 +165,50 @@ describe('client event stream', () => {
     ]);
   });
 
+  test('delivers scoped conversation error upsert events as client events', () => {
+    const events = createEventBus();
+    const stream = createClientEventStream({ conversation: createConversationService({ events }), events });
+    const sent: ClientEvent[] = [];
+
+    stream.subscribe({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      send(event) {
+        sent.push(event);
+      },
+    });
+
+    events.publish({
+      kind: 'conversation-item-upserted',
+      threadId: 'thread-1',
+      revision: 2,
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+      },
+    });
+
+    assert.deepEqual(sent, [
+      createEmptyReplacement(),
+      {
+        kind: 'conversation-item-upserted',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '2',
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      },
+    ]);
+  });
+
   test('sends the current authoritative conversation when subscribing', () => {
     const events = createEventBus();
     const conversation = createConversationService({ events });
@@ -222,6 +266,56 @@ describe('client event stream', () => {
               kind: 'message',
               role: 'assistant',
               text: 'hi',
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  test('sends current authoritative conversations containing error items when subscribing', () => {
+    const events = createEventBus();
+    const conversation = createConversationService({ events });
+    conversation.apply({
+      kind: 'replace-conversation',
+      threadId: 'thread-1',
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      ],
+    });
+    const stream = createClientEventStream({ conversation, events });
+    const sent: ClientEvent[] = [];
+
+    stream.subscribe({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      send(event) {
+        sent.push(event);
+      },
+    });
+
+    assert.deepEqual(sent, [
+      {
+        kind: 'conversation-replaced',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '1',
+        conversation: {
+          status: 'ready',
+          revision: 1,
+          items: [
+            {
+              id: 'error:turn-1',
+              kind: 'error',
+              message: 'runtime failed',
             },
           ],
         },

@@ -35,6 +35,54 @@ describe('conversation event delivery contracts', () => {
     assert.deepEqual(clientEventSchema.parse(event), event);
   });
 
+  test('accepts an authoritative conversation item upsert event for a conversation error', () => {
+    const event = {
+      kind: 'conversation-item-upserted',
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      revision: '3',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+      },
+    };
+
+    assert.deepEqual(clientEventSchema.parse(event), event);
+  });
+
+  test('accepts an authoritative replacement event containing a conversation error item', () => {
+    const event = {
+      kind: 'conversation-replaced',
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      revision: '4',
+      conversation: {
+        status: 'ready',
+        revision: 4,
+        items: [
+          {
+            id: 'user-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello',
+          },
+          {
+            id: 'error:turn-1',
+            kind: 'error',
+            message: 'runtime failed',
+          },
+        ],
+      },
+    };
+
+    assert.deepEqual(clientEventSchema.parse(event), event);
+  });
+
   test('does not expose runtime delta events to the web protocol', () => {
     const parsed = clientEventSchema.safeParse({
       kind: 'conversation-item-delta',

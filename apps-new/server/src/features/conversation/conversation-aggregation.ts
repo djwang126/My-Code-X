@@ -1,10 +1,11 @@
-import type { ConversationItem } from './conversation-events.js';
+import type { ConversationMessageItem } from './conversation-events.js';
 import type { ConversationScheduledTask, ConversationSchedulerPort } from './conversation-ports.js';
 
 export interface ConversationAggregation {
   recordDelta(input: RecordConversationDeltaInput): void;
   discardItem(input: DiscardPendingConversationItemInput): void;
   discardThread(input: DiscardPendingConversationThreadInput): void;
+  flushTurn(input: FlushPendingConversationTurnInput): void;
 }
 
 export interface CreateConversationAggregationInput {
@@ -15,6 +16,7 @@ export interface CreateConversationAggregationInput {
 
 export interface RecordConversationDeltaInput {
   readonly threadId: string;
+  readonly turnId: string;
   readonly itemId: string;
   readonly currentText: string;
   readonly deltaText: string;
@@ -31,12 +33,18 @@ export interface DiscardPendingConversationThreadInput {
 
 export interface FlushPendingConversationItemInput {
   readonly threadId: string;
-  readonly item: ConversationItem;
+  readonly item: ConversationMessageItem;
+}
+
+export interface FlushPendingConversationTurnInput {
+  readonly threadId: string;
+  readonly turnId: string;
 }
 
 interface PendingConversationItem {
   readonly threadId: string;
-  readonly item: ConversationItem;
+  readonly turnId: string;
+  readonly item: ConversationMessageItem;
   readonly task: ConversationScheduledTask;
 }
 
@@ -88,6 +96,7 @@ export function createConversationAggregation(input: CreateConversationAggregati
 
       pendingItems.set(key, {
         threadId: delta.threadId,
+        turnId: delta.turnId,
         item,
         task,
       });
@@ -115,6 +124,16 @@ export function createConversationAggregation(input: CreateConversationAggregati
         pendingItems.delete(key);
       }
     },
+
+    flushTurn(turn: FlushPendingConversationTurnInput): void {
+      const itemIds = [...pendingItems.values()]
+        .filter(pending => pending.threadId === turn.threadId && pending.turnId === turn.turnId)
+        .map(pending => pending.item.id);
+
+      for (const itemId of itemIds) {
+        flushItem(turn.threadId, itemId);
+      }
+    },
   };
 }
 
@@ -132,7 +151,7 @@ interface CreateAssistantMessageFromDeltaInput {
   readonly text: string;
 }
 
-function createAssistantMessageFromDelta(input: CreateAssistantMessageFromDeltaInput): ConversationItem {
+function createAssistantMessageFromDelta(input: CreateAssistantMessageFromDeltaInput): ConversationMessageItem {
   return {
     id: input.itemId,
     kind: 'message',

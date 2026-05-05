@@ -123,6 +123,163 @@ describe('restored conversation rendering application flow', () => {
     });
   });
 
+  test('open-client restores failed turn errors into the conversation timeline', async () => {
+    const application = createApplicationFixture({
+      async send(input: RuntimeCommand): Promise<RuntimeResult> {
+        if (input.kind !== 'resume-thread') {
+          throw new Error(`unexpected runtime command: ${input.kind}`);
+        }
+
+        return {
+          kind: 'thread-resumed',
+          threadId: 'thread-1',
+          snapshot: {
+            threadId: 'thread-1',
+            name: 'Restored thread',
+            pendingInputs: [],
+            items: [],
+            turns: [
+              {
+                id: 'turn-1',
+                status: 'failed',
+                error: {
+                  message: 'restored failure',
+                  code: 'RUNTIME_FAILED',
+                },
+                startedAt: null,
+                completedAt: null,
+                durationMs: null,
+                items: [
+                  {
+                    itemId: 'user-1',
+                    itemKind: 'userMessage',
+                    status: 'completed',
+                    text: 'hello',
+                    content: [],
+                  },
+                  {
+                    itemId: 'assistant-1',
+                    itemKind: 'agentMessage',
+                    status: 'completed',
+                    text: 'partial answer',
+                    phase: null,
+                    memoryCitation: null,
+                  },
+                ],
+              },
+            ],
+          },
+        };
+      },
+    });
+
+    const snapshot = await application.openClient({
+      kind: 'open-client',
+      scope: {
+        slotId: 'slot-1',
+        workspaceId: 'D:/workspace',
+        threadId: 'thread-1',
+      },
+      payload: {},
+    });
+
+    assert.deepEqual(snapshot.conversation, {
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'user-1',
+          kind: 'message',
+          role: 'user',
+          text: 'hello',
+        },
+        {
+          id: 'assistant-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'partial answer',
+        },
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'restored failure',
+        },
+      ],
+    });
+  });
+
+  test('open-client does not invent failed turn errors when restored snapshot has only items', async () => {
+    const application = createApplicationFixture({
+      async send(input: RuntimeCommand): Promise<RuntimeResult> {
+        if (input.kind !== 'resume-thread') {
+          throw new Error(`unexpected runtime command: ${input.kind}`);
+        }
+
+        return {
+          kind: 'thread-resumed',
+          threadId: 'thread-1',
+          snapshot: {
+            threadId: 'thread-1',
+            name: 'Restored thread',
+            pendingInputs: [],
+            items: [
+              {
+                itemId: 'mcp-1',
+                itemKind: 'mcpToolCall',
+                status: 'failed',
+                text: null,
+                server: null,
+                tool: null,
+                arguments: null,
+                result: null,
+                error: {
+                  message: 'tool failed',
+                },
+                durationMs: null,
+                raw: {
+                  id: 'mcp-1',
+                  type: 'mcpToolCall',
+                  status: 'failed',
+                  error: {
+                    message: 'tool failed',
+                  },
+                },
+              },
+            ],
+          },
+        };
+      },
+    });
+
+    const snapshot = await application.openClient({
+      kind: 'open-client',
+      scope: {
+        slotId: 'slot-1',
+        workspaceId: 'D:/workspace',
+        threadId: 'thread-1',
+      },
+      payload: {},
+    });
+
+    assert.deepEqual(snapshot.conversation, {
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'mcp-1',
+          kind: 'work-trace',
+          codexType: 'mcpToolCall',
+          fields: [
+            { name: 'id', value: 'mcp-1' },
+            { name: 'type', value: 'mcpToolCall' },
+            { name: 'status', value: 'failed' },
+            { name: 'error', value: { message: 'tool failed' } },
+          ],
+        },
+      ],
+    });
+  });
+
   test('open-client replaces old timeline items with the restored history', async () => {
     const application = createApplicationFixture(
       {

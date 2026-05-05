@@ -105,6 +105,7 @@ describe('createThreadActionsService', () => {
         updatedAt: null,
       },
       restoredItems: [],
+      restoredTurns: null,
     });
     assert.deepEqual(runtime.calls, [
       {

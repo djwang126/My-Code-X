@@ -40,27 +40,35 @@ Conversation item contract 必须采用 discriminated union，而不是用一组
 Conversation item 采用少量产品级分类：
 
 - Message item：用户消息或 assistant message。内容是原始 Markdown 文本，前端按 Markdown 语义渲染。
-- Work trace item：Codex 原生工作痕迹，例如计划、推理摘要、命令、工具、文件变更、网页搜索，或包含 stdout、stderr、diff、工具 payload 等内容的 app-server 结构。
-- Unknown item：My-Code-X 当前不认识的 Codex item。它保留原始 payload，前端展开后展示格式化 JSON。
-- Error item：Codex/app-server 表示为 conversation item 的聊天过程错误。它保留原始错误信息，前端以错误卡片展示。
+- Work trace item：Codex 原生工作痕迹，例如 hook prompt、计划、推理摘要、命令、工具、文件变更、网页搜索，或包含 stdout、stderr、diff、工具 payload 等内容的 app-server 结构。它使用 Codex 原生 item type 作为可识别标题，并把原始 payload 投影为通用字段列表。
+- Unknown item：My-Code-X 当前不认识的 Codex item。它保留 Codex 原生 item type，并把原始 payload 投影为同一套通用字段列表，前端展开后按字段名和值展示。
+- Error item：Codex/app-server 表示为 thread/turn conversation fact 的聊天过程错误。当前 app-server protocol 中错误可能表现为 turn-scoped error notification、failed turn completed error，或恢复历史中的 failed turn error，而不一定是原生 ThreadItem 变体。My-Code-X 把这些 conversation-scoped error facts 投影为 timeline error item；它保留原始错误 message，前端以错误卡片展示。
 
-分类只服务于产品渲染边界，不重新解释 Codex 业务语义。工作痕迹的标题、标签、摘要和状态优先使用 Codex 原生展示元数据。原生展示元数据不存在时，只退回显示原始 item type。
+分类只服务于产品渲染边界，不重新解释 Codex 业务语义。工作痕迹和未知 item 的卡片标题使用 Codex 原生 item type。My-Code-X 不从字段内容中自行生成标题、标签或摘要。状态等字段如果存在于 Codex payload 中，只作为通用字段列表的一项展示。
+
+Error item 的 identity 来自它所属的 Codex turn，而不是由前端生成。identity 采用由 turn id 派生的稳定 error item id。对同一个 turn 的 runtime error notification 和 failed turn completed error 必须 upsert 同一个 timeline item，避免同一错误在 timeline 中重复出现。
 
 Conversation feature 内部应拥有 server-side canonical conversation item concept。Runtime、domain、contract、UI 可以有边界 wrapper 或 projection shape，但不能在多个层里重复定义同一个产品概念并复制字段。已知 item 先进入 typed conversation domain model，再由 presenter 投影到 client contract；Web 不再重新定义一套等价 schema。
+
+通用字段列表是工作痕迹和未知 item 的共享 canonical concept。字段列表中的每一行包含原始字段名和 JSON value：`{ name, value }`。字段列表从 Codex item raw payload 的 object entries 生成，必须保留 raw payload 的字段顺序，前端按该顺序展示，不重新排序。字段列表保留原始字段，不过滤 `type`、`id`、`status` 等调试有用字段，也不把字段解释成 My-Code-X 自定义标题或摘要。
 
 ### Item content
 
 用户消息和 assistant message 保留原始文本。复制整条消息或代码块时使用原始文本，而不是渲染后的 DOM 内容。
 
-工作痕迹保留完整内容。30 行截断是前端阅读策略，不是后端数据截断。前端第一次展开长工作痕迹时显示前 30 行，并根据完整内容计算剩余行数。
+工作痕迹保留 Codex 原始 payload 中的字段名和值，并在 conversation contract 中投影为通用字段列表。30 行截断是前端阅读策略，不是后端数据截断。前端第一次展开长工作痕迹字段值时显示前 30 行，并根据完整字段值计算剩余行数。
 
-未知 item 保留格式化 JSON 所需的原始 payload。Unknown raw payload 是 contract 不暴露 raw Codex transport vocabulary 的受控例外：它只用于 fallback 可观察性，不代表已知 item 可以依赖 raw payload 渲染。已知 item 渲染必须依赖 boundary parsing 后的 typed fields。
+Runtime delta 不是新的 My-Code-X conversation 语义。Codex app-server 对部分同一个 item 的进度更新会按原生目标字段发送不同 notification，例如 `item/reasoning/summaryTextDelta` 更新 reasoning item 的 `summary[summaryIndex]`，`item/reasoning/textDelta` 更新 `content[contentIndex]`，`item/fileChange/patchUpdated` 携带 `changes`，`item/commandExecution/outputDelta` 更新命令输出。My-Code-X 后端可以维护 delta projection state，但该 state 必须按 Codex 原始 notification shape 和目标字段/index 累积，不能发明 `channels` 之类的产品语义，也不能把不同 delta kind 简单拼成单个 `text` 或用最后一个 delta 覆盖前一个 delta。
 
-错误 item 保留原始错误 message。My-Code-X 不改写错误原因，也不补充推断性解释。
+对 runtime delta 形成的临时 work trace snapshot，projection boundary 应先构造 raw-like payload，再复用通用字段列表投影。Raw-like payload 的字段应对应 Codex 原生目标字段，例如 reasoning 使用 `summary` 和 `content`，command execution 使用 `aggregatedOutput` 或等价 Codex 输出字段，file change 使用 `changes`，MCP progress 使用 progress message 列表。前端只看到 `{ name, value }` 字段行，不知道也不恢复 delta 语义。Codex completed item 到来后，completed item payload 是更权威的 full item snapshot，应覆盖同 item 的临时 delta projection。
+
+未知 item 使用与工作痕迹相同的通用字段列表策略。Unknown raw payload 不应被静默丢弃；projection boundary 把 raw object 转为 `{ name, value }` 字段行，复杂 value 仍保留为 JSON value。这样已知工作痕迹和未知 fallback 可以复用字段渲染，但仍通过 `kind` 区分产品语义。
+
+错误 item 只保留原始错误 message。My-Code-X 不改写错误原因，也不补充推断性解释。除原始 message 外的调试字段即使存在于 app-server payload 中，也不进入本轮 Error Surfaces 的错误卡片 contract。
 
 ### Rendering metadata
 
-Client contract 可以携带渲染所需的轻量 metadata，例如 item category、message role、原生 item type、原生标题或标签、渲染格式、workspace reference 标记等。
+Client contract 可以携带渲染所需的轻量 metadata，例如 item category、message role、原生 item type、通用字段列表、渲染格式、workspace reference 标记等。
 
 Rendering metadata 必须保持最小。能从 item category 或 message role 推导出的纯布局信息，不需要进入 contract。只有来自 Codex/app-server 的语义标记，或 frontend 无法安全推导但渲染必须知道的信息，才进入 contract。纯 CSS/layout 决策留在 Web。
 
@@ -82,13 +90,19 @@ Codex app-server 的输出先由 Codex adapter 转为 normalized runtime events�
 
 Application 只负责把 runtime events 路由给对应 feature，不在 application 层实现 conversation item 分类和展示语义。Conversation feature 接收与 timeline 有关的 runtime input，基于 Codex 原生 item identity 和 item/update 方式更新 conversation projection。它负责后端聚合，避免前端直接消费高频 token 级流式输出。
 
+Runtime delta projection 必须以 Codex protocol 为依据，而不是以 My-Code-X 自创的通用 delta 模型为依据。对于同一个 itemId 的多个 delta notification，Conversation feature 维护的是 Codex delta projection state：按 notification type、目标字段和 index 累积到 raw-like item payload，再输出 full conversation item snapshot。`channel` 可以作为局部实现变量名，但不能进入产品 contract、feature 文档语义或 UI 展示语义。
+
 Codex item type 到 conversation item category 的映射必须集中在 conversation projection policy 中。新增一个已知 Codex item type 时，应该修改一个集中 policy，而不是在 presenter、UI 和多个 feature 中散落 switch 判断。
+
+Turn-scoped runtime error notification 和 failed turn completed error 是 conversation-relevant runtime input。Application 负责把这些 typed runtime errors 路由给 conversation feature；conversation feature 决定它们是否属于 timeline error item，并用 turn-scoped identity upsert。runtime error notification 不改变 turn lifecycle；turn lifecycle 只跟随 Codex/app-server 明确提供的 turn lifecycle events，例如 turn started 和 turn completed。
 
 聚合后的 conversation domain event 再由 presenter 投影成 client event。前端消费 client event，并按 revision 和 item identity 更新本地只读 store。UI 体验是进度刷新式更新，不是逐 token 直播。
 
 ### Restore flow
 
 恢复 thread 时，application 调用 app-server 的权威恢复或读取能力，并把恢复出的 thread snapshot 交给 conversation feature 替换当前 timeline。恢复出的已完成 thread 展示完整历史 conversation。恢复出的进行中 thread 在历史内容恢复后进入 ready state，并继续消费后续 conversation updates。
+
+恢复 projection 必须保留历史 failed turn error。恢复数据如果包含 turn 列表，conversation feature 按 app-server 的 turn/item 顺序投影普通 conversation items，并把 failed turn error 投影到该 turn 对应的 timeline 位置。恢复数据如果只包含 item 列表，则只投影可见 items，不额外制造缺失的 error item。
 
 恢复失败是非 conversation 基础设施错误。它通过 resource state、notice 或 action result 呈现，不创建 timeline item。
 
@@ -108,9 +122,9 @@ Codex app-server owns authoritative conversation facts.
 
 Codex adapter owns external protocol handling and raw protocol normalization. It does not own conversation state.
 
-Application owns cross-feature orchestration: open, resume, runtime event routing, and recovery error routing. It does not own timeline state, item rendering semantics, or conversation projection policy.
+Application owns cross-feature orchestration: open, resume, runtime event routing, and recovery error routing. It routes turn-scoped runtime errors to conversation projection without inferring turn lifecycle state. It does not own timeline state, item rendering semantics, turn lifecycle semantics, or conversation projection policy.
 
-Conversation feature owns conversation timeline state, revision, item identity mapping, replacement/upsert rules, backend aggregation buffer, restore projection, and conversation resource readiness state. It does not own generic HTTP loading state, page-level request state, turn lifecycle, thread metadata, pending interactions, or approval state.
+Conversation feature owns conversation timeline state, revision, item identity mapping, replacement/upsert rules, backend aggregation buffer, restore projection, conversation-scoped error projection, and conversation resource readiness state. It does not own generic HTTP loading state, page-level request state, turn lifecycle, thread metadata, pending interactions, or approval state.
 
 Thread feature owns thread metadata. Turn feature owns turn lifecycle. Runtime request feature owns pending interactions. These states remain separate from Conversation View even when page layout makes them visually adjacent.
 
@@ -120,7 +134,7 @@ Frontend owns local display-only UI state: expanded cards, expanded line count, 
 
 ## Module Boundry
 
-Contracts define frontend-facing product shapes. They describe conversation snapshots, conversation items, client events and view states without generally exposing raw Codex transport vocabulary. Unknown item raw payload is the explicit fallback exception for observability.
+Contracts define frontend-facing product shapes. They describe conversation snapshots, conversation items, client events and view states without exposing raw Codex transport vocabulary as an untyped blob. Work trace and unknown items expose a controlled generic field list derived from Codex payloads for observability.
 
 Conversation feature is the only server feature that mutates conversation timeline state. Other features do not append, patch, replace or classify conversation items directly.
 
@@ -158,15 +172,17 @@ Resource state events can represent loading, ready and failed states without cre
 
 ### Error contract
 
-Conversation error items are delivered as conversation items. Non-conversation errors are delivered through resource state, notice, or action result contracts.
+Conversation error items are delivered as conversation items. A conversation error item carries a stable id and the original error message. Non-conversation errors are delivered through resource state, notice, or action result contracts.
 
-Application and projection layers preserve typed error semantics until the presentation boundary. They may route errors to timeline item, resource state, notice, or action result, but they must not collapse typed errors into generic strings before routing decisions are made. The final user-facing error card or state displays the original error message required by the product behavior.
+Application and projection layers preserve typed error semantics until the presentation boundary. They may route errors to timeline item, resource state, notice, or action result, but they must not collapse typed errors into generic strings before routing decisions are made. Runtime errors with both thread identity and turn identity are conversation-scoped and enter the timeline as error items. Runtime error notifications do not imply a terminal turn state; only explicit Codex/app-server turn lifecycle events update turn lifecycle state. Errors without a selected conversation scope, without turn identity, or caused by loading/restoring infrastructure remain outside the timeline. The final user-facing error card or state displays the original error message required by the product behavior.
 
 ### UI behavior contract
 
 Message items declare Markdown rendering but never trusted HTML rendering. External links open in a new browser tab. Workspace references are visually distinct when contract metadata identifies them as workspace references.
 
-Work trace items declare whether they are foldable. The frontend applies the first-30-lines display rule to expanded long work trace content and computes remaining lines from the full content supplied by the contract.
+Work trace items declare foldable field rows derived from the Codex payload. The frontend applies the first-30-lines display rule to expanded long field values and computes remaining lines from the full field value supplied by the contract.
+
+Error items declare plain text error rendering, not Markdown rendering. Error cards do not expose retry, cancel, approval, send or copy controls.
 
 Conversation View contracts do not include search, filter, jump, refresh, retry, send, cancel or approval controls.
 
@@ -174,14 +190,16 @@ Conversation View contracts do not include search, filter, jump, refresh, retry,
 
 Backend aggregation is part of the conversation projection. It may coalesce many runtime deltas into lower-frequency item snapshots, but the final projected item content must remain complete and ordered according to Codex/app-server authority.
 
+Aggregation coalesces already-projected full item snapshots; it does not define delta semantics. Delta semantics live in the Codex-aware projection policy, where each runtime notification is mapped back to the Codex item field it updates. This prevents implementation conveniences such as generic `channels[]` from becoming product semantics.
+
 Frontend rendering is intentionally dumb about Codex semantics. It can decide layout and interaction details, but semantic facts come from contract fields.
 
 Markdown rendering is client-side and safe by construction: Markdown syntax is rendered, raw HTML is escaped or treated as text, and code block highlighting is not part of this feature.
 
-Work trace folding is a UI presentation policy. Server state stores full content; the browser decides how much is visible at a time.
+Work trace folding is a UI presentation policy. Server state stores full field values; the browser decides how much is visible at a time.
 
 Completion is represented by the absence of further updates and by the final authoritative content. Conversation View does not add a separate done banner.
 
 Time exists outside the Conversation View product contract for this feature. Even if app-server supplies timestamps, this feature does not project them into the Conversation View UI.
 
-The implementation should follow the vertical slices: first establish the frontend host and snapshot shell, then confirmed messages, Markdown/link behavior, aggregated events, restore, work traces, long expansion, unknown JSON fallback and error surfaces.
+The implementation should follow the vertical slices: first establish the frontend host and snapshot shell, then confirmed messages, Markdown/link behavior, aggregated events, restore, work traces with generic field rows, long expansion, unknown fallback using the same field rows, and error surfaces.

@@ -62,18 +62,26 @@ export {
   type ClientWorkspaceView,
 } from './client-snapshot.js';
 export {
+  clientConversationErrorItemSchema,
   clientConversationErrorSchema,
+  clientConversationItemFieldSchema,
   clientConversationItemSchema,
   clientConversationMessageItemSchema,
   clientConversationReadyViewSchema,
+  clientConversationUnknownItemSchema,
   clientConversationViewSchema,
+  clientConversationWorkTraceItemSchema,
+  type ClientConversationErrorItem,
   type ClientConversationError,
   type ClientConversationFailedView,
+  type ClientConversationItemField,
   type ClientConversationItem,
   type ClientConversationLoadingView,
   type ClientConversationMessageItem,
   type ClientConversationReadyView,
+  type ClientConversationUnknownItem,
   type ClientConversationView,
+  type ClientConversationWorkTraceItem,
 } from './conversation-view.js';
 export {
   pendingInteractionControlSchema,

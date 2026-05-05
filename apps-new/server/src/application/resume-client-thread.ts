@@ -69,6 +69,7 @@ export async function resumeClientThread(useCase: ResumeClientThreadUseCaseInput
     kind: 'replace-runtime-conversation',
     threadId: openedThread.thread.threadId,
     items: openedThread.restoredItems,
+    turns: openedThread.restoredTurns,
   });
 
   return {

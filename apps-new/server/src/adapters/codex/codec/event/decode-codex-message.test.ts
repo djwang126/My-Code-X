@@ -266,6 +266,86 @@ describe('decodeCodexMessageToRuntimeEvent', () => {
     });
   });
 
+  test('decodes app-server error notifications while preserving the original message', () => {
+    const event = mapMessage({
+      kind: 'notification',
+      method: 'error',
+      params: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        willRetry: false,
+        error: {
+          message: 'provider returned 500',
+          codexErrorInfo: 'internalServerError',
+          additionalDetails: 'raw upstream body',
+        },
+      },
+    });
+
+    assert.deepEqual(event, {
+      kind: 'runtime-error',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      error: {
+        message: 'provider returned 500',
+        code: 'internalServerError',
+        details: 'raw upstream body',
+      },
+    });
+  });
+
+  test('decodes Codex error notifications without inventing missing thread or turn scope', () => {
+    const event = mapMessage({
+      kind: 'notification',
+      method: 'error',
+      params: {
+        error: {
+          message: 'global runtime error',
+        },
+      },
+    });
+
+    assert.deepEqual(event, {
+      kind: 'runtime-error',
+      threadId: null,
+      turnId: null,
+      error: {
+        message: 'global runtime error',
+        code: null,
+      },
+    });
+  });
+
+  test('keeps app-server retry metadata outside the runtime error domain event', () => {
+    const event = mapMessage({
+      kind: 'notification',
+      method: 'error',
+      params: {
+        threadId: 'thread-1',
+        turnId: 'turn-1',
+        willRetry: true,
+        error: {
+          message: 'provider stream disconnected, retrying',
+          codexErrorInfo: {
+            responseStreamDisconnected: {
+              httpStatusCode: 502,
+            },
+          },
+        },
+      },
+    });
+
+    assert.deepEqual(event, {
+      kind: 'runtime-error',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      error: {
+        message: 'provider stream disconnected, retrying',
+        code: 'responseStreamDisconnected',
+      },
+    });
+  });
+
   test('decodes realtime thread errors into runtime errors', () => {
     const event = mapMessage({
       kind: 'notification',

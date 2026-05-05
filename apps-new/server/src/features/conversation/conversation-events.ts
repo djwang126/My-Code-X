@@ -1,10 +1,18 @@
-import type { RuntimeItemDeltaKind, RuntimeTimelineItem, RuntimeThreadItem } from '../../ports/index.js';
+import type {
+  JsonValue,
+  RuntimeErrorInfo,
+  RuntimeItemDeltaKind,
+  RuntimeTimelineItem,
+  RuntimeThreadItem,
+  RuntimeTurn,
+} from '../../ports/index.js';
 
 export type ConversationCommand =
   | ReplaceConversationCommand
   | ReplaceRuntimeConversationCommand
   | RecordRuntimeThreadItemCommand
-  | RecordRuntimeItemDeltaCommand;
+  | RecordRuntimeItemDeltaCommand
+  | RecordRuntimeErrorCommand;
 
 export interface ConversationThreadCommandBase {
   readonly threadId: string;
@@ -18,6 +26,7 @@ export interface ReplaceConversationCommand extends ConversationThreadCommandBas
 export interface ReplaceRuntimeConversationCommand extends ConversationThreadCommandBase {
   readonly kind: 'replace-runtime-conversation';
   readonly items: readonly RuntimeTimelineItem[];
+  readonly turns: readonly RuntimeTurn[] | null;
 }
 
 export interface RecordRuntimeThreadItemCommand extends ConversationThreadCommandBase {
@@ -27,9 +36,16 @@ export interface RecordRuntimeThreadItemCommand extends ConversationThreadComman
 
 export interface RecordRuntimeItemDeltaCommand extends ConversationThreadCommandBase {
   readonly kind: 'record-runtime-item-delta';
+  readonly turnId: string;
   readonly itemId: string;
   readonly deltaKind: RuntimeItemDeltaKind;
   readonly text: string | null;
+}
+
+export interface RecordRuntimeErrorCommand extends ConversationThreadCommandBase {
+  readonly kind: 'record-runtime-error';
+  readonly turnId: string;
+  readonly error: RuntimeErrorInfo;
 }
 
 export type ConversationDomainEvent =
@@ -56,7 +72,11 @@ export interface ConversationSnapshot {
   readonly items: readonly ConversationItem[];
 }
 
-export type ConversationItem = ConversationMessageItem;
+export type ConversationItem =
+  | ConversationMessageItem
+  | ConversationWorkTraceItem
+  | ConversationUnknownItem
+  | ConversationErrorItem;
 
 export interface ConversationMessageItem {
   readonly id: string;
@@ -66,6 +86,31 @@ export interface ConversationMessageItem {
 }
 
 export type ConversationMessageRole = 'user' | 'assistant';
+
+export interface ConversationItemField {
+  readonly name: string;
+  readonly value: JsonValue;
+}
+
+export interface ConversationWorkTraceItem {
+  readonly id: string;
+  readonly kind: 'work-trace';
+  readonly codexType: string;
+  readonly fields: readonly ConversationItemField[];
+}
+
+export interface ConversationUnknownItem {
+  readonly id: string;
+  readonly kind: 'unknown';
+  readonly codexType: string;
+  readonly fields: readonly ConversationItemField[];
+}
+
+export interface ConversationErrorItem {
+  readonly id: string;
+  readonly kind: 'error';
+  readonly message: string;
+}
 
 export function isConversationDomainEvent(event: unknown): event is ConversationDomainEvent {
   if (!isRecord(event)) {

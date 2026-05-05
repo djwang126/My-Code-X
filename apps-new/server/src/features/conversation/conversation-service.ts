@@ -1,7 +1,11 @@
 import { createConversationAggregation } from './conversation-aggregation.js';
-import type { ConversationCommand, ConversationDomainEvent, ConversationSnapshot } from './conversation-events.js';
+import type {
+  ConversationCommand,
+  ConversationDomainEvent,
+  ConversationSnapshot,
+} from './conversation-events.js';
 import { createTimeoutConversationScheduler, type ConversationDependencies } from './conversation-ports.js';
-import { projectRuntimeThreadItem, projectRuntimeTimeline } from './conversation-runtime-projection.js';
+import { projectRuntimeError, projectRuntimeThreadItem, projectRuntimeTimeline, projectRuntimeTurns } from './conversation-runtime-projection.js';
 import { applyConversationDomainEvent, createInitialConversationState, type ConversationState } from './conversation-state.js';
 
 export interface ConversationService {
@@ -59,12 +63,17 @@ export function createConversationService(dependencies: ConversationDependencies
   function recordDelta(command: Extract<ConversationCommand, { readonly kind: 'record-runtime-item-delta' }>): ConversationSnapshot {
     const state = readState(command.threadId);
 
-    if (command.deltaKind !== 'agent-message' || command.text === null) {
+    if (command.deltaKind !== 'agent-message') {
+      return createConversationSnapshot({ state });
+    }
+
+    if (command.text === null) {
       return createConversationSnapshot({ state });
     }
 
     aggregation.recordDelta({
       threadId: command.threadId,
+      turnId: command.turnId,
       itemId: command.itemId,
       currentText: readCurrentItemText({
         state,
@@ -94,7 +103,9 @@ export function createConversationService(dependencies: ConversationDependencies
         return publish({
           kind: 'conversation-replaced',
           threadId: input.threadId,
-          items: projectRuntimeTimeline({ items: input.items }),
+          items: input.turns
+            ? projectRuntimeTurns({ turns: input.turns })
+            : projectRuntimeTimeline({ items: input.items }),
         });
 
       case 'record-runtime-thread-item': {
@@ -104,13 +115,27 @@ export function createConversationService(dependencies: ConversationDependencies
           return createConversationSnapshot({ state: readState(input.threadId) });
         }
 
-        aggregation.discardItem({ threadId: input.threadId, itemId: item.id });
+        if (item.kind === 'message') {
+          aggregation.discardItem({ threadId: input.threadId, itemId: item.id });
+        }
+
         return publish({
           kind: 'conversation-item-upserted',
           threadId: input.threadId,
           item,
         });
       }
+
+      case 'record-runtime-error':
+        aggregation.flushTurn({ threadId: input.threadId, turnId: input.turnId });
+        return publish({
+          kind: 'conversation-item-upserted',
+          threadId: input.threadId,
+          item: projectRuntimeError({
+            turnId: input.turnId,
+            error: input.error,
+          }),
+        });
     }
   }
 

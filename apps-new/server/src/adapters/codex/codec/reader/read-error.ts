@@ -11,9 +11,23 @@ export function readCodexRuntimeError(value: JsonValue): RuntimeErrorInfo {
   const details = readCodexTextLike(payload.additionalDetails);
   return cleanRuntimeError({
     message: readCodexTextLike(payload.message) ?? readCodexTextLike(payload.reason) ?? 'Codex runtime error',
-    code: readCodexTextLike(payload.code) ?? readCodexTextLike(readCodexJsonObjectOrNull(payload.codexErrorInfo)?.type),
+    code: readCodexTextLike(payload.code) ?? readCodexErrorCode(payload.codexErrorInfo),
     details: details ?? undefined,
   });
+}
+
+
+function readCodexErrorCode(value: JsonValue | undefined): string | null {
+  if (typeof value === 'string') {
+    return value;
+  }
+
+  const payload = readCodexJsonObjectOrNull(value);
+  if (!payload) {
+    return null;
+  }
+
+  return Object.keys(payload)[0] ?? null;
 }
 
 function cleanRuntimeError(error: RuntimeErrorInfo): RuntimeErrorInfo {

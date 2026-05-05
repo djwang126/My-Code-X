@@ -1,5 +1,12 @@
 import type { ReactNode } from 'react';
-import type { ClientConversationItem, ClientConversationMessageItem, ClientConversationView } from '@my-code-x/contracts-new';
+import type {
+  ClientConversationErrorItem,
+  ClientConversationItem,
+  ClientConversationMessageItem,
+  ClientConversationUnknownItem,
+  ClientConversationView,
+  ClientConversationWorkTraceItem,
+} from '@my-code-x/contracts-new';
 import {
   createConversationViewModelFromSnapshot,
   type ConversationViewModel,
@@ -17,6 +24,7 @@ import {
   readBrowserClipboard,
   type ConversationClipboard,
 } from './conversation-copy.js';
+import { ConversationFieldCard } from './conversation-field-card.js';
 
 export interface ConversationViewProps {
   readonly conversation: ClientConversationView;
@@ -84,11 +92,33 @@ interface ConversationTimelineItemProps {
 }
 
 function ConversationTimelineItem(input: ConversationTimelineItemProps) {
-  const renderer = conversationTimelineItemRenderers[input.item.kind] as ConversationTimelineItemRenderer<
-    typeof input.item
-  >;
+  switch (input.item.kind) {
+    case 'message':
+      return renderConversationMessageTimelineItem({
+        clipboard: input.clipboard,
+        item: input.item,
+      });
 
-  return renderer(input);
+    case 'work-trace':
+      return renderConversationWorkTraceTimelineItem({
+        clipboard: input.clipboard,
+        item: input.item,
+      });
+
+    case 'unknown':
+      return renderConversationUnknownTimelineItem({
+        clipboard: input.clipboard,
+        item: input.item,
+      });
+
+    case 'error':
+      return renderConversationErrorTimelineItem({
+        item: input.item,
+      });
+
+    default:
+      return assertNever(input.item);
+  }
 }
 
 interface ConversationTimelineItemRendererInput<TItem extends ClientConversationItem> {
@@ -96,24 +126,60 @@ interface ConversationTimelineItemRendererInput<TItem extends ClientConversation
   readonly item: TItem;
 }
 
-type ConversationTimelineItemRenderer<TItem extends ClientConversationItem> = (
-  input: ConversationTimelineItemRendererInput<TItem>,
-) => ReactNode;
-
-const conversationTimelineItemRenderers: {
-  readonly [Kind in ClientConversationItem['kind']]: ConversationTimelineItemRenderer<
-    Extract<ClientConversationItem, { readonly kind: Kind }>
-  >;
-} = {
-  message: renderConversationMessageTimelineItem,
-};
-
 function renderConversationMessageTimelineItem(
   input: ConversationTimelineItemRendererInput<ClientConversationMessageItem>,
 ) {
   return (
     <li className={`conversation-view__timeline-item conversation-view__timeline-item--${input.item.role}`}>
       <ConversationMessage clipboard={input.clipboard} item={input.item} />
+    </li>
+  );
+}
+
+function renderConversationWorkTraceTimelineItem(
+  input: ConversationTimelineItemRendererInput<ClientConversationWorkTraceItem>,
+): ReactNode {
+  return (
+    <li className="conversation-view__timeline-item conversation-view__timeline-item--trace">
+      <ConversationFieldCard
+        ariaLabel={`Codex work trace ${input.item.codexType}`}
+        cardClassName="conversation-view__trace-card"
+        codexType={input.item.codexType}
+        fields={input.item.fields}
+        itemId={input.item.id}
+      />
+    </li>
+  );
+}
+
+function renderConversationUnknownTimelineItem(
+  input: ConversationTimelineItemRendererInput<ClientConversationUnknownItem>,
+): ReactNode {
+  return (
+    <li className="conversation-view__timeline-item conversation-view__timeline-item--trace">
+      <ConversationFieldCard
+        ariaLabel={`Unknown Codex item ${input.item.codexType}`}
+        cardClassName="conversation-view__trace-card conversation-view__trace-card--unknown"
+        codexType={input.item.codexType}
+        fields={input.item.fields}
+        itemId={input.item.id}
+      />
+    </li>
+  );
+}
+
+interface ConversationErrorTimelineItemRendererInput {
+  readonly item: ClientConversationErrorItem;
+}
+
+function renderConversationErrorTimelineItem(
+  input: ConversationErrorTimelineItemRendererInput,
+): ReactNode {
+  return (
+    <li className="conversation-view__timeline-item conversation-view__timeline-item--error">
+      <article className="conversation-view__error-card" aria-label="Conversation error" role="alert">
+        <p className="conversation-view__error-message">{input.item.message}</p>
+      </article>
     </li>
   );
 }

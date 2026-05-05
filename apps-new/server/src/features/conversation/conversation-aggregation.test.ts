@@ -23,6 +23,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'assistant-1',
       deltaKind: 'agent-message',
       text: '你',
@@ -30,6 +31,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'assistant-1',
       deltaKind: 'agent-message',
       text: '好',
@@ -37,6 +39,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'assistant-1',
       deltaKind: 'agent-message',
       text: '，世界',
@@ -81,6 +84,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'assistant-1',
       deltaKind: 'agent-message',
       text: 'partial',
@@ -129,6 +133,196 @@ describe('aggregated conversation event delivery', () => {
     ]);
   });
 
+  test('runtime error flushes pending assistant deltas before the error item', () => {
+    const events: ConversationDomainEvent[] = [];
+    const scheduler = createManualConversationScheduler();
+    const service = createConversationService({
+      events: {
+        publish(event) {
+          events.push(event as ConversationDomainEvent);
+        },
+        subscribe() {
+          return () => {};
+        },
+      },
+      scheduler,
+    });
+
+    service.apply({
+      kind: 'record-runtime-item-delta',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      itemId: 'assistant-1',
+      deltaKind: 'agent-message',
+      text: 'partial answer',
+    });
+    scheduler.advanceBy(100);
+    service.apply({
+      kind: 'record-runtime-error',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      error: {
+        code: null,
+        message: 'stream disconnected',
+      },
+    });
+
+    assert.deepEqual(events, [
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 1,
+        item: {
+          id: 'assistant-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'partial answer',
+        },
+      },
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 2,
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'stream disconnected',
+        },
+      },
+    ]);
+
+    scheduler.advanceBy(400);
+
+    assert.deepEqual(events, [
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 1,
+        item: {
+          id: 'assistant-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'partial answer',
+        },
+      },
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 2,
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'stream disconnected',
+        },
+      },
+    ]);
+  });
+
+  test('runtime error flushes only pending assistant deltas from the same turn', () => {
+    const events: ConversationDomainEvent[] = [];
+    const scheduler = createManualConversationScheduler();
+    const service = createConversationService({
+      events: {
+        publish(event) {
+          events.push(event as ConversationDomainEvent);
+        },
+        subscribe() {
+          return () => {};
+        },
+      },
+      scheduler,
+    });
+
+    service.apply({
+      kind: 'record-runtime-item-delta',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      itemId: 'assistant-turn-1',
+      deltaKind: 'agent-message',
+      text: 'turn one partial',
+    });
+    service.apply({
+      kind: 'record-runtime-item-delta',
+      threadId: 'thread-1',
+      turnId: 'turn-2',
+      itemId: 'assistant-turn-2',
+      deltaKind: 'agent-message',
+      text: 'turn two partial',
+    });
+    scheduler.advanceBy(100);
+
+    service.apply({
+      kind: 'record-runtime-error',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      error: {
+        code: null,
+        message: 'turn one failed',
+      },
+    });
+
+    assert.deepEqual(events, [
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 1,
+        item: {
+          id: 'assistant-turn-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'turn one partial',
+        },
+      },
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 2,
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'turn one failed',
+        },
+      },
+    ]);
+
+    scheduler.advanceBy(400);
+
+    assert.deepEqual(events, [
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 1,
+        item: {
+          id: 'assistant-turn-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'turn one partial',
+        },
+      },
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 2,
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'turn one failed',
+        },
+      },
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 3,
+        item: {
+          id: 'assistant-turn-2',
+          kind: 'message',
+          role: 'assistant',
+          text: 'turn two partial',
+        },
+      },
+    ]);
+  });
+
   test('keeps previous flushed text when later delta arrives in another aggregation window', () => {
     const events: ConversationDomainEvent[] = [];
     const scheduler = createManualConversationScheduler();
@@ -147,6 +341,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'assistant-1',
       deltaKind: 'agent-message',
       text: '你',
@@ -155,6 +350,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'assistant-1',
       deltaKind: 'agent-message',
       text: '好',
@@ -228,6 +424,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'assistant-1',
       deltaKind: 'agent-message',
       text: '世界',
@@ -290,6 +487,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'assistant-1',
       deltaKind: 'agent-message',
       text: 'partial',
@@ -352,6 +550,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'shared-item',
       deltaKind: 'agent-message',
       text: 'thread one',
@@ -359,6 +558,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-2',
+      turnId: 'turn-1',
       itemId: 'shared-item',
       deltaKind: 'agent-message',
       text: 'thread two',
@@ -432,6 +632,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'shared-item',
       deltaKind: 'agent-message',
       text: 'thread one pending',
@@ -509,6 +710,7 @@ describe('aggregated conversation event delivery', () => {
     service.apply({
       kind: 'record-runtime-item-delta',
       threadId: 'thread-1',
+      turnId: 'turn-1',
       itemId: 'assistant-pending',
       deltaKind: 'agent-message',
       text: 'stale pending text',
@@ -525,6 +727,7 @@ describe('aggregated conversation event delivery', () => {
           content: [],
         },
       ],
+      turns: null,
     });
 
     scheduler.advanceBy(500);

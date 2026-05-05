@@ -50,6 +50,204 @@ describe('client conversation view contract', () => {
     });
   });
 
+  test('accepts ready state with a conversation error item in the timeline', () => {
+    assert.deepEqual(clientConversationViewSchema.parse({
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      ],
+    }), {
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      ],
+    });
+  });
+
+  test('does not allow conversation error items to carry assistant message fields or controls', () => {
+    const parsed = clientConversationViewSchema.safeParse({
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+          role: 'assistant',
+          text: 'runtime failed',
+          timestamp: '2026-05-01T00:00:00.000Z',
+          retry: true,
+          copyable: true,
+        },
+      ],
+    });
+
+    assert.equal(parsed.success, false);
+  });
+
+  test('rejects conversation error items without an id', () => {
+    assertRejectsReadyItem({
+      kind: 'error',
+      message: 'runtime failed',
+    });
+  });
+
+  test('rejects conversation error items without a message', () => {
+    assertRejectsReadyItem({
+      id: 'error:turn-1',
+      kind: 'error',
+    });
+  });
+
+  const invalidConversationErrorItems = [
+    {
+      name: 'debug code',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        code: 'RUNTIME_FAILED',
+      },
+    },
+    {
+      name: 'debug details',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        details: 'raw upstream body',
+      },
+    },
+    {
+      name: 'reinterpretation explanation',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        explanation: 'The provider returned an error.',
+      },
+    },
+    {
+      name: 'timestamp',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        timestamp: '2026-05-01T00:00:00.000Z',
+      },
+    },
+    {
+      name: 'retry control',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        retry: true,
+      },
+    },
+    {
+      name: 'copy control',
+      item: {
+        id: 'error:turn-1',
+        kind: 'error',
+        message: 'runtime failed',
+        copyable: true,
+      },
+    },
+  ] as const;
+
+  for (const invalidCase of invalidConversationErrorItems) {
+    test(`rejects conversation error items with ${invalidCase.name}`, () => {
+      assertRejectsReadyItem(invalidCase.item);
+    });
+  }
+
+  test('accepts ready state with ordered work trace fields from the Codex payload', () => {
+    assert.deepEqual(clientConversationViewSchema.parse({
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'plan-1',
+          kind: 'work-trace',
+          codexType: 'plan',
+          fields: [
+            { name: 'type', value: 'plan' },
+            { name: 'id', value: 'plan-1' },
+            { name: 'status', value: 'completed' },
+            { name: 'explanation', value: 'Plan' },
+            { name: 'steps', value: [{ step: 'Read docs', done: true }] },
+            { name: 'durationMs', value: 42 },
+            { name: 'error', value: null },
+          ],
+        },
+      ],
+    }), {
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'plan-1',
+          kind: 'work-trace',
+          codexType: 'plan',
+          fields: [
+            { name: 'type', value: 'plan' },
+            { name: 'id', value: 'plan-1' },
+            { name: 'status', value: 'completed' },
+            { name: 'explanation', value: 'Plan' },
+            { name: 'steps', value: [{ step: 'Read docs', done: true }] },
+            { name: 'durationMs', value: 42 },
+            { name: 'error', value: null },
+          ],
+        },
+      ],
+    });
+  });
+
+  test('accepts unknown item fallback without reinterpreting the Codex payload', () => {
+    assert.deepEqual(clientConversationViewSchema.parse({
+      status: 'ready',
+      revision: 4,
+      items: [
+        {
+          id: 'future-1',
+          kind: 'unknown',
+          codexType: 'futureCodexItem',
+          fields: [
+            { name: 'id', value: 'future-1' },
+            { name: 'type', value: 'futureCodexItem' },
+            { name: 'payload', value: { nested: true } },
+          ],
+        },
+      ],
+    }), {
+      status: 'ready',
+      revision: 4,
+      items: [
+        {
+          id: 'future-1',
+          kind: 'unknown',
+          codexType: 'futureCodexItem',
+          fields: [
+            { name: 'id', value: 'future-1' },
+            { name: 'type', value: 'futureCodexItem' },
+            { name: 'payload', value: { nested: true } },
+          ],
+        },
+      ],
+    });
+  });
+
   test('rejects legacy bare text timeline items', () => {
     const parsed = clientConversationViewSchema.safeParse({
       status: 'ready',
@@ -119,6 +317,132 @@ describe('client conversation view contract', () => {
 
     assert.equal(parsed.success, false);
   });
+
+  const invalidWorkTraceItems = [
+    {
+      name: 'display expansion state',
+      item: {
+        id: 'trace-1',
+        kind: 'work-trace',
+        codexType: 'commandExecution',
+        fields: [],
+        expanded: true,
+        lineLimit: 30,
+      },
+    },
+    {
+      name: 'summaries and previews',
+      item: {
+        id: 'trace-1',
+        kind: 'work-trace',
+        codexType: 'commandExecution',
+        fields: [],
+        preview: 'npm test',
+        summary: 'Command completed',
+      },
+    },
+    {
+      name: 'controls and copying state',
+      item: {
+        id: 'trace-1',
+        kind: 'work-trace',
+        codexType: 'commandExecution',
+        fields: [],
+        copyable: true,
+        controls: {
+          retry: true,
+        },
+      },
+    },
+    {
+      name: 'timestamps',
+      item: {
+        id: 'trace-1',
+        kind: 'work-trace',
+        codexType: 'commandExecution',
+        fields: [],
+        timestamp: '2026-05-01T00:00:00.000Z',
+      },
+    },
+    {
+      name: 'without codex type',
+      item: {
+        id: 'trace-1',
+        kind: 'work-trace',
+        fields: [],
+      },
+    },
+    {
+      name: 'without fields',
+      item: {
+        id: 'trace-1',
+        kind: 'work-trace',
+        codexType: 'commandExecution',
+      },
+    },
+  ] as const;
+
+  for (const invalidCase of invalidWorkTraceItems) {
+    test(`rejects work trace ${invalidCase.name}`, () => {
+      assertRejectsReadyItem(invalidCase.item);
+    });
+  }
+
+  const invalidUnknownItems = [
+    {
+      name: 'summaries and previews',
+      item: {
+        id: 'future-1',
+        kind: 'unknown',
+        codexType: 'futureCodexItem',
+        fields: [],
+        preview: 'Future item',
+        summary: 'Reinterpreted future item',
+      },
+    },
+    {
+      name: 'reinterpretation fields',
+      item: {
+        id: 'future-1',
+        kind: 'unknown',
+        codexType: 'futureCodexItem',
+        fields: [],
+        knownAs: 'plan',
+      },
+    },
+    {
+      name: 'work trace marker',
+      item: {
+        id: 'future-1',
+        kind: 'unknown',
+        codexType: 'futureCodexItem',
+        fields: [],
+        workTrace: true,
+      },
+    },
+    {
+      name: 'without codex type',
+      item: {
+        id: 'future-1',
+        kind: 'unknown',
+        fields: [],
+      },
+    },
+    {
+      name: 'without fields',
+      item: {
+        id: 'future-1',
+        kind: 'unknown',
+        codexType: 'futureCodexItem',
+      },
+    },
+  ] as const;
+
+  for (const invalidCase of invalidUnknownItems) {
+    test(`rejects unknown ${invalidCase.name}`, () => {
+      assertRejectsReadyItem(invalidCase.item);
+    });
+  }
 
   test('represents empty conversation as ready with zero items', () => {
     assert.deepEqual(clientConversationViewSchema.parse({
@@ -237,3 +561,17 @@ describe('client conversation view contract', () => {
     assert.equal(parsed.success, false);
   });
 });
+
+interface AssertRejectsReadyItemInput {
+  readonly [key: string]: unknown;
+}
+
+function assertRejectsReadyItem(item: AssertRejectsReadyItemInput): void {
+  const parsed = clientConversationViewSchema.safeParse({
+    status: 'ready',
+    revision: 1,
+    items: [item],
+  });
+
+  assert.equal(parsed.success, false);
+}

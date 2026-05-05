@@ -106,6 +106,217 @@ describe('conversation client event reducer', () => {
     });
   });
 
+  test('upsert appends a work trace timeline item in event order', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'ready',
+        revision: 1,
+        items: [
+          {
+            id: 'user-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello',
+          },
+        ],
+      },
+      event: {
+        kind: 'conversation-item-upserted',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '2',
+        item: {
+          id: 'plan-1',
+          kind: 'work-trace',
+          codexType: 'plan',
+          fields: [
+            { name: 'type', value: 'plan' },
+          ],
+        },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'user-1',
+          kind: 'message',
+          role: 'user',
+          text: 'hello',
+        },
+        {
+          id: 'plan-1',
+          kind: 'work-trace',
+          codexType: 'plan',
+          fields: [
+            { name: 'type', value: 'plan' },
+          ],
+        },
+      ],
+    });
+  });
+
+  test('upsert updates an existing work trace item without duplicating it', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'ready',
+        revision: 1,
+        items: [
+          {
+            id: 'command-1',
+            kind: 'work-trace',
+            codexType: 'commandExecution',
+            fields: [
+              { name: 'status', value: 'in-progress' },
+            ],
+          },
+        ],
+      },
+      event: {
+        kind: 'conversation-item-upserted',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '2',
+        item: {
+          id: 'command-1',
+          kind: 'work-trace',
+          codexType: 'commandExecution',
+          fields: [
+            { name: 'status', value: 'completed' },
+            { name: 'aggregatedOutput', value: 'ok' },
+          ],
+        },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'command-1',
+          kind: 'work-trace',
+          codexType: 'commandExecution',
+          fields: [
+            { name: 'status', value: 'completed' },
+            { name: 'aggregatedOutput', value: 'ok' },
+          ],
+        },
+      ],
+    });
+  });
+
+  test('upsert appends a conversation error item in event order', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'ready',
+        revision: 1,
+        items: [
+          {
+            id: 'user-1',
+            kind: 'message',
+            role: 'user',
+            text: 'hello',
+          },
+        ],
+      },
+      event: {
+        kind: 'conversation-item-upserted',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '2',
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'user-1',
+          kind: 'message',
+          role: 'user',
+          text: 'hello',
+        },
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'runtime failed',
+        },
+      ],
+    });
+  });
+
+  test('upsert updates an existing conversation error item without duplicating it', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'ready',
+        revision: 1,
+        items: [
+          {
+            id: 'error:turn-1',
+            kind: 'error',
+            message: 'first error',
+          },
+        ],
+      },
+      event: {
+        kind: 'conversation-item-upserted',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '2',
+        item: {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'final error',
+        },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'error:turn-1',
+          kind: 'error',
+          message: 'final error',
+        },
+      ],
+    });
+  });
+
   test('replacement rebuilds the complete local timeline', () => {
     const conversation = applyConversationClientEvent({
       scope: {
@@ -167,6 +378,66 @@ describe('conversation client event reducer', () => {
           kind: 'message',
           role: 'assistant',
           text: 'restored hi',
+        },
+      ],
+    });
+  });
+
+  test('replacement rebuilds the timeline with unknown fallback items preserved as unknown', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'ready',
+        revision: 1,
+        items: [
+          {
+            id: 'old-item',
+            kind: 'message',
+            role: 'assistant',
+            text: 'old',
+          },
+        ],
+      },
+      event: {
+        kind: 'conversation-replaced',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '2',
+        conversation: {
+          status: 'ready',
+          revision: 2,
+          items: [
+            {
+              id: 'future-1',
+              kind: 'unknown',
+              codexType: 'futureCodexItem',
+              fields: [
+                { name: 'type', value: 'futureCodexItem' },
+                { name: 'payload', value: { nested: true } },
+              ],
+            },
+          ],
+        },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'future-1',
+          kind: 'unknown',
+          codexType: 'futureCodexItem',
+          fields: [
+            { name: 'type', value: 'futureCodexItem' },
+            { name: 'payload', value: { nested: true } },
+          ],
         },
       ],
     });

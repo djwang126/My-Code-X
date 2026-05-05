@@ -28,17 +28,17 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 18. 作为 My-Code-X 用户，我希望 Codex 正在工作时能看到内容按进度刷新，这样我知道系统仍在运行，而不需要逐 token 直播式输出。
 19. 作为 My-Code-X 用户，我希望弱网、多页签、长输出场景下页面优先保持稳定，这样对话不会因为高频流式更新而卡顿、乱序或闪烁。
 20. 作为 My-Code-X 用户，我希望 Codex 完成后能看到完整权威内容，这样低频聚合刷新不会造成信息丢失。
-21. 作为 My-Code-X 用户，我希望看到 Codex 原生提供的计划、推理摘要、命令执行、工具调用、文件变更、网页搜索等工作痕迹，这样 Codex 不像黑盒。
+21. 作为 My-Code-X 用户，我希望看到 Codex 原生提供的 hook prompt、计划、推理摘要、命令执行、工具调用、文件变更、网页搜索等工作痕迹，这样 Codex 不像黑盒。
 22. 作为 My-Code-X 用户，我希望工作痕迹按 Codex 原生 item 顺序逐条出现在 timeline 中，这样我可以按真实发生顺序理解 Codex 的工作过程。
 23. 作为 My-Code-X 用户，我希望工作痕迹作为 Codex 侧内容靠左展示，这样我能把它们理解为 assistant 工作流的一部分，而不是用户消息。
 24. 作为 My-Code-X 用户，我希望工作痕迹默认折叠，这样长 stdout、stderr、diff、工具输出和搜索结果不会淹没主要对话。
 25. 作为 My-Code-X 用户，我希望展开长工作痕迹时先看到最多 30 行，这样小屏幕阅读不会被超长内容压垮。
 26. 作为 My-Code-X 用户，我希望超过 30 行的工作痕迹能提示“展开剩余 xxx 行”，这样我知道还有多少内容可以继续查看。
 27. 作为 My-Code-X 用户，我希望能够继续展开被截断的工作痕迹，这样必要时仍能看到完整内容。
-28. 作为 My-Code-X 用户，我希望 plan、reasoning summary 等结构化信息优先使用 Codex 原生标题、标签或摘要，这样显示语义与 Codex 保持一致。
-29. 作为 My-Code-X 用户，我希望 Codex 原生没有标题、标签或摘要时，界面可以退回显示 item type，这样每个 item 仍然可识别。
+28. 作为 My-Code-X 用户，我希望 plan、reasoning、命令、工具、文件变更、网页搜索等工作痕迹展开后按 Codex 原始字段名和值展示，这样我能看到真实数据而不依赖 My-Code-X 理解每个字段。
+29. 作为 My-Code-X 用户，我希望工作痕迹卡片标题使用 Codex 原生 item type，这样每个 item 仍然可识别，且不会引入 My-Code-X 自行发明的标题。
 30. 作为 My-Code-X 用户，我希望 My-Code-X 不认识的 Codex item type 不会被静默忽略，这样 Codex 升级后新信息仍然可观察。
-31. 作为 My-Code-X 用户，我希望未知 item 默认折叠，展开后展示格式化 JSON，这样我可以看到原始信息而不依赖 My-Code-X 已知类型支持。
+31. 作为 My-Code-X 用户，我希望未知 item 默认折叠，展开后按 Codex 原始字段名和值展示，并在需要时能看到格式化的复杂 JSON 值，这样我可以看到原始信息而不依赖 My-Code-X 已知类型支持。
 32. 作为 My-Code-X 用户，我希望 Codex 聊天过程中产生的错误以聊天卡片形式展示，这样错误不会被隐藏在日志里。
 33. 作为 My-Code-X 用户，我希望错误卡片展示原始错误信息，这样我看到的是实际错误而不是 My-Code-X 改写后的解释。
 34. 作为 My-Code-X 用户，我希望错误卡片中的错误文字使用红色，这样我能快速识别错误。
@@ -50,7 +50,8 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 40. 作为 My-Code-X 开发者，我希望 Codex 原生是同一个 item 更新时，My-Code-X 也更新同一个 item；Codex 原生是多个 item 时，My-Code-X 也展示多个 item，这样数据模型与 Codex 保持一致。
 41. 作为 My-Code-X 开发者，我希望后端负责聚合 Codex app-server 的高频原始事件，前端只消费聚合后的 conversation events，这样前端不会被高频流式输出拖垮。
 42. 作为 My-Code-X 开发者，我希望后端聚合不改变 Codex 原生语义、不丢失内容、不打乱顺序，这样 Conversation View 展示仍然可信。
-43. 作为 My-Code-X 开发者，我希望 pending request 和 approval 可以在视觉上与对话关联，但不由 Conversation View 处理业务逻辑，这样职责边界清晰。
+43. 作为 My-Code-X 开发者，我希望 runtime delta 按 Codex 原生 notification shape 和目标字段/index 投影，而不是按 My-Code-X 自创的 `channel`、单一 `text` 或 last-delta-wins 规则投影，这样 reasoning summary/content、file changes、command output、tool progress 等信息不会互相覆盖。
+44. 作为 My-Code-X 开发者，我希望 pending request 和 approval 可以在视觉上与对话关联，但不由 Conversation View 处理业务逻辑，这样职责边界清晰。
 
 
 ## 功能需求
@@ -79,27 +80,28 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 22. 后端聚合必须保留 Codex app-server 的权威性、顺序、item identity 和内容完整性。
 23. 如果 Codex/app-server 把更新表示为同一个 item，Conversation View 必须更新同一个 item。
 24. 如果 Codex/app-server 把更新表示为多个 item，Conversation View 必须按多个 timeline item 展示。
-25. Conversation View 禁止发明 Codex/app-server 没有提供的 item 生命周期、turn 状态、标题、摘要、字段或关系。
-26. Conversation View 必须渲染 Codex 提供的工作痕迹 item，包括计划、推理摘要、命令、工具、文件变更、网页搜索，或包含 stdout、stderr、diff、工具 payload 等内容的其他 app-server 结构。
-27. 工作痕迹 item 必须按后端提供的权威顺序逐条展示。
-28. 工作痕迹 item 默认必须折叠。
-29. 展开后的长工作痕迹内容首次最多显示 30 行。
-30. 如果展开后的工作痕迹内容超过 30 行，界面必须显示等价于“展开剩余 xxx 行”的入口。
-31. 用户必须能够继续展开被截断的工作痕迹，以查看剩余内容。
-32. 工作痕迹 item 不需要专门的复制按钮。
-33. 对 Codex 结构化 item，Conversation View 必须优先使用 Codex 原生 title、label、summary 或等价展示元数据。
-34. 如果 Codex 原生展示元数据不存在，Conversation View 可以退回显示原始 item type。
-35. 未知 item type 禁止被丢弃。
-36. 未知 item type 默认必须折叠。
-37. 展开未知 item type 后，必须展示原始 item payload 的格式化 JSON。
-38. Codex/app-server 表示为 conversation item 的聊天过程错误，必须作为 timeline 中的错误卡片展示。
-39. 错误卡片必须展示原始错误信息。
-40. 错误卡片中的错误文字必须使用红色。
-41. Conversation View 禁止改写、重新解释或推断原始错误的其他原因。
-42. Conversation View 禁止显示额外的完成横幅或“done”提示。
-43. Conversation View 本功能中禁止显示消息、工作痕迹、错误或 turn 的时间戳。
-44. Conversation View 本功能中禁止提供搜索、筛选、item 跳转、手动刷新、重试、approval、取消或发送控件。
-45. pending request 和 approval 的 UI 可以在 Conversation View 外部做视觉相邻或关联，但业务逻辑不属于 Conversation View。
+25. Conversation View 禁止发明 Codex/app-server 没有提供的 item 生命周期、turn 状态、标题、摘要、字段、delta channel 或关系。
+26. Runtime delta projection 必须按 Codex 原生 notification shape 和目标字段/index 累积：例如 reasoning summary delta 更新 `summary`，reasoning text delta 更新 `content`，file change patch 更新 `changes`，命令输出 delta 更新命令输出字段；禁止把不同 delta kind 简单拼成单个 `text` 或用最后一个 delta 覆盖前一个 delta。
+27. Conversation View 必须渲染 Codex 提供的工作痕迹 item，包括 hook prompt、计划、推理摘要、命令、工具、文件变更、网页搜索，或包含 stdout、stderr、diff、工具 payload 等内容的其他 app-server 结构。
+28. 工作痕迹 item 必须按后端提供的权威顺序逐条展示。
+29. 工作痕迹 item 默认必须折叠。
+30. 展开后的长工作痕迹内容首次最多显示 30 行。
+31. 如果展开后的工作痕迹内容超过 30 行，界面必须显示等价于“展开剩余 xxx 行”的入口。
+32. 用户必须能够继续展开被截断的工作痕迹，以查看剩余内容。
+33. 工作痕迹 item 不需要专门的复制按钮。
+34. 对 Codex 结构化工作痕迹 item，Conversation View 必须使用 Codex 原生 item type 作为卡片标题。
+35. 展开工作痕迹 item 后，Conversation View 必须按 Codex 原始 payload 的字段名和值展示字段列表；复杂字段值必须以格式化 JSON 或等价安全文本展示。
+36. 未知 item type 禁止被丢弃。
+37. 未知 item type 默认必须折叠。
+38. 展开未知 item type 后，必须按 Codex 原始 payload 的字段名和值展示字段列表；复杂字段值必须以格式化 JSON 或等价安全文本展示。
+39. Codex/app-server 表示为 conversation-scoped 的聊天过程错误，必须作为 timeline 中的错误卡片展示；包括带 thread 和 turn 归属的 runtime error、failed turn completed error，以及恢复历史中的 failed turn error；runtime error 不代表 turn lifecycle 终止，Conversation View 禁止据此推断 turn 状态。
+40. 错误卡片必须展示原始错误信息。
+41. 错误卡片中的错误文字必须使用红色。
+42. Conversation View 禁止改写、重新解释或推断原始错误的其他原因；错误卡片只展示原始 error message。
+43. Conversation View 禁止显示额外的完成横幅或“done”提示。
+44. Conversation View 本功能中禁止显示消息、工作痕迹、错误或 turn 的时间戳。
+45. Conversation View 本功能中禁止提供搜索、筛选、item 跳转、手动刷新、重试、approval、取消或发送控件。
+46. pending request 和 approval 的 UI 可以在 Conversation View 外部做视觉相邻或关联，但业务逻辑不属于 Conversation View。
 
 
 ## 边界情况和错误处理
@@ -111,21 +113,23 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 5. 恢复出的已完成 thread：展示恢复出的完整历史 conversation，不额外制造完成提示。
 6. 后端确认用户消息延迟：后端确认前，不把用户消息显示进 timeline。
 7. Codex 高频输出：前端消费后端聚合后的 events，不要求 token 级渲染。
-8. 弱网或多页签：优先保证稳定的进度刷新体验和完整最终内容，而不是高频实时渲染。
-9. 长 stdout、stderr、diff、工具输出、搜索输出或类似工作痕迹：默认折叠；展开后先显示 30 行；通过“展开剩余 xxx 行”查看剩余内容。
-10. 长 assistant/user Markdown 消息：正常按 Markdown 阅读，不套用 30 行工作痕迹截断规则。
-11. Markdown 中的原始 HTML：不执行、不信任为 HTML；只安全处理 Markdown 语义。
-12. 宽 Markdown 表格：提供横向滚动，不强行换行到不可读，也不破坏布局。
-13. 未知 Codex item type：保留为折叠卡片；展开后显示格式化 JSON。
-14. 缺少 Codex 展示元数据：退回显示 item type，不自行生成语义标题。
-15. Codex/app-server 错误 item：渲染为错误卡片，显示原始错误信息，错误文字为红色。
-16. 非 conversation 基础设施错误：显示为 timeline 外的常规 UI 错误状态。
-17. 外部链接：在新标签页打开。
-18. workspace 文件引用：尽可能视觉区分，但本功能不打开本地文件。
-19. 工作痕迹复制：不需要专门复制按钮；浏览器自然文本选择可以保留。
-20. 完成状态：即使 turn 成功结束，也不增加额外完成提示或横幅。
-21. 后端存在时间戳数据：本功能不显示。
-22. Codex schema 演进：未知新 item type 通过格式化 JSON 保持可观察，不隐藏。
+8. Codex runtime delta：后端可以把高频 delta 合并成低频 item snapshot，但必须按 Codex 原生目标字段保留信息；同一 item 的 summary/content、output/changes、progress 等不同原生字段不能互相覆盖。
+9. 弱网或多页签：优先保证稳定的进度刷新体验和完整最终内容，而不是高频实时渲染。
+10. 长 stdout、stderr、diff、工具输出、搜索输出或类似工作痕迹：默认折叠；展开后先显示 30 行；通过“展开剩余 xxx 行”查看剩余内容。
+11. 长 assistant/user Markdown 消息：正常按 Markdown 阅读，不套用 30 行工作痕迹截断规则。
+12. Markdown 中的原始 HTML：不执行、不信任为 HTML；只安全处理 Markdown 语义。
+13. 宽 Markdown 表格：提供横向滚动，不强行换行到不可读，也不破坏布局。
+14. 未知 Codex item type：保留为折叠卡片；展开后按原始字段名和值展示，复杂值使用格式化 JSON。
+15. 工作痕迹和未知 item 的卡片标题使用 Codex 原生 item type，不自行生成语义标题。
+16. Codex/app-server conversation-scoped 错误：带 thread 和 turn 归属的 runtime error、failed turn completed error、恢复历史 failed turn error 渲染为 timeline 中的错误卡片，显示原始 error message，错误文字为红色；同一个 turn 的错误更新同一个 error item；runtime error 不更新或推断 turn lifecycle。
+17. 非 conversation 基础设施错误：显示为 timeline 外的常规 UI 错误状态。
+18. 无 thread 归属或无 turn 归属的 runtime/system/realtime 错误：不伪造成 conversation timeline item。
+19. 外部链接：在新标签页打开。
+20. workspace 文件引用：尽可能视觉区分，但本功能不打开本地文件。
+21. 工作痕迹复制：不需要专门复制按钮；浏览器自然文本选择可以保留。
+22. 完成状态：即使 turn 成功结束，也不增加额外完成提示或横幅。
+23. 后端存在时间戳数据：本功能不显示。
+24. Codex schema 演进：未知新 item type 通过通用字段列表和复杂字段的格式化 JSON 保持可观察，不隐藏。
 
 
 ## 不在本范围
@@ -138,7 +142,7 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 6. 复杂自动滚动行为，包括“在底部时跟随滚动”“用户上滑时不抢滚动”和“回到底部”按钮。
 7. 虚拟列表、分页、懒加载或大会话性能专项优化。
 8. Markdown 代码块语法高亮。
-9. 命令输出、stdout、stderr、diff、工具 payload、未知 JSON 或错误卡片等工作痕迹的专门复制按钮。
+9. 命令输出、stdout、stderr、diff、工具 payload、未知 item 字段列表或错误卡片等内容的专门复制按钮。
 10. 固定空状态文案或 skeleton/shimmer 加载动画细节。
 11. 显示时间戳。
 12. 额外完成提示或 done 横幅。
@@ -149,7 +153,7 @@ Conversation View 不发明 Codex 语义。Codex 原生有什么 item、状态�
 
 1. workspace 文件引用可以点击打开对应本地项目文件，并与外部链接保持不同语义。
 2. Conversation View 可以支持更细致的自动滚动体验，包括底部跟随、用户阅读历史时不打断、回到底部入口。
-3. 工作痕迹卡片可以显示有用的折叠预览，例如命令首行、工具名、变更文件名或 diff 摘要。
+3. 工作痕迹卡片可以显示有用的折叠预览，例如从原始字段中挑选命令首行、工具名、变更文件名或 diff 摘要；该预览必须作为独立设计处理。
 4. Conversation View 可以支持大会话优化，例如虚拟列表、分页或懒渲染。
 5. 已完成会话可以使用安全客户端缓存加快首屏展示，同时后台继续做权威恢复。
 6. 多页签和弱网行为可以在后端事件聚合之外继续专项优化。

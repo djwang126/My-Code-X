@@ -56,6 +56,14 @@
   justify-content: flex-start;
 }
 
+.conversation-view__timeline-item--trace {
+  justify-content: flex-start;
+}
+
+.conversation-view__timeline-item--error {
+  justify-content: flex-start;
+}
+
 .conversation-view__message {
   max-width: min(42rem, 86%);
   border-radius: 0.875rem;
@@ -116,6 +124,83 @@
 
 .conversation-view__copy-code {
   display: block;
+}
+
+.conversation-view__trace-card {
+  max-width: min(42rem, 92%);
+  border: 1px solid rgba(23, 32, 51, 0.12);
+  border-radius: 0.875rem;
+  background: #f8fafc;
+  color: #172033;
+  padding: 0.75rem 0.875rem;
+}
+
+.conversation-view__trace-card--unknown {
+  border-style: dashed;
+}
+
+.conversation-view__error-card {
+  max-width: min(42rem, 92%);
+  border: 1px solid rgba(185, 28, 28, 0.24);
+  border-radius: 0.875rem;
+  background: #fff7f7;
+  padding: 0.75rem 0.875rem;
+}
+
+.conversation-view__error-message {
+  margin: 0;
+  color: #b91c1c;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.conversation-view__trace-card summary {
+  cursor: pointer;
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.85rem;
+}
+
+.conversation-view__field-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin: 0.75rem 0 0;
+}
+
+.conversation-view__field-row {
+  margin: 0;
+}
+
+.conversation-view__field-name {
+  color: #334155;
+  font-weight: 600;
+}
+
+.conversation-view__field-value {
+  margin: 0.25rem 0 0;
+}
+
+.conversation-view__field-value pre {
+  overflow-x: auto;
+  margin: 0;
+  border-radius: 0.625rem;
+  background: rgba(15, 23, 42, 0.06);
+  font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 0.82rem;
+  padding: 0.625rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.conversation-view__expand-field {
+  margin-top: 0.5rem;
+  border: 1px solid rgba(23, 32, 51, 0.14);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #334155;
+  cursor: pointer;
+  font-size: 0.78rem;
+  padding: 0.25rem 0.625rem;
 }
 
 .conversation-markdown__table-scroll {

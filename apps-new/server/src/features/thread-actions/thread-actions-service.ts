@@ -70,6 +70,7 @@ export function createThreadActionsService(dependencies: ThreadActionsDependenci
         status: 'ready',
         thread,
         restoredItems: result.snapshot.items,
+        restoredTurns: result.snapshot.turns ?? null,
       };
     },
   };
