@@ -99,7 +99,7 @@ Workspace 列表、active thread page 和 archived thread page 都用 resource s
 
 用户打开侧边栏时，Application 读取当前 Conversation scope。Workspace feature 提供当前 registry snapshot 和 availability snapshot。Application 根据当前 Conversation scope 的 canonical cwd 是否存在于已保存且可用 Workspace 中，决定默认展示 active thread page 或 Workspace list。
 
-如果默认展示 active thread page，Application 使用该 canonical cwd 通过 ThreadCatalogPort 查询 Codex thread list，查询参数固定包含 cwd、archived=false、limit=10、updated_at desc 和可选 cursor。查询结果由 Presenter 投影为客户端 thread page。
+如果默认展示 active thread page，Application 使用现有 RuntimePort 查询 Codex thread list，查询参数固定包含 cwd、archived=false、limit=10、updated_at desc 和可选 cursor。Workspace feature 不包装 thread/list，也不新增 ThreadCatalogPort。查询结果由 Presenter 投影为客户端 thread page。
 
 如果当前 Conversation scope 不存在、未保存或不可用，侧边栏默认展示 Workspace list，不临时承认未保存 cwd。
 
@@ -129,7 +129,7 @@ Workspace remove 只删除 Workspace Registry record。它不删除本地目录�
 
 ### Active thread list flow
 
-用户进入可用 Workspace 的 active thread page 时，Application 先通过 Workspace feature 确认该 canonical cwd 已保存且可用，再通过 ThreadCatalogPort 发起 Codex thread/list 查询。查询参数固定使用 archived=false、limit=10、updated_at desc，并传递当前 cursor。
+用户进入可用 Workspace 的 active thread page 时，Application 先通过 Workspace feature 确认该 canonical cwd 已保存且可用，再通过现有 RuntimePort 发起 Codex thread/list 查询。查询参数固定使用 archived=false、limit=10、updated_at desc，并传递当前 cursor。
 
 返回结果保持 Codex 顺序。服务端只做字段规范化，不重排、不补项、不兜底 title 或 preview。updatedAt 规范化为 ISO string 或 null。前端只负责本地时间格式化。
 
@@ -137,7 +137,7 @@ Workspace remove 只删除 Workspace Registry record。它不删除本地目录�
 
 ### Archived thread page flow
 
-用户从当前 Workspace thread page 进入 archived page。Application 使用相同 canonical cwd 通过 ThreadCatalogPort 查询 Codex thread/list，但 archived=true。archived page 不高亮当前 Conversation thread，也不允许 resume、rename 或 archive。
+用户从当前 Workspace thread page 进入 archived page。Application 使用相同 canonical cwd 通过现有 RuntimePort 查询 Codex thread/list，但 archived=true。archived page 不高亮当前 Conversation thread，也不允许 resume、rename 或 archive。
 
 unarchive 成功后，前端在当前 archived page 上给该卡片打“已恢复”标记并禁用交互。返回 active page 时必须重新查询 active thread list，不做预取。
 
@@ -179,7 +179,7 @@ Slot feature owns current client slot selection. Future slot persistence can own
 
 Conversation feature owns conversation timeline and conversation resource state. Workspace can trigger application-level selection changes or resume flows, but does not mutate Conversation internals.
 
-Application 拥有跨功能编排。它校验 Workspace scope，协调 Workspace feature、ThreadCatalogPort、thread action feature、slot feature、thread feature 和 Conversation 刷新，然后返回 action result 或 snapshot。
+Application 拥有跨功能编排。它校验 Workspace scope，协调 Workspace feature、现有 RuntimePort、thread action feature、slot feature、thread feature 和 Conversation 刷新，然后返回 action result 或 snapshot。
 
 Presenter owns projection from domain snapshots to frontend-facing contracts. It strips internal-only details and normalizes Codex time values before they reach the web client.
 
@@ -197,7 +197,7 @@ Workspace Registry schema 解析、重复检查、memory-mode 切换和 merge po
 
 PathInspectionPort 只提供用户项目目录的只读路径能力。它负责 canonicalize 和 inspect path，但不写文件、不扫描项目、不监听目录，也不访问 My-Code-X app data directory。
 
-Thread list 能力属于 runtime catalog boundary，不属于 Workspace feature。Application 在 Workspace feature 确认 canonical cwd 已保存且可用后，使用 ThreadCatalogPort 查询 threads。Workspace feature 不把 ThreadCatalogPort 再包装成 Workspace 专用 port。
+Thread list 能力属于现有 RuntimePort 能力，不属于 Workspace feature。Application 在 Workspace feature 确认 canonical cwd 已保存且可用后，直接使用 RuntimePort 查询 threads。Workspace feature 不把 RuntimePort 再包装成 Workspace 专用 thread list API，也不引入 ThreadCatalogPort。
 
 Thread resume, rename, archive and unarchive are not Workspace Registry mutations. Application coordinates these operations through thread action capabilities after validating that the workspaceId is saved and available.
 
@@ -217,10 +217,10 @@ Workspace 相关 port 使用必须服从项目级 capability model：
 - PathInspectionPort 拥有用户输入项目路径的只读检查和 canonicalization 能力。
 - ClockPort 拥有当前时间能力。
 - IdPort 拥有内部 id 生成能力。
-- ThreadCatalogPort 拥有 Codex thread listing 和 reading 能力。
+- RuntimePort 拥有 Codex thread listing、reading 和 mutation transport 能力；Workspace thread page 当前尊重已有 RuntimePort structure，不新增 ThreadCatalogPort。
 - Thread session 和 thread mutation 能力通过 thread action 编排消费，不通过 Workspace feature 消费。
 
-Workspace feature 消费 AppDataStorePort、PathInspectionPort、ClockPort 和 IdPort。它不直接消费 ThreadCatalogPort。Workspace 页面需要 active 或 archived threads 时，由 Application 消费 ThreadCatalogPort。
+Workspace feature 消费 AppDataStorePort、PathInspectionPort、ClockPort 和 IdPort。它不直接消费 RuntimePort。Workspace 页面需要 active 或 archived threads 时，由 Application 消费现有 RuntimePort。
 
 架构刻意不引入 WorkspaceRegistryStorePort、WorkspacePathPort 或 WorkspaceThreadListPort。这些名字会把 port 绑定到单个 feature，并诱导未来 feature 为同一类能力创建平行的一次性 ports。
 
@@ -267,6 +267,163 @@ Unarchive archived thread action uses threadId. Success returns an action result
 Client scope workspaceId remains canonical cwd. Workspace-specific events and action results should be scoped by slot and canonical workspaceId. Internal record reference, when present, is an opaque mutation target and not a scope identity.
 
 当前 Workspace 功能可以用 request/response action results 承载侧边栏操作。Streaming events only apply when the main client snapshot or cross-feature selection changes. Thread list pagination does not require event streaming.
+
+## Slice 2 Implementation Plan - 侧边栏导航与 Active Threads 浏览闭环
+
+- **Type:** AFK
+- **Blocked by:** Workspace Slice 1
+- **Feature requirements covered:** 手机端侧边栏导航；Workspace 列表进入；Active Thread 列表；Active Thread resume；Active Thread 分页；当前主 thread 高亮
+
+## 目标
+
+实现 Workspace 侧边栏的第二个完整闭环：用户打开 Workspace panel 后，能按当前 Conversation scope 默认进入 active threads 或 Workspace list；能从 Workspace list 进入某个 Workspace 的 active threads；能分页浏览；能点击非当前 active thread 恢复主 Conversation。
+
+本 slice 尊重 `apps-new` 现有结构：不新增 ThreadCatalogPort。Workspace Registry 仍由 Workspace feature 拥有；thread/list 和 resume 的跨功能编排由 Application 使用现有 RuntimePort 与 thread action capability 完成。
+
+## 已决策设计
+
+- `WorkspacePanelView` 同时持有本次侧边栏打开时的 Workspace list snapshot 和当前 page。
+- 当前 page 使用 discriminated union 表达：
+  - Workspace list page。
+  - Active threads loading page。
+  - Active threads ready page。
+  - Active threads failed page。
+- `open-workspace-panel` 根据当前 Conversation scope 决定默认 page：
+  - scope cwd 是已保存且可用 Workspace：默认 active threads。
+  - scope cwd 不存在、未保存或不可用：默认 Workspace list。
+- 从 active threads 返回 Workspace list 是前端 reducer 本地切页，不重新请求 server。
+- 从 Workspace list 进入 active threads、active threads load more 必须请求 server。
+- Application 直接使用现有 RuntimePort 调 Codex `thread/list`，不新增 ThreadCatalogPort，不让 Workspace feature 包装 thread list。
+- Active thread list 的 server policy 固定：
+  - `archived = false`
+  - `sortKey = "updated_at"`
+  - `sortDirection = "desc"`
+  - `limit = 10`
+  - 可选 `cursor`
+  - 不传 `searchTerm`
+- Codex 返回顺序必须原样保留，不在前端或后端重排。
+- `updatedAt` 在 server 侧进入 client contract 前规范化为 `updatedAtIso: string | null`。
+- 前端只格式化 `updatedAtIso` 为本地绝对时间，不猜测 number 单位。
+- Active thread item contract 使用产品字段：`threadId`、`name`、`preview`、`updatedAtIso`、`current`。
+- `resume-thread` 复用现有 client action：
+  - `scope.workspaceId` 是 canonical cwd。
+  - `scope.threadId` 是目标 thread id。
+  - `payload` 是 strict empty object。
+- 点击当前主 Conversation thread 不响应，侧边栏保持打开。
+- resume 非当前 thread 成功后，主 Conversation 切换到该 thread，侧边栏关闭。
+- resume 失败时，侧边栏保持打开，并在对应 thread 卡片就地显示错误。
+
+## 垂直路径
+
+### Contracts
+
+- 扩展 Workspace panel contract，让 ready panel 同时包含 `list` 和 `page`。
+- 增加 active thread page view：
+  - workspace identity。
+  - resource state。
+  - ordered items。
+  - `nextCursor`。
+  - load-more 相关错误由前端页面状态承载。
+- 增加 active thread item view：
+  - `threadId`
+  - `name`
+  - `preview`
+  - `updatedAtIso`
+  - `current`
+- 增加或收紧 client actions：
+  - `open-workspace-active-threads`
+  - `load-more-workspace-active-threads`
+  - `resume-thread` payload 为 strict empty object。
+
+### Server Application
+
+- `open-workspace-panel`：
+  - 读取 Workspace list snapshot。
+  - 校验当前 scope workspace 是否 saved + available。
+  - 命中时用 RuntimePort 拉 active threads，并返回 active page。
+  - 未命中时返回 Workspace list page。
+  - 如果 Workspace list 读取失败，返回 panel failed。
+  - 如果默认 active thread 首屏失败，返回 ready panel + active failed page。
+- `open-workspace-active-threads`：
+  - 校验目标 workspace saved + available。
+  - 用 RuntimePort 拉 active threads 首屏。
+  - 返回 ready panel page。
+- `load-more-workspace-active-threads`：
+  - 校验目标 workspace saved + available。
+  - 用 RuntimePort 拉同一个 cursor 的下一页。
+  - 返回新增 page items 和 nextCursor。
+- `resume-client-thread`：
+  - 校验 `slotId`、`workspaceId`、`threadId`。
+  - 校验 workspace saved + available。
+  - 调 thread action open/resume。
+  - 成功后更新 slot/thread/conversation，并返回 snapshot。
+  - 失败后返回 typed rejected result。
+
+### Server Presenter
+
+- 将 RuntimeThread 投影成 active thread item contract。
+- `name`、`preview` 为空时保持为空，不兜底。
+- `updatedAt` Unix 秒数或秒数字符串规范化为 ISO string；不可解析时返回 null。
+- 不暴露 RuntimeThread raw payload、Codex transport 字段或 RuntimePort command 字段。
+
+### Web Model
+
+- 扩展 Workspace panel reducer：
+  - 保存 panel list snapshot。
+  - 保存当前 page。
+  - 支持本地返回 list。
+  - 支持 active page loading / ready / failed。
+  - 支持 load-more loading / error，并保留失败 cursor。
+  - 支持 card-level resume submitting / error。
+- Controller 增加：
+  - 打开 active threads。
+  - 返回 Workspace list。
+  - 加载更多。
+  - resume thread。
+- resume 成功后通知 AppShell 使用返回 snapshot 更新 Conversation 和当前 scope，并关闭 Workspace panel。
+
+### Web Component
+
+- Workspace list item 对 available Workspace 提供进入 active threads 的交互。
+- Active page 顶部显示当前 Workspace name 和 cwd，并提供返回 Workspace list 的按钮。
+- Active thread card 展示 `name`、`preview`、本地格式化后的 `updatedAtIso`。
+- 当前主 Conversation thread 卡片高亮并禁用 resume。
+- 首屏失败显示错误和返回 Workspace list 入口。
+- 空列表显示空状态，不提供新建 thread 入口。
+- load more 失败时保留已有 items，并在 load-more 区域显示错误；再次点击重试同一 cursor。
+
+## 完成后可验证
+
+- 当前 Conversation scope 是 saved available Workspace 时，打开侧边栏默认进入 active threads。
+- 当前 Conversation scope 未保存或不可用时，打开侧边栏默认进入 Workspace list。
+- 从 Workspace list 进入可用 Workspace 会加载 active threads。
+- 从 active threads 返回 Workspace list 不请求 server，且本次侧边栏会话选中 Workspace 保持高亮。
+- active thread list 请求参数固定为 cwd、archived=false、limit=10、updated_at desc。
+- active thread 顺序与 Codex 返回顺序一致。
+- active thread 字段为空时 UI 不显示兜底内容。
+- load more 成功 append items；失败保留已有 items 并可重试同一 cursor。
+- 点击当前主 thread 不响应。
+- 点击非当前 thread 成功后主 Conversation 切换，Workspace panel 关闭。
+- resume 失败后 Workspace panel 保持打开，对应 card 显示错误。
+
+## 测试范围
+
+- `npm run test:contracts-new`
+- `npm run test:server-new`
+- `npm run test:web-new`
+- `npm run typecheck:new`
+- `npm run lint:new`
+
+## 非目标
+
+- 不实现 active thread rename。
+- 不实现 active thread archive。
+- 不实现 archived threads 页面。
+- 不实现 unarchive。
+- 不实现新建 thread 入口。
+- 不实现 searchTerm、筛选、手动刷新或最近打开 Workspace。
+- 不新增 ThreadCatalogPort。
+- 不让 Workspace feature 直接消费 RuntimePort 或包装 thread/list。
 
 ## Other Architectural decisions
 
