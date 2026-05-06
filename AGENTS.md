@@ -3,7 +3,7 @@
 My-Code-X is a phone-friendly web chat for local Codex.
 - Serves a chat page on your local network
 - Spawns `codex app-server` locally over stdio
-Never restart the '4310' main server yourself
+Never touch the running '4310' my-code-x main server yourself
 It's my personal project so every change can be breaking changes
 Main dev in on windows but the code is cross-platform(linux, macos)
 
