@@ -32,9 +32,10 @@ describe('client event stream', () => {
         role: 'assistant',
         text: 'hello',
       },
+      position: { kind: 'append' },
     });
 
-    assert.deepEqual(sent, [
+    assert.deepEqual(stripClientConversationPositions(sent), [
       createEmptyReplacement(),
       {
         kind: 'conversation-item-upserted',
@@ -78,9 +79,10 @@ describe('client event stream', () => {
         role: 'assistant',
         text: 'other',
       },
+      position: { kind: 'append' },
     });
 
-    assert.deepEqual(sent, [
+    assert.deepEqual(stripClientConversationPositions(sent), [
       createEmptyReplacement(),
     ]);
   });
@@ -111,9 +113,10 @@ describe('client event stream', () => {
         role: 'assistant',
         text: 'hello',
       },
+      position: { kind: 'append' },
     });
 
-    assert.deepEqual(sent, [
+    assert.deepEqual(stripClientConversationPositions(sent), [
       createEmptyReplacement(),
     ]);
   });
@@ -146,7 +149,7 @@ describe('client event stream', () => {
       },
     });
 
-    assert.deepEqual(sent, [
+    assert.deepEqual(stripClientConversationPositions(sent), [
       createEmptyReplacement(),
       {
         kind: 'conversation-item-upserted',
@@ -189,9 +192,10 @@ describe('client event stream', () => {
         kind: 'error',
         message: 'runtime failed',
       },
+      position: { kind: 'append' },
     });
 
-    assert.deepEqual(sent, [
+    assert.deepEqual(stripClientConversationPositions(sent), [
       createEmptyReplacement(),
       {
         kind: 'conversation-item-upserted',
@@ -243,7 +247,7 @@ describe('client event stream', () => {
       },
     });
 
-    assert.deepEqual(sent, [
+    assert.deepEqual(stripClientConversationPositions(sent), [
       {
         kind: 'conversation-replaced',
         scope: {
@@ -268,6 +272,48 @@ describe('client event stream', () => {
               text: 'hi',
             },
           ],
+        },
+      },
+    ]);
+  });
+
+  test('sends failed conversation resource state when subscribing without converting it to ready', () => {
+    const events = createEventBus();
+    const conversation = createConversationService({ events });
+    conversation.apply({
+      kind: 'fail-conversation',
+      threadId: 'thread-1',
+      error: {
+        message: 'restore failed',
+      },
+    });
+    const stream = createClientEventStream({ conversation, events });
+    const sent: ClientEvent[] = [];
+
+    stream.subscribe({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      send(event) {
+        sent.push(event);
+      },
+    });
+
+    assert.deepEqual(stripClientConversationPositions(sent), [
+      {
+        kind: 'conversation-replaced',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '1',
+        conversation: {
+          status: 'failed',
+          revision: 1,
+          error: {
+            message: 'restore failed',
+          },
         },
       },
     ]);
@@ -300,7 +346,7 @@ describe('client event stream', () => {
       },
     });
 
-    assert.deepEqual(sent, [
+    assert.deepEqual(stripClientConversationPositions(sent), [
       {
         kind: 'conversation-replaced',
         scope: {
@@ -360,3 +406,21 @@ function createEventBus(): EventBusPort {
 }
 
 
+
+
+function stripClientConversationPositions(events: readonly ClientEvent[]): readonly ClientEvent[] {
+  return events.map(event => {
+    if (event.kind !== 'conversation-item-upserted') {
+      return event;
+    }
+
+    return removePosition(event) as ClientEvent;
+  });
+}
+
+
+function removePosition<T extends { readonly position?: unknown }>(event: T): Omit<T, 'position'> {
+  const eventWithMutablePosition: { position?: unknown } = event;
+  delete eventWithMutablePosition.position;
+  return eventWithMutablePosition as Omit<T, 'position'>;
+}

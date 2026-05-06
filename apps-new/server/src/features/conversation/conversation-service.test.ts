@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
 
 import { createConversationService } from './conversation-service.js';
+import { applyConversationDomainEvent, ConversationTimelinePositionError, createInitialConversationState } from './conversation-state.js';
 import type { ConversationDomainEvent } from './index.js';
 import type { RuntimeThreadItem, RuntimeTurn } from '../../ports/index.js';
 
@@ -42,6 +43,7 @@ describe('createConversationService', () => {
     });
 
     assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 0,
       items: [],
     });
@@ -66,6 +68,7 @@ describe('createConversationService', () => {
         ],
       }),
       {
+        status: 'ready',
         revision: 1,
         items: [
           {
@@ -78,21 +81,140 @@ describe('createConversationService', () => {
       },
     );
 
-    assert.deepEqual(events, [
+    assert.deepEqual(stripConversationPositions(events), [
       {
         kind: 'conversation-replaced',
         threadId: 'thread-1',
         revision: 1,
+        conversation: {
+          status: 'ready',
+          revision: 1,
+          items: [
+            {
+              id: 'item-1',
+              kind: 'message',
+              role: 'user',
+              text: 'hello **assistant**',
+            },
+          ],
+        },
+      },
+    ]);
+  });
+
+  test('fail-conversation publishes a failed resource replacement event', () => {
+    const fixture = createConversationServiceFixture();
+    const service = fixture.service;
+
+    assert.deepEqual(service.apply({
+      kind: 'fail-conversation',
+      threadId: 'thread-1',
+      error: {
+        message: 'restore failed',
+      },
+    }), {
+      status: 'failed',
+      revision: 1,
+      error: {
+        message: 'restore failed',
+      },
+    });
+    assert.deepEqual(stripConversationPositions(fixture.events), [
+      {
+        kind: 'conversation-replaced',
+        threadId: 'thread-1',
+        revision: 1,
+        conversation: {
+          status: 'failed',
+          revision: 1,
+          error: {
+            message: 'restore failed',
+          },
+        },
+      },
+    ]);
+  });
+
+  test('does not append timeline items while the conversation resource is failed', () => {
+    const fixture = createConversationServiceFixture();
+    const service = fixture.service;
+
+    service.apply({
+      kind: 'fail-conversation',
+      threadId: 'thread-1',
+      error: {
+        message: 'restore failed',
+      },
+    });
+
+    assert.deepEqual(service.apply({
+      kind: 'record-runtime-thread-item',
+      threadId: 'thread-1',
+      item: createRuntimeAgentMessage({
+        itemId: 'assistant-1',
+        text: 'should wait for replacement',
+      }),
+    }), {
+      status: 'failed',
+      revision: 1,
+      error: {
+        message: 'restore failed',
+      },
+    });
+    assert.equal(fixture.events.length, 1);
+  });
+
+  test('replace-runtime-conversation restores a failed conversation resource to ready', () => {
+    const fixture = createConversationServiceFixture();
+    const service = fixture.service;
+
+    service.apply({
+      kind: 'fail-conversation',
+      threadId: 'thread-1',
+      error: {
+        message: 'restore failed',
+      },
+    });
+
+    assert.deepEqual(service.apply({
+      kind: 'replace-runtime-conversation',
+      threadId: 'thread-1',
+      items: [
+        createRuntimeAgentMessage({
+          itemId: 'assistant-1',
+          text: 'restored answer',
+        }),
+      ],
+      turns: null,
+    }), {
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'assistant-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'restored answer',
+        },
+      ],
+    });
+    assert.deepEqual(fixture.events[1], {
+      kind: 'conversation-replaced',
+      threadId: 'thread-1',
+      revision: 2,
+      conversation: {
+        status: 'ready',
+        revision: 2,
         items: [
           {
-            id: 'item-1',
+            id: 'assistant-1',
             kind: 'message',
-            role: 'user',
-            text: 'hello **assistant**',
+            role: 'assistant',
+            text: 'restored answer',
           },
         ],
       },
-    ]);
+    });
   });
 
   test('projects runtime user and assistant messages inside the conversation feature', () => {
@@ -118,6 +240,7 @@ describe('createConversationService', () => {
     });
 
     assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 2,
       items: [
         {
@@ -134,7 +257,7 @@ describe('createConversationService', () => {
         },
       ],
     });
-    assert.deepEqual(events, [
+    assert.deepEqual(stripConversationPositions(events), [
       {
         kind: 'conversation-item-upserted',
         threadId: 'thread-1',
@@ -183,10 +306,11 @@ describe('createConversationService', () => {
     });
 
     assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 0,
       items: [],
     });
-    assert.deepEqual(events, []);
+    assert.deepEqual(stripConversationPositions(events), []);
   });
 
   test('replace-runtime-conversation keeps confirmed messages and work traces in authoritative order', () => {
@@ -231,6 +355,7 @@ describe('createConversationService', () => {
         turns: null,
       }),
       {
+        status: 'ready',
         revision: 1,
         items: [
           {
@@ -271,48 +396,52 @@ describe('createConversationService', () => {
         ],
       },
     );
-    assert.deepEqual(events, [
+    assert.deepEqual(stripConversationPositions(events), [
       {
         kind: 'conversation-replaced',
         threadId: 'thread-1',
         revision: 1,
-        items: [
-          {
-            id: 'user-1',
-            kind: 'message',
-            role: 'user',
-            text: 'restored hello',
-          },
-          {
-            id: 'plan-1',
-            kind: 'work-trace',
-            codexType: 'plan',
-            fields: [
-              { name: 'id', value: 'plan-1' },
-              { name: 'type', value: 'plan' },
-              { name: 'status', value: 'completed' },
-              { name: 'explanation', value: 'Plan' },
-            ],
-          },
-          {
-            id: 'command-1',
-            kind: 'work-trace',
-            codexType: 'commandExecution',
-            fields: [
-              { name: 'type', value: 'commandExecution' },
-              { name: 'id', value: 'command-1' },
-              { name: 'status', value: 'completed' },
-              { name: 'command', value: 'npm test' },
-              { name: 'aggregatedOutput', value: 'ok' },
-            ],
-          },
-          {
-            id: 'assistant-1',
-            kind: 'message',
-            role: 'assistant',
-            text: 'restored answer',
-          },
-        ],
+        conversation: {
+          status: 'ready',
+          revision: 1,
+          items: [
+            {
+              id: 'user-1',
+              kind: 'message',
+              role: 'user',
+              text: 'restored hello',
+            },
+            {
+              id: 'plan-1',
+              kind: 'work-trace',
+              codexType: 'plan',
+              fields: [
+                { name: 'id', value: 'plan-1' },
+                { name: 'type', value: 'plan' },
+                { name: 'status', value: 'completed' },
+                { name: 'explanation', value: 'Plan' },
+              ],
+            },
+            {
+              id: 'command-1',
+              kind: 'work-trace',
+              codexType: 'commandExecution',
+              fields: [
+                { name: 'type', value: 'commandExecution' },
+                { name: 'id', value: 'command-1' },
+                { name: 'status', value: 'completed' },
+                { name: 'command', value: 'npm test' },
+                { name: 'aggregatedOutput', value: 'ok' },
+              ],
+            },
+            {
+              id: 'assistant-1',
+              kind: 'message',
+              role: 'assistant',
+              text: 'restored answer',
+            },
+          ],
+        },
       },
     ]);
   });
@@ -339,16 +468,21 @@ describe('createConversationService', () => {
         turns: null,
       }),
       {
+        status: 'ready',
         revision: 1,
         items: [],
       },
     );
-    assert.deepEqual(events, [
+    assert.deepEqual(stripConversationPositions(events), [
       {
         kind: 'conversation-replaced',
         threadId: 'thread-1',
         revision: 1,
-        items: [],
+        conversation: {
+          status: 'ready',
+          revision: 1,
+          items: [],
+        },
       },
     ]);
   });
@@ -382,6 +516,7 @@ describe('createConversationService', () => {
         }),
       }),
       {
+        status: 'ready',
         revision: 2,
         items: [
           {
@@ -417,6 +552,7 @@ describe('createConversationService', () => {
         item,
       }),
       {
+        status: 'ready',
         revision: 1,
         items: [
           {
@@ -428,7 +564,7 @@ describe('createConversationService', () => {
         ],
       },
     );
-    assert.deepEqual(events, [
+    assert.deepEqual(stripConversationPositions(events), [
       {
         kind: 'conversation-item-upserted',
         threadId: 'thread-1',
@@ -465,6 +601,7 @@ describe('createConversationService', () => {
         }),
       }),
       {
+        status: 'ready',
         revision: 1,
         items: [
           {
@@ -482,7 +619,7 @@ describe('createConversationService', () => {
         ],
       },
     );
-    assert.deepEqual(events, [
+    assert.deepEqual(stripConversationPositions(events), [
       {
         kind: 'conversation-item-upserted',
         threadId: 'thread-1',
@@ -531,6 +668,7 @@ describe('createConversationService', () => {
     });
 
     assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 2,
       items: [
         {
@@ -593,12 +731,13 @@ describe('createConversationService', () => {
 
     const snapshot = service.snapshot({ threadId: 'thread-1' });
 
+    assert.equal(snapshot.status, 'ready');
     assert.equal(snapshot.revision, knownKinds.length);
-    assert.deepEqual(snapshot.items.map(item => ({
+    assert.deepEqual(snapshot.status === 'ready' ? snapshot.items.map(item => ({
       id: item.id,
       kind: item.kind,
       codexType: item.kind === 'work-trace' ? item.codexType : null,
-    })), knownKinds.map(kind => ({
+    })) : [], knownKinds.map(kind => ({
       id: `${kind}-1`,
       kind: 'work-trace',
       codexType: kind,
@@ -643,6 +782,7 @@ describe('createConversationService', () => {
         },
       }),
     }), {
+      status: 'ready',
       revision: 2,
       items: [
         {
@@ -681,6 +821,7 @@ describe('createConversationService', () => {
     });
 
     assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -695,7 +836,7 @@ describe('createConversationService', () => {
         },
       ],
     });
-    assert.deepEqual(events, [
+    assert.deepEqual(stripConversationPositions(events), [
       {
         kind: 'conversation-item-upserted',
         threadId: 'thread-1',
@@ -729,6 +870,7 @@ describe('createConversationService', () => {
         },
       }),
       {
+        status: 'ready',
         revision: 1,
         items: [
           {
@@ -740,7 +882,7 @@ describe('createConversationService', () => {
       },
     );
 
-    assert.deepEqual(fixture.events, [
+    assert.deepEqual(stripConversationPositions(fixture.events), [
       {
         kind: 'conversation-item-upserted',
         threadId: 'thread-1',
@@ -779,6 +921,7 @@ describe('createConversationService', () => {
         },
       }),
       {
+        status: 'ready',
         revision: 2,
         items: [
           {
@@ -816,6 +959,7 @@ describe('createConversationService', () => {
         },
       }),
       {
+        status: 'ready',
         revision: 1,
         items: [
           {
@@ -826,7 +970,7 @@ describe('createConversationService', () => {
         ],
       },
     );
-    assert.deepEqual(fixture.events, [
+    assert.deepEqual(stripConversationPositions(fixture.events), [
       {
         kind: 'conversation-item-upserted',
         threadId: 'thread-1',
@@ -865,6 +1009,7 @@ describe('createConversationService', () => {
         },
       }),
       {
+        status: 'ready',
         revision: 2,
         items: [
           {
@@ -915,6 +1060,7 @@ describe('createConversationService', () => {
         turns: [turn],
       }),
       {
+        status: 'ready',
         revision: 1,
         items: [
           {
@@ -967,6 +1113,7 @@ describe('createConversationService', () => {
     });
 
     assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -1009,6 +1156,7 @@ describe('createConversationService', () => {
     });
 
     assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -1053,6 +1201,7 @@ describe('createConversationService', () => {
     });
 
     assert.deepEqual(service.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -1064,6 +1213,7 @@ describe('createConversationService', () => {
       ],
     });
     assert.deepEqual(service.snapshot({ threadId: 'thread-2' }), {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -1074,6 +1224,101 @@ describe('createConversationService', () => {
         },
       ],
     });
+  });
+
+  test('turn plan updates are projected as stable plan work trace items', () => {
+    const { events, service } = createConversationServiceFixture();
+
+    const snapshot = service.apply({
+      kind: 'record-runtime-turn-plan',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      explanation: 'next steps',
+      plan: [{ step: 'Read files', status: 'pending' }],
+    });
+
+    assert.deepEqual(snapshot, {
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'plan:turn-1',
+          kind: 'work-trace',
+          codexType: 'plan',
+          fields: [
+            { name: 'turnId', value: 'turn-1' },
+            { name: 'explanation', value: 'next steps' },
+            { name: 'plan', value: [{ step: 'Read files', status: 'pending' }] },
+          ],
+        },
+      ],
+    });
+    assert.deepEqual(stripConversationPositions(events), [
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 1,
+        item: snapshot.items[0],
+      },
+    ]);
+  });
+
+  test('turn diff updates are projected as stable file change work trace items', () => {
+    const { events, service } = createConversationServiceFixture();
+
+    const snapshot = service.apply({
+      kind: 'record-runtime-turn-diff',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      diff: 'diff --git a/app.ts b/app.ts',
+    });
+
+    assert.deepEqual(snapshot, {
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'diff:turn-1',
+          kind: 'work-trace',
+          codexType: 'fileChange',
+          fields: [
+            { name: 'turnId', value: 'turn-1' },
+            { name: 'diff', value: 'diff --git a/app.ts b/app.ts' },
+          ],
+        },
+      ],
+    });
+    assert.deepEqual(stripConversationPositions(events), [
+      {
+        kind: 'conversation-item-upserted',
+        threadId: 'thread-1',
+        revision: 1,
+        item: snapshot.items[0],
+      },
+    ]);
+  });
+
+  test('server timeline insert with a missing target fails explicitly', () => {
+    assert.throws(() => {
+      applyConversationDomainEvent({
+        state: createInitialConversationState(),
+        event: {
+          kind: 'conversation-item-upserted',
+          threadId: 'thread-1',
+          revision: 1,
+          item: {
+            id: 'assistant-1',
+            kind: 'message',
+            role: 'assistant',
+            text: 'hello',
+          },
+          position: {
+            kind: 'before-item',
+            itemId: 'missing',
+          },
+        },
+      });
+    }, ConversationTimelinePositionError);
   });
 });
 
@@ -1262,4 +1507,22 @@ function createKnownRuntimeWorkTraceItem(input: CreateKnownRuntimeWorkTraceInput
     case 'contextCompaction':
       return { ...base, itemKind: input.itemKind };
   }
+}
+
+
+function stripConversationPositions(events: readonly ConversationDomainEvent[]): readonly ConversationDomainEvent[] {
+  return events.map(event => {
+    if (event.kind !== 'conversation-item-upserted') {
+      return event;
+    }
+
+    return removePosition(event) as ConversationDomainEvent;
+  });
+}
+
+
+function removePosition<T extends { readonly position?: unknown }>(event: T): Omit<T, 'position'> {
+  const eventWithMutablePosition: { position?: unknown } = event;
+  delete eventWithMutablePosition.position;
+  return eventWithMutablePosition as Omit<T, 'position'>;
 }

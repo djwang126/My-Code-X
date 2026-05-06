@@ -71,6 +71,7 @@ export type ClientConversationError = Readonly<z.infer<typeof clientConversation
 
 const clientConversationLoadingViewSchema = z.object({
   status: z.literal('loading'),
+  revision: z.number().int().nonnegative(),
 }).strict();
 
 export const clientConversationReadyViewSchema = z.object({
@@ -81,6 +82,7 @@ export const clientConversationReadyViewSchema = z.object({
 
 const clientConversationFailedViewSchema = z.object({
   status: z.literal('failed'),
+  revision: z.number().int().nonnegative(),
   error: clientConversationErrorSchema,
 }).strict();
 

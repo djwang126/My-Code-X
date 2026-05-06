@@ -16,6 +16,7 @@ function createSnapshotInput() {
       current: null,
     },
     conversation: {
+      status: 'ready' as const,
       revision: 0,
       items: [],
     },
@@ -40,6 +41,7 @@ describe('conversation snapshot shell presenter', () => {
     const snapshot = createClientSnapshot({
       ...createSnapshotInput(),
       conversation: {
+        status: 'ready',
         revision: 2,
         items: [
           {
@@ -82,6 +84,7 @@ describe('conversation snapshot shell presenter', () => {
     const snapshot = createClientSnapshot({
       ...createSnapshotInput(),
       conversation: {
+        status: 'ready',
         revision: 1,
         items: [
           {

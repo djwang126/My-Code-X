@@ -123,6 +123,7 @@ describe('createRuntimeEventCoordinator', () => {
     });
 
     assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -164,6 +165,7 @@ describe('createRuntimeEventCoordinator', () => {
       },
     });
     assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -199,6 +201,7 @@ describe('createRuntimeEventCoordinator', () => {
     });
 
     assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 2,
       items: [
         {
@@ -238,6 +241,7 @@ describe('createRuntimeEventCoordinator', () => {
     });
 
     assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 0,
       items: [],
     });
@@ -258,6 +262,7 @@ describe('createRuntimeEventCoordinator', () => {
     });
 
     assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 0,
       items: [],
     });
@@ -287,6 +292,7 @@ describe('createRuntimeEventCoordinator', () => {
       },
     });
     assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 0,
       items: [],
     });
@@ -306,6 +312,7 @@ describe('createRuntimeEventCoordinator', () => {
     });
 
     assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -343,6 +350,7 @@ describe('createRuntimeEventCoordinator', () => {
     });
 
     assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 0,
       items: [],
     });
@@ -465,6 +473,7 @@ describe('createRuntimeEventCoordinator', () => {
     });
 
     assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -505,6 +514,7 @@ describe('createRuntimeEventCoordinator', () => {
     });
 
     assert.deepEqual(conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 0,
       items: [],
     });
@@ -512,6 +522,7 @@ describe('createRuntimeEventCoordinator', () => {
     scheduler.flushAll();
 
     assert.deepEqual(conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -519,6 +530,62 @@ describe('createRuntimeEventCoordinator', () => {
           kind: 'message',
           role: 'assistant',
           text: 'ok',
+        },
+      ],
+    });
+  });
+
+  test('runtime turn plan updates are routed into conversation', () => {
+    const fixture = createConversationCoordinatorFixture();
+
+    fixture.coordinator.receive({
+      kind: 'runtime-turn-plan-updated',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      explanation: 'plan',
+      plan: [{ step: 'Read', status: 'pending' }],
+    });
+
+    assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'plan:turn-1',
+          kind: 'work-trace',
+          codexType: 'plan',
+          fields: [
+            { name: 'turnId', value: 'turn-1' },
+            { name: 'explanation', value: 'plan' },
+            { name: 'plan', value: [{ step: 'Read', status: 'pending' }] },
+          ],
+        },
+      ],
+    });
+  });
+
+  test('runtime turn diff updates are routed into conversation', () => {
+    const fixture = createConversationCoordinatorFixture();
+
+    fixture.coordinator.receive({
+      kind: 'runtime-turn-diff-updated',
+      threadId: 'thread-1',
+      turnId: 'turn-1',
+      diff: 'diff --git a/app.ts b/app.ts',
+    });
+
+    assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
+      revision: 1,
+      items: [
+        {
+          id: 'diff:turn-1',
+          kind: 'work-trace',
+          codexType: 'fileChange',
+          fields: [
+            { name: 'turnId', value: 'turn-1' },
+            { name: 'diff', value: 'diff --git a/app.ts b/app.ts' },
+          ],
         },
       ],
     });

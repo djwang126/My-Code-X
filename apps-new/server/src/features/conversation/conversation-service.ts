@@ -1,11 +1,25 @@
 import { createConversationAggregation } from './conversation-aggregation.js';
+import { createConversationDeltaAccumulator } from './conversation-delta-accumulator.js';
 import type {
   ConversationCommand,
   ConversationDomainEvent,
+  ConversationFailedSnapshot,
+  ConversationItem,
+  ConversationReadySnapshot,
   ConversationSnapshot,
 } from './conversation-events.js';
+import { createConversationOrderRegistry } from './conversation-order.js';
 import { createTimeoutConversationScheduler, type ConversationDependencies } from './conversation-ports.js';
-import { projectRuntimeError, projectRuntimeThreadItem, projectRuntimeTimeline, projectRuntimeTurns } from './conversation-runtime-projection.js';
+import {
+  createRuntimeTurnConversationOrder,
+  projectRuntimeError,
+  projectRuntimeDeltaState,
+  projectRuntimeThreadItem,
+  projectRuntimeTimeline,
+  projectRuntimeTurnDiff,
+  projectRuntimeTurnPlan,
+  projectRuntimeTurns,
+} from './conversation-runtime-projection.js';
 import { applyConversationDomainEvent, createInitialConversationState, type ConversationState } from './conversation-state.js';
 
 export interface ConversationService {
@@ -20,17 +34,24 @@ export interface ConversationSnapshotInput {
 const conversationAggregationDelayMs = 500;
 
 type PublishableConversationDomainEvent =
-  | Omit<Extract<ConversationDomainEvent, { readonly kind: 'conversation-replaced' }>, 'revision'>
+  | Omit<Extract<ConversationDomainEvent, { readonly kind: 'conversation-replaced' }>, 'revision' | 'conversation'> & {
+    readonly conversation: ConversationReplacement;
+  }
   | Omit<Extract<ConversationDomainEvent, { readonly kind: 'conversation-item-upserted' }>, 'revision'>;
+
+type ConversationReplacement =
+  | Omit<ConversationReadySnapshot, 'revision'>
+  | Omit<ConversationFailedSnapshot, 'revision'>;
 
 export function createConversationService(dependencies: ConversationDependencies): ConversationService {
   const states = new Map<string, ConversationState>();
+  const order = createConversationOrderRegistry();
+  const deltaAccumulator = createConversationDeltaAccumulator();
   const aggregation = createConversationAggregation({
     delayMs: conversationAggregationDelayMs,
     scheduler: dependencies.scheduler ?? createTimeoutConversationScheduler(),
     flush(input) {
-      publish({
-        kind: 'conversation-item-upserted',
+      publishItem({
         threadId: input.threadId,
         item: input.item,
       });
@@ -60,26 +81,56 @@ export function createConversationService(dependencies: ConversationDependencies
     return createConversationSnapshot({ state: nextState });
   }
 
+  interface PublishItemInput {
+    readonly threadId: string;
+    readonly item: ConversationItem;
+  }
+
+  function publishItem(input: PublishItemInput): ConversationSnapshot {
+    const state = readState(input.threadId);
+    const currentItems = state.status === 'ready' ? state.items : [];
+
+    return publish({
+      kind: 'conversation-item-upserted',
+      threadId: input.threadId,
+      item: input.item,
+      position: order.locateItem({
+        threadId: input.threadId,
+        itemId: input.item.id,
+        currentItems,
+      }),
+    });
+  }
+
   function recordDelta(command: Extract<ConversationCommand, { readonly kind: 'record-runtime-item-delta' }>): ConversationSnapshot {
     const state = readState(command.threadId);
 
-    if (command.deltaKind !== 'agent-message') {
+    if (state.status !== 'ready') {
       return createConversationSnapshot({ state });
     }
 
-    if (command.text === null) {
-      return createConversationSnapshot({ state });
-    }
-
-    aggregation.recordDelta({
+    order.recordItem({
       threadId: command.threadId,
-      turnId: command.turnId,
       itemId: command.itemId,
-      currentText: readCurrentItemText({
+    });
+
+    const deltaState = deltaAccumulator.record({
+      threadId: command.threadId,
+      itemId: command.itemId,
+      deltaKind: command.deltaKind,
+      text: command.text,
+      data: command.data ?? null,
+      currentItem: readCurrentItem({
         state,
         itemId: command.itemId,
       }),
-      deltaText: command.text,
+    });
+    const item = projectRuntimeDeltaState({ state: deltaState });
+
+    aggregation.recordPendingItem({
+      threadId: command.threadId,
+      turnId: command.turnId,
+      item,
     });
 
     return createConversationSnapshot({ state });
@@ -92,50 +143,120 @@ export function createConversationService(dependencies: ConversationDependencies
 
       case 'replace-conversation':
         aggregation.discardThread({ threadId: input.threadId });
+        deltaAccumulator.discardThread({ threadId: input.threadId });
+        order.replaceThread({
+          threadId: input.threadId,
+          itemIds: input.items.map(item => item.id),
+        });
         return publish({
           kind: 'conversation-replaced',
           threadId: input.threadId,
-          items: input.items,
+          conversation: {
+            status: 'ready',
+            items: input.items,
+          },
         });
 
-      case 'replace-runtime-conversation':
+      case 'replace-runtime-conversation': {
         aggregation.discardThread({ threadId: input.threadId });
+        deltaAccumulator.discardThread({ threadId: input.threadId });
+        const items = input.turns
+          ? projectRuntimeTurns({ turns: input.turns })
+          : projectRuntimeTimeline({ items: input.items });
+        order.replaceThread({
+          threadId: input.threadId,
+          itemIds: input.turns
+            ? createRuntimeTurnConversationOrder({ turns: input.turns })
+            : input.items.map(item => item.itemId),
+        });
         return publish({
           kind: 'conversation-replaced',
           threadId: input.threadId,
-          items: input.turns
-            ? projectRuntimeTurns({ turns: input.turns })
-            : projectRuntimeTimeline({ items: input.items }),
+          conversation: {
+            status: 'ready',
+            items,
+          },
+        });
+      }
+
+      case 'fail-conversation':
+        aggregation.discardThread({ threadId: input.threadId });
+        deltaAccumulator.discardThread({ threadId: input.threadId });
+        order.discardThread({ threadId: input.threadId });
+        return publish({
+          kind: 'conversation-replaced',
+          threadId: input.threadId,
+          conversation: {
+            status: 'failed',
+            error: input.error,
+          },
         });
 
       case 'record-runtime-thread-item': {
+        order.recordItem({
+          threadId: input.threadId,
+          itemId: input.item.itemId,
+        });
         const item = projectRuntimeThreadItem({ item: input.item });
 
         if (!item) {
           return createConversationSnapshot({ state: readState(input.threadId) });
         }
 
-        if (item.kind === 'message') {
-          aggregation.discardItem({ threadId: input.threadId, itemId: item.id });
-        }
-
-        return publish({
-          kind: 'conversation-item-upserted',
+        aggregation.discardItem({ threadId: input.threadId, itemId: item.id });
+        deltaAccumulator.discardItem({ threadId: input.threadId, itemId: item.id });
+        return publishItem({
           threadId: input.threadId,
           item,
         });
       }
 
-      case 'record-runtime-error':
-        aggregation.flushTurn({ threadId: input.threadId, turnId: input.turnId });
-        return publish({
-          kind: 'conversation-item-upserted',
-          threadId: input.threadId,
-          item: projectRuntimeError({
-            turnId: input.turnId,
-            error: input.error,
-          }),
+      case 'record-runtime-turn-plan': {
+        const item = projectRuntimeTurnPlan({
+          turnId: input.turnId,
+          explanation: input.explanation,
+          plan: input.plan,
         });
+        order.recordItem({
+          threadId: input.threadId,
+          itemId: item.id,
+        });
+        return publishItem({
+          threadId: input.threadId,
+          item,
+        });
+      }
+
+      case 'record-runtime-turn-diff': {
+        const item = projectRuntimeTurnDiff({
+          turnId: input.turnId,
+          diff: input.diff,
+        });
+        order.recordItem({
+          threadId: input.threadId,
+          itemId: item.id,
+        });
+        return publishItem({
+          threadId: input.threadId,
+          item,
+        });
+      }
+
+      case 'record-runtime-error': {
+        aggregation.flushTurn({ threadId: input.threadId, turnId: input.turnId });
+        const item = projectRuntimeError({
+          turnId: input.turnId,
+          error: input.error,
+        });
+        order.recordItem({
+          threadId: input.threadId,
+          itemId: item.id,
+        });
+        return publishItem({
+          threadId: input.threadId,
+          item,
+        });
+      }
     }
   }
 
@@ -147,6 +268,7 @@ export function createConversationService(dependencies: ConversationDependencies
     snapshot(input: ConversationSnapshotInput): ConversationSnapshot {
       if (!input.threadId) {
         return {
+          status: 'ready',
           revision: 0,
           items: [],
         };
@@ -164,10 +286,7 @@ interface CreateConversationSnapshotInput {
 }
 
 function createConversationSnapshot(input: CreateConversationSnapshotInput): ConversationSnapshot {
-  return {
-    revision: input.state.revision,
-    items: input.state.items,
-  };
+  return input.state;
 }
 
 interface CreateStateEventInput {
@@ -180,6 +299,10 @@ function createStateEvent(input: CreateStateEventInput): ConversationDomainEvent
     case 'conversation-replaced':
       return {
         ...input.event,
+        conversation: {
+          ...input.event.conversation,
+          revision: input.revision,
+        },
         revision: input.revision,
       };
 
@@ -191,17 +314,16 @@ function createStateEvent(input: CreateStateEventInput): ConversationDomainEvent
   }
 }
 
-interface ReadCurrentItemTextInput {
+interface ReadCurrentItemInput {
   readonly state: ConversationState;
   readonly itemId: string;
 }
 
-function readCurrentItemText(input: ReadCurrentItemTextInput): string {
-  const existingItem = input.state.items.find(item => item.id === input.itemId);
-
-  if (existingItem?.kind === 'message') {
-    return existingItem.text;
+function readCurrentItem(input: ReadCurrentItemInput): ConversationItem | null {
+  if (input.state.status !== 'ready') {
+    return null;
   }
 
-  return '';
+  return input.state.items.find(item => item.id === input.itemId) ?? null;
 }
+

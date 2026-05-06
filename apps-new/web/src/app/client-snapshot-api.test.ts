@@ -302,6 +302,7 @@ describe('client snapshot api boundary', () => {
         role: 'assistant',
         text: 'hello',
       },
+      position: { kind: 'append' },
     }));
 
     assert.deepEqual(fixture.received, [
@@ -318,6 +319,7 @@ describe('client snapshot api boundary', () => {
           role: 'assistant',
           text: 'hello',
         },
+        position: { kind: 'append' },
       },
     ]);
     fixture.subscription.close();

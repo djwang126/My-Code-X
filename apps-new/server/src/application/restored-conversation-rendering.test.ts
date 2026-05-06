@@ -117,6 +117,7 @@ describe('restored conversation rendering application flow', () => {
 
     assert.deepEqual(snapshot.conversation, {
       status: 'failed',
+      revision: 1,
       error: {
         message: 'runtime did not open the requested thread',
       },
@@ -418,7 +419,7 @@ describe('restored conversation rendering application flow', () => {
       },
     });
 
-    assert.deepEqual(sent, [
+    assert.deepEqual(stripClientConversationPositions(sent), [
       {
         kind: 'conversation-replaced',
         scope: {
@@ -514,6 +515,7 @@ describe('restored conversation rendering application flow', () => {
     });
 
     assert.deepEqual(fixture.conversation.snapshot({ threadId: 'thread-1' }), {
+      status: 'ready',
       revision: 2,
       items: [
         {
@@ -642,4 +644,23 @@ function createEventBus(): EventBusPort {
       };
     },
   };
+}
+
+
+function stripClientConversationPositions(events: readonly ClientEvent[]): readonly ClientEvent[] {
+  return events.map(event => {
+    if (event.kind !== 'conversation-item-upserted') {
+      return event;
+    }
+
+    return removePosition(event) as ClientEvent;
+  });
+}
+
+
+
+function removePosition<T extends { readonly position?: unknown }>(event: T): Omit<T, 'position'> {
+  const eventWithMutablePosition: { position?: unknown } = event;
+  delete eventWithMutablePosition.position;
+  return eventWithMutablePosition as Omit<T, 'position'>;
 }

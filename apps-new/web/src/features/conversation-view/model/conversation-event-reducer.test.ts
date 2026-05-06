@@ -35,6 +35,7 @@ describe('conversation client event reducer', () => {
           role: 'assistant',
           text: 'final',
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -83,6 +84,7 @@ describe('conversation client event reducer', () => {
           role: 'assistant',
           text: 'hi',
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -139,6 +141,7 @@ describe('conversation client event reducer', () => {
             { name: 'type', value: 'plan' },
           ],
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -200,6 +203,7 @@ describe('conversation client event reducer', () => {
             { name: 'aggregatedOutput', value: 'ok' },
           ],
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -250,6 +254,7 @@ describe('conversation client event reducer', () => {
           kind: 'error',
           message: 'runtime failed',
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -301,6 +306,7 @@ describe('conversation client event reducer', () => {
           kind: 'error',
           message: 'final error',
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -474,6 +480,7 @@ describe('conversation client event reducer', () => {
           role: 'assistant',
           text: 'other',
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -515,6 +522,7 @@ describe('conversation client event reducer', () => {
           role: 'assistant',
           text: 'other slot',
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -556,6 +564,7 @@ describe('conversation client event reducer', () => {
           role: 'assistant',
           text: 'stale',
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -604,6 +613,7 @@ describe('conversation client event reducer', () => {
           role: 'assistant',
           text: 'same revision rewrite',
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -760,6 +770,7 @@ describe('conversation client event reducer', () => {
           role: 'assistant',
           text: 'should not apply',
         },
+        position: { kind: 'append' },
       },
     });
 
@@ -775,5 +786,269 @@ describe('conversation client event reducer', () => {
         },
       ],
     });
+  });
+
+  test('ignores stale ready replacement events that would overwrite a newer failed state', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'failed',
+        revision: 3,
+        error: {
+          message: 'restore failed',
+        },
+      },
+      event: {
+        kind: 'conversation-replaced',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '2',
+        conversation: {
+          status: 'ready',
+          revision: 2,
+          items: [],
+        },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'failed',
+      revision: 3,
+      error: {
+        message: 'restore failed',
+      },
+    });
+  });
+
+  test('applies newer ready replacement events after a failed state', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'failed',
+        revision: 3,
+        error: {
+          message: 'restore failed',
+        },
+      },
+      event: {
+        kind: 'conversation-replaced',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '4',
+        conversation: {
+          status: 'ready',
+          revision: 4,
+          items: [
+            {
+              id: 'assistant-1',
+              kind: 'message',
+              role: 'assistant',
+              text: 'restored',
+            },
+          ],
+        },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'ready',
+      revision: 4,
+      items: [
+        {
+          id: 'assistant-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'restored',
+        },
+      ],
+    });
+  });
+
+  test('ignores replacement events when event revision and conversation revision disagree', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'ready',
+        revision: 3,
+        items: [
+          {
+            id: 'assistant-current',
+            kind: 'message',
+            role: 'assistant',
+            text: 'current',
+          },
+        ],
+      },
+      event: {
+        kind: 'conversation-replaced',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '4',
+        conversation: {
+          status: 'ready',
+          revision: 2,
+          items: [
+            {
+              id: 'assistant-mismatched',
+              kind: 'message',
+              role: 'assistant',
+              text: 'should not apply',
+            },
+          ],
+        },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'ready',
+      revision: 3,
+      items: [
+        {
+          id: 'assistant-current',
+          kind: 'message',
+          role: 'assistant',
+          text: 'current',
+        },
+      ],
+    });
+  });
+
+  test('ignores item upsert events while conversation is failed', () => {
+    const conversation = applyConversationClientEvent({
+      scope: {
+        slotId: 'slot-1',
+        threadId: 'thread-1',
+      },
+      conversation: {
+        status: 'failed',
+        revision: 3,
+        error: {
+          message: 'restore failed',
+        },
+      },
+      event: {
+        kind: 'conversation-item-upserted',
+        scope: {
+          slotId: 'slot-1',
+          threadId: 'thread-1',
+        },
+        revision: '4',
+        item: {
+          id: 'assistant-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'should wait for replacement',
+        },
+        position: { kind: 'append' },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'failed',
+      revision: 3,
+      error: {
+        message: 'restore failed',
+      },
+    });
+  });
+});
+
+
+describe('conversation event reducer timeline positions', () => {
+  test('inserts new item before server-selected target item', () => {
+    const conversation = applyConversationClientEvent({
+      scope: { slotId: 'slot-1', threadId: 'thread-1' },
+      conversation: {
+        status: 'ready',
+        revision: 1,
+        items: [
+          {
+            id: 'command-1',
+            kind: 'work-trace',
+            codexType: 'commandExecution',
+            fields: [],
+          },
+        ],
+      },
+      event: {
+        kind: 'conversation-item-upserted',
+        scope: { slotId: 'slot-1', threadId: 'thread-1' },
+        revision: '2',
+        item: {
+          id: 'assistant-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'hello',
+        },
+        position: { kind: 'before-item', itemId: 'command-1' },
+      },
+    });
+
+    assert.deepEqual(conversation, {
+      status: 'ready',
+      revision: 2,
+      items: [
+        {
+          id: 'assistant-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'hello',
+        },
+        {
+          id: 'command-1',
+          kind: 'work-trace',
+          codexType: 'commandExecution',
+          fields: [],
+        },
+      ],
+    });
+  });
+
+  test('ignores positioned upsert when target item is missing', () => {
+    const current = {
+      status: 'ready' as const,
+      revision: 1,
+      items: [
+        {
+          id: 'command-1',
+          kind: 'work-trace' as const,
+          codexType: 'commandExecution',
+          fields: [],
+        },
+      ],
+    };
+    const conversation = applyConversationClientEvent({
+      scope: { slotId: 'slot-1', threadId: 'thread-1' },
+      conversation: current,
+      event: {
+        kind: 'conversation-item-upserted',
+        scope: { slotId: 'slot-1', threadId: 'thread-1' },
+        revision: '2',
+        item: {
+          id: 'assistant-1',
+          kind: 'message',
+          role: 'assistant',
+          text: 'hello',
+        },
+        position: { kind: 'before-item', itemId: 'missing' },
+      },
+    });
+
+    assert.deepEqual(conversation, current);
   });
 });

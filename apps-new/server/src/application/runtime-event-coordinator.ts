@@ -79,6 +79,14 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
           recordConversationDelta({ conversation: input.conversation, threadId: event.threadId, event });
           return;
 
+        case 'runtime-turn-plan-updated':
+          recordConversationTurnPlan({ conversation: input.conversation, event });
+          return;
+
+        case 'runtime-turn-diff-updated':
+          recordConversationTurnDiff({ conversation: input.conversation, event });
+          return;
+
         case 'runtime-error':
           if (event.threadId && event.turnId) {
             recordConversationError({
@@ -94,8 +102,6 @@ export function createRuntimeEventCoordinator(input: RuntimeEventCoordinatorInpu
         case 'runtime-thread-archived':
         case 'runtime-thread-unarchived':
         case 'runtime-thread-token-usage-updated':
-        case 'runtime-turn-diff-updated':
-        case 'runtime-turn-plan-updated':
         case 'runtime-system-notice':
           return;
       }
@@ -178,6 +184,44 @@ function recordConversationDelta(input: RecordConversationDeltaInput): void {
     itemId: input.event.itemId,
     deltaKind: input.event.deltaKind,
     text: input.event.text,
+    data: input.event.data ?? null,
+  });
+}
+
+interface RecordConversationTurnPlanInput {
+  readonly conversation: ConversationService | undefined;
+  readonly event: Extract<RuntimeEvent, { readonly kind: 'runtime-turn-plan-updated' }>;
+}
+
+function recordConversationTurnPlan(input: RecordConversationTurnPlanInput): void {
+  if (!input.conversation) {
+    return;
+  }
+
+  input.conversation.apply({
+    kind: 'record-runtime-turn-plan',
+    threadId: input.event.threadId,
+    turnId: input.event.turnId,
+    explanation: input.event.explanation,
+    plan: input.event.plan,
+  });
+}
+
+interface RecordConversationTurnDiffInput {
+  readonly conversation: ConversationService | undefined;
+  readonly event: Extract<RuntimeEvent, { readonly kind: 'runtime-turn-diff-updated' }>;
+}
+
+function recordConversationTurnDiff(input: RecordConversationTurnDiffInput): void {
+  if (!input.conversation) {
+    return;
+  }
+
+  input.conversation.apply({
+    kind: 'record-runtime-turn-diff',
+    threadId: input.event.threadId,
+    turnId: input.event.turnId,
+    diff: input.event.diff,
   });
 }
 

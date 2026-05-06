@@ -22,6 +22,7 @@ test('presenters create a client snapshot from feature-owned state', () => {
       current: null,
     },
     conversation: {
+      status: 'ready',
       revision: 1,
       items: [
         {
@@ -72,6 +73,7 @@ test('client snapshot keeps slot selection separate from thread readiness', () =
       current: null,
     },
     conversation: {
+      status: 'ready',
       revision: 0,
       items: [],
     },

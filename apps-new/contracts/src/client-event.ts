@@ -8,10 +8,10 @@ import {
   type ClientThreadView,
 } from './client-snapshot.js';
 import {
+  clientConversationViewSchema,
   clientConversationItemSchema,
-  clientConversationReadyViewSchema,
   type ClientConversationItem,
-  type ClientConversationReadyView,
+  type ClientConversationView,
 } from './conversation-view.js';
 import { pendingInteractionSchema, type PendingInteraction } from './pending-interaction.js';
 import { clientTurnViewSchema, type ClientTurnView } from './turn-view.js';
@@ -32,14 +32,30 @@ const clientConversationReplacedEventSchema = z.object({
   kind: z.literal('conversation-replaced'),
   scope: clientEventScopeSchema,
   revision: z.string(),
-  conversation: clientConversationReadyViewSchema,
+  conversation: clientConversationViewSchema,
 }).strict();
+
+
+export const clientConversationTimelinePositionSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('append'),
+  }).strict(),
+  z.object({
+    kind: z.literal('before-item'),
+    itemId: z.string(),
+  }).strict(),
+  z.object({
+    kind: z.literal('after-item'),
+    itemId: z.string(),
+  }).strict(),
+]);
 
 const clientConversationItemUpsertedEventSchema = z.object({
   kind: z.literal('conversation-item-upserted'),
   scope: clientEventScopeSchema,
   revision: z.string(),
   item: clientConversationItemSchema,
+  position: clientConversationTimelinePositionSchema,
 }).strict();
 
 const clientTurnChangedEventSchema = z.object({
@@ -97,6 +113,7 @@ export const clientEventSchema = z.discriminatedUnion('kind', [
 ]);
 
 export type ClientEventScope = Readonly<z.infer<typeof clientEventScopeSchema>>;
+export type ClientConversationTimelinePosition = Readonly<z.infer<typeof clientConversationTimelinePositionSchema>>;
 
 type ClientEventShape = z.infer<typeof clientEventSchema>;
 
@@ -112,13 +129,14 @@ export type ClientSnapshotEvent = Readonly<
 export type ClientConversationReplacedEvent = Readonly<
   Omit<ClientEventBaseShape<'conversation-replaced'>, 'scope' | 'conversation'> & {
     readonly scope: ClientEventScope;
-    readonly conversation: ClientConversationReadyView;
+    readonly conversation: ClientConversationView;
   }
 >;
 export type ClientConversationItemUpsertedEvent = Readonly<
-  Omit<ClientEventBaseShape<'conversation-item-upserted'>, 'scope' | 'item'> & {
+  Omit<ClientEventBaseShape<'conversation-item-upserted'>, 'scope' | 'item' | 'position'> & {
     readonly scope: ClientEventScope;
     readonly item: ClientConversationItem;
+    readonly position: ClientConversationTimelinePosition;
   }
 >;
 export type ClientTurnChangedEvent = Readonly<

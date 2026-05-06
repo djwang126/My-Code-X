@@ -1,4 +1,4 @@
-import type { ClientConversationView, ClientOpenAction, ClientSnapshot } from '@my-code-x/contracts-new';
+import type { ClientOpenAction, ClientSnapshot } from '@my-code-x/contracts-new';
 import type { ConversationService } from '../features/conversation/index.js';
 import type { SlotService } from '../features/slot/index.js';
 import type { ThreadActionsService } from '../features/thread-actions/index.js';
@@ -43,7 +43,7 @@ export async function openClient(useCase: OpenClientUseCaseInput): Promise<Clien
     threadActions: useCase.dependencies.threadActions,
   });
   const selectedThread = openedThread.thread;
-  const conversationView = restoreConversation({
+  restoreConversation({
     conversation: useCase.dependencies.conversation,
     openedThread,
   });
@@ -54,7 +54,6 @@ export async function openClient(useCase: OpenClientUseCaseInput): Promise<Clien
     selectedThread,
     turn: useCase.dependencies.turn.snapshot(),
     conversation: useCase.dependencies.conversation.snapshot({ threadId: slot.threadId }),
-    conversationView,
     workspace,
   });
 }
@@ -82,6 +81,7 @@ interface OpenSelectedThreadReadyResult {
 
 interface OpenSelectedThreadFailedResult {
   readonly status: 'failed';
+  readonly threadId: string;
   readonly thread: null;
   readonly error: OpenSelectedThreadError;
 }
@@ -116,6 +116,7 @@ async function openSelectedThread(input: OpenSelectedThreadInput): Promise<OpenS
   if (openedThread.status === 'failed') {
     return {
       status: 'failed',
+      threadId: input.threadId,
       thread: null,
       error: openedThread.error,
     };
@@ -144,10 +145,10 @@ interface RestoreConversationInput {
   readonly openedThread: OpenSelectedThreadResult;
 }
 
-function restoreConversation(input: RestoreConversationInput): ClientConversationView | undefined {
+function restoreConversation(input: RestoreConversationInput): void {
   switch (input.openedThread.status) {
     case 'none':
-      return undefined;
+      return;
 
     case 'ready':
       input.conversation.apply({
@@ -156,13 +157,15 @@ function restoreConversation(input: RestoreConversationInput): ClientConversatio
         items: input.openedThread.restoredItems,
         turns: input.openedThread.restoredTurns,
       });
-      return undefined;
+      return;
 
     case 'failed':
-      return {
-        status: 'failed',
+      input.conversation.apply({
+        kind: 'fail-conversation',
+        threadId: input.openedThread.threadId,
         error: input.openedThread.error,
-      };
+      });
+      return;
   }
 }
 

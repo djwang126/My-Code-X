@@ -1,10 +1,22 @@
 import type { ConversationDomainEvent, ConversationSnapshot } from './conversation-events.js';
-import type { ConversationItem, ConversationItemField } from './conversation-events.js';
+import type { ConversationItem, ConversationTimelinePosition } from './conversation-events.js';
+import { areSameConversationItems } from './conversation-item-equality.js';
 
 export type ConversationState = ConversationSnapshot;
 
+export class ConversationTimelinePositionError extends Error {
+  constructor(
+    public readonly itemId: string,
+    public readonly position: ConversationTimelinePosition,
+  ) {
+    super(`Conversation timeline position target is missing for item ${itemId}`);
+    this.name = 'ConversationTimelinePositionError';
+  }
+}
+
 export function createInitialConversationState(): ConversationState {
   return {
+    status: 'ready',
     revision: 0,
     items: [],
   };
@@ -20,76 +32,114 @@ export function applyConversationDomainEvent(input: ApplyConversationDomainEvent
 
   switch (event.kind) {
     case 'conversation-replaced':
-      return {
-        revision: state.revision + 1,
-        items: event.items,
-      };
+      return event.conversation;
 
     case 'conversation-item-upserted':
       return upsertConversationItem({
         state,
         item: event.item,
+        position: event.position,
       });
   }
 }
 
 interface UpsertConversationItemInput {
   readonly state: ConversationState;
-  readonly item: ConversationState['items'][number];
+  readonly item: ConversationItem;
+  readonly position: ConversationTimelinePosition;
 }
 
 function upsertConversationItem(input: UpsertConversationItemInput): ConversationState {
-  const existingIndex = input.state.items.findIndex(item => item.id === input.item.id);
-
-  if (existingIndex < 0) {
-    return {
-      revision: input.state.revision + 1,
-      items: [...input.state.items, input.item],
-    };
+  if (input.state.status !== 'ready') {
+    return input.state;
   }
 
-  const existingItem = input.state.items[existingIndex];
+  const existingIndex = input.state.items.findIndex(item => item.id === input.item.id);
 
-  if (existingItem && isSameConversationItem(existingItem, input.item)) {
+  if (existingIndex >= 0) {
+    return updateExistingConversationItem({
+      state: input.state,
+      item: input.item,
+      existingIndex,
+    });
+  }
+
+  const items = insertConversationItem({
+    items: input.state.items,
+    item: input.item,
+    position: input.position,
+  });
+
+  if (items === input.state.items) {
     return input.state;
   }
 
   return {
+    status: 'ready',
     revision: input.state.revision + 1,
-    items: input.state.items.map((item, index) => (index === existingIndex ? input.item : item)),
+    items,
   };
 }
 
-function isSameConversationItem(left: ConversationItem, right: ConversationItem): boolean {
-  switch (left.kind) {
-    case 'message':
-      return right.kind === 'message'
-        && left.id === right.id
-        && left.role === right.role
-        && left.text === right.text;
-
-    case 'work-trace':
-      return right.kind === 'work-trace'
-        && left.id === right.id
-        && left.codexType === right.codexType
-        && areSameConversationItemFields(left.fields, right.fields);
-
-    case 'unknown':
-      return right.kind === 'unknown'
-        && left.id === right.id
-        && left.codexType === right.codexType
-        && areSameConversationItemFields(left.fields, right.fields);
-
-    case 'error':
-      return right.kind === 'error'
-        && left.id === right.id
-        && left.message === right.message;
-  }
+interface UpdateExistingConversationItemInput {
+  readonly state: Extract<ConversationState, { readonly status: 'ready' }>;
+  readonly item: ConversationItem;
+  readonly existingIndex: number;
 }
 
-function areSameConversationItemFields(
-  left: readonly ConversationItemField[],
-  right: readonly ConversationItemField[],
-): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
+function updateExistingConversationItem(input: UpdateExistingConversationItemInput): ConversationState {
+  const existingItem = input.state.items[input.existingIndex];
+
+  if (existingItem && areSameConversationItems(existingItem, input.item)) {
+    return input.state;
+  }
+
+  return {
+    status: 'ready',
+    revision: input.state.revision + 1,
+    items: input.state.items.map((item, index) => (index === input.existingIndex ? input.item : item)),
+  };
+}
+
+interface InsertConversationItemInput {
+  readonly items: readonly ConversationItem[];
+  readonly item: ConversationItem;
+  readonly position: ConversationTimelinePosition;
+}
+
+function insertConversationItem(input: InsertConversationItemInput): readonly ConversationItem[] {
+  switch (input.position.kind) {
+    case 'append':
+      return [...input.items, input.item];
+
+    case 'before-item': {
+      const position = input.position;
+      const targetIndex = input.items.findIndex(item => item.id === position.itemId);
+
+      if (targetIndex < 0) {
+        throw new ConversationTimelinePositionError(input.item.id, input.position);
+      }
+
+      return [
+        ...input.items.slice(0, targetIndex),
+        input.item,
+        ...input.items.slice(targetIndex),
+      ];
+    }
+
+    case 'after-item': {
+      const position = input.position;
+      const targetIndex = input.items.findIndex(item => item.id === position.itemId);
+
+      if (targetIndex < 0) {
+        throw new ConversationTimelinePositionError(input.item.id, input.position);
+      }
+
+      return [
+        ...input.items.slice(0, targetIndex + 1),
+        input.item,
+        ...input.items.slice(targetIndex + 1),
+      ];
+    }
+  }
 }

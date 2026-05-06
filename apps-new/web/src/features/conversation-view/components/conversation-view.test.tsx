@@ -344,6 +344,7 @@ describe('ConversationView message rendering', () => {
   test('renders failed resource errors outside the conversation timeline', () => {
     const html = renderConversationView({
       status: 'failed',
+      revision: 2,
       error: {
         message: 'restore failed',
       },

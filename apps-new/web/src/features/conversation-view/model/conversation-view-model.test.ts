@@ -8,6 +8,7 @@ describe('conversation view model', () => {
     assert.deepEqual(createConversationViewModelFromSnapshot({
       conversation: {
         status: 'loading',
+        revision: 0,
       },
     }), {
       status: 'loading',
@@ -71,6 +72,7 @@ describe('conversation view model', () => {
     assert.deepEqual(createConversationViewModelFromSnapshot({
       conversation: {
         status: 'failed',
+        revision: 2,
         error: {
           message: 'Unable to load conversation',
         },

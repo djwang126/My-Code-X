@@ -1,10 +1,10 @@
-import type { ClientConversationView, ClientSnapshot } from '@my-code-x/contracts-new';
+import type { ClientSnapshot } from '@my-code-x/contracts-new';
 import type { ConversationSnapshot } from '../features/conversation/index.js';
 import type { SlotSelection } from '../features/slot/index.js';
 import type { ThreadRecord } from '../features/thread/index.js';
 import type { TurnSnapshot } from '../features/turn/index.js';
 import type { WorkspaceSnapshot } from '../features/workspace/index.js';
-import { presentConversation } from './conversation-presenter.js';
+import { presentConversationView } from './conversation-presenter.js';
 import { presentTurn } from './turn-presenter.js';
 
 export interface CreateClientSnapshotInput {
@@ -13,7 +13,6 @@ export interface CreateClientSnapshotInput {
   readonly selectedThread: ThreadRecord | null;
   readonly turn: TurnSnapshot;
   readonly conversation: ConversationSnapshot;
-  readonly conversationView?: ClientConversationView;
   readonly workspace: WorkspaceSnapshot;
 }
 
@@ -36,11 +35,7 @@ export function createClientSnapshot(input: CreateClientSnapshotInput): ClientSn
     },
     thread: presentThread(input),
     turn: presentTurn({ snapshot: input.turn }),
-    conversation: input.conversationView ?? {
-      status: 'ready',
-      revision: input.conversation.revision,
-      items: presentConversation({ snapshot: input.conversation }),
-    },
+    conversation: presentConversationView({ snapshot: input.conversation }),
     // Host-request and pending-interaction workflows are intentionally disabled.
     // The Runtime Gateway only exposes raw host-request facts until UI interaction semantics are designed.
     pendingInteractions: [],

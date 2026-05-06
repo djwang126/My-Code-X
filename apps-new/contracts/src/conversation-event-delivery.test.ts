@@ -48,6 +48,7 @@ describe('conversation event delivery contracts', () => {
         kind: 'error',
         message: 'runtime failed',
       },
+      position: { kind: 'append' },
     };
 
     assert.deepEqual(clientEventSchema.parse(event), event);
@@ -139,8 +140,8 @@ describe('conversation event delivery contracts', () => {
     assert.equal(parsed.success, false);
   });
 
-  test('rejects replacement events that carry a failed conversation state', () => {
-    const parsed = clientEventSchema.safeParse({
+  test('accepts replacement events that carry a failed conversation resource state', () => {
+    const event = {
       kind: 'conversation-replaced',
       scope: {
         slotId: 'slot-1',
@@ -149,17 +150,18 @@ describe('conversation event delivery contracts', () => {
       revision: '2',
       conversation: {
         status: 'failed',
+        revision: 2,
         error: {
           message: 'restore failed',
         },
       },
-    });
+    };
 
-    assert.equal(parsed.success, false);
+    assert.deepEqual(clientEventSchema.parse(event), event);
   });
 
-  test('rejects replacement events that carry a loading conversation state', () => {
-    const parsed = clientEventSchema.safeParse({
+  test('accepts replacement events that carry a loading conversation resource state', () => {
+    const event = {
       kind: 'conversation-replaced',
       scope: {
         slotId: 'slot-1',
@@ -168,10 +170,11 @@ describe('conversation event delivery contracts', () => {
       revision: '2',
       conversation: {
         status: 'loading',
+        revision: 2,
       },
-    });
+    };
 
-    assert.equal(parsed.success, false);
+    assert.deepEqual(clientEventSchema.parse(event), event);
   });
 
   test('rejects upsert events that carry delta-only fields', () => {

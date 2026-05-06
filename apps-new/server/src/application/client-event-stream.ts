@@ -1,7 +1,7 @@
 import type { ClientEvent, ClientEventScope } from '@my-code-x/contracts-new';
 import type { EventBusPort, Unsubscribe } from '../ports/index.js';
 import { isConversationDomainEvent, type ConversationService } from '../features/conversation/index.js';
-import { presentConversation, presentConversationItem } from '../presenter/index.js';
+import { presentConversationItem, presentConversationView } from '../presenter/index.js';
 
 export interface ClientEventStream {
   subscribe(input: SubscribeClientEventStreamInput): Unsubscribe;
@@ -53,11 +53,7 @@ function createCurrentConversationReplacement(input: CreateCurrentConversationRe
     kind: 'conversation-replaced',
     scope: input.scope,
     revision: String(snapshot.revision),
-    conversation: {
-      status: 'ready',
-      revision: snapshot.revision,
-      items: presentConversation({ snapshot }),
-    },
+    conversation: presentConversationView({ snapshot }),
   };
 }
 
@@ -82,6 +78,7 @@ function presentStreamEvent(input: PresentStreamEventInput): ClientEvent | null 
         scope: input.scope,
         revision: String(input.event.revision),
         item: presentConversationItem({ item: input.event.item }),
+        position: input.event.position,
       };
 
     case 'conversation-replaced':
@@ -89,11 +86,7 @@ function presentStreamEvent(input: PresentStreamEventInput): ClientEvent | null 
         kind: 'conversation-replaced',
         scope: input.scope,
         revision: String(input.event.revision),
-        conversation: {
-          status: 'ready',
-          revision: input.event.revision,
-          items: input.event.items.map(item => presentConversationItem({ item })),
-        },
+        conversation: presentConversationView({ snapshot: input.event.conversation }),
       };
   }
 }

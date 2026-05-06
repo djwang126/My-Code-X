@@ -1,12 +1,34 @@
-import type { ClientConversationItem } from '@my-code-x/contracts-new';
-import type { ConversationItem, ConversationSnapshot } from '../features/conversation/index.js';
+import type { ClientConversationItem, ClientConversationView } from '@my-code-x/contracts-new';
+import type { ConversationItem, ConversationReadySnapshot, ConversationSnapshot } from '../features/conversation/index.js';
 
 export interface PresentConversationInput {
+  readonly snapshot: ConversationReadySnapshot;
+}
+
+export interface PresentConversationViewInput {
   readonly snapshot: ConversationSnapshot;
 }
 
-export function presentConversation(input: PresentConversationInput): readonly ClientConversationItem[] {
+export function presentReadyConversationItems(input: PresentConversationInput): readonly ClientConversationItem[] {
   return input.snapshot.items.map(item => presentConversationItem({ item }));
+}
+
+export function presentConversationView(input: PresentConversationViewInput): ClientConversationView {
+  switch (input.snapshot.status) {
+    case 'ready':
+      return {
+        status: 'ready',
+        revision: input.snapshot.revision,
+        items: presentReadyConversationItems({ snapshot: input.snapshot }),
+      };
+
+    case 'failed':
+      return {
+        status: 'failed',
+        revision: input.snapshot.revision,
+        error: input.snapshot.error,
+      };
+  }
 }
 
 export interface PresentConversationItemInput {

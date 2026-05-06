@@ -7,8 +7,10 @@ describe('client conversation view contract', () => {
   test('accepts loading state without timeline data or error', () => {
     assert.deepEqual(clientConversationViewSchema.parse({
       status: 'loading',
+      revision: 0,
     }), {
       status: 'loading',
+      revision: 0,
     });
   });
 
@@ -459,11 +461,13 @@ describe('client conversation view contract', () => {
   test('requires failed state to carry a non-conversation error message', () => {
     assert.deepEqual(clientConversationViewSchema.parse({
       status: 'failed',
+      revision: 2,
       error: {
         message: 'Unable to load conversation',
       },
     }), {
       status: 'failed',
+      revision: 2,
       error: {
         message: 'Unable to load conversation',
       },

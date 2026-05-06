@@ -29,7 +29,9 @@ export {
 export {
   clientEventSchema,
   clientEventScopeSchema,
+  clientConversationTimelinePositionSchema,
   type ClientConversationItemUpsertedEvent,
+  type ClientConversationTimelinePosition,
   type ClientConversationReplacedEvent,
   type ClientErrorRaisedEvent,
   type ClientEvent,

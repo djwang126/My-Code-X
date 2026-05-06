@@ -94,11 +94,12 @@ describe('client event HTTP stream', () => {
         role: 'assistant',
         text: 'hello',
       },
+      position: { kind: 'append' },
     });
     close();
 
     assert.deepEqual(chunks, [
-      'data: {"kind":"conversation-item-upserted","scope":{"slotId":"slot-1","threadId":"thread-1"},"revision":"1","item":{"id":"assistant-1","kind":"message","role":"assistant","text":"hello"}}\n\n',
+      'data: {"kind":"conversation-item-upserted","scope":{"slotId":"slot-1","threadId":"thread-1"},"revision":"1","item":{"id":"assistant-1","kind":"message","role":"assistant","text":"hello"},"position":{"kind":"append"}}\n\n',
     ]);
   });
 
@@ -140,6 +141,7 @@ describe('client event HTTP stream', () => {
         role: 'assistant',
         text: 'late event',
       },
+      position: { kind: 'append' },
     });
 
     assert.equal(eventStream.unsubscribeCount, 1);

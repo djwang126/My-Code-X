@@ -1,8 +1,8 @@
-import type { ConversationMessageItem } from './conversation-events.js';
+﻿import type { ConversationItem } from './conversation-events.js';
 import type { ConversationScheduledTask, ConversationSchedulerPort } from './conversation-ports.js';
 
 export interface ConversationAggregation {
-  recordDelta(input: RecordConversationDeltaInput): void;
+  recordPendingItem(input: RecordPendingConversationItemInput): void;
   discardItem(input: DiscardPendingConversationItemInput): void;
   discardThread(input: DiscardPendingConversationThreadInput): void;
   flushTurn(input: FlushPendingConversationTurnInput): void;
@@ -14,12 +14,10 @@ export interface CreateConversationAggregationInput {
   flush(input: FlushPendingConversationItemInput): void;
 }
 
-export interface RecordConversationDeltaInput {
+export interface RecordPendingConversationItemInput {
   readonly threadId: string;
   readonly turnId: string;
-  readonly itemId: string;
-  readonly currentText: string;
-  readonly deltaText: string;
+  readonly item: ConversationItem;
 }
 
 export interface DiscardPendingConversationItemInput {
@@ -33,7 +31,7 @@ export interface DiscardPendingConversationThreadInput {
 
 export interface FlushPendingConversationItemInput {
   readonly threadId: string;
-  readonly item: ConversationMessageItem;
+  readonly item: ConversationItem;
 }
 
 export interface FlushPendingConversationTurnInput {
@@ -44,7 +42,7 @@ export interface FlushPendingConversationTurnInput {
 interface PendingConversationItem {
   readonly threadId: string;
   readonly turnId: string;
-  readonly item: ConversationMessageItem;
+  readonly item: ConversationItem;
   readonly task: ConversationScheduledTask;
 }
 
@@ -68,21 +66,17 @@ export function createConversationAggregation(input: CreateConversationAggregati
   }
 
   return {
-    recordDelta(delta: RecordConversationDeltaInput): void {
+    recordPendingItem(pendingItem: RecordPendingConversationItemInput): void {
       const key = createPendingItemKey({
-        threadId: delta.threadId,
-        itemId: delta.itemId,
+        threadId: pendingItem.threadId,
+        itemId: pendingItem.item.id,
       });
       const pending = pendingItems.get(key);
-      const item = createAssistantMessageFromDelta({
-        itemId: delta.itemId,
-        text: `${pending?.item.text ?? delta.currentText}${delta.deltaText}`,
-      });
 
       if (pending) {
         pendingItems.set(key, {
           ...pending,
-          item,
+          item: pendingItem.item,
         });
         return;
       }
@@ -90,14 +84,14 @@ export function createConversationAggregation(input: CreateConversationAggregati
       const task = input.scheduler.schedule({
         delayMs: input.delayMs,
         run() {
-          flushItem(delta.threadId, delta.itemId);
+          flushItem(pendingItem.threadId, pendingItem.item.id);
         },
       });
 
       pendingItems.set(key, {
-        threadId: delta.threadId,
-        turnId: delta.turnId,
-        item,
+        threadId: pendingItem.threadId,
+        turnId: pendingItem.turnId,
+        item: pendingItem.item,
         task,
       });
     },
@@ -144,18 +138,4 @@ interface CreatePendingItemKeyInput {
 
 function createPendingItemKey(input: CreatePendingItemKeyInput): string {
   return `${input.threadId}\u0000${input.itemId}`;
-}
-
-interface CreateAssistantMessageFromDeltaInput {
-  readonly itemId: string;
-  readonly text: string;
-}
-
-function createAssistantMessageFromDelta(input: CreateAssistantMessageFromDeltaInput): ConversationMessageItem {
-  return {
-    id: input.itemId,
-    kind: 'message',
-    role: 'assistant',
-    text: input.text,
-  };
 }

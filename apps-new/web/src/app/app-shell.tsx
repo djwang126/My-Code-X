@@ -12,13 +12,14 @@ import { createClientSnapshotApiBoundary, type ClientEventSubscription } from '.
 import { readAppScope } from './app-scope.js';
 import { AppLayout } from './app-layout.js';
 import { applyResumeSnapshotToAppShellState, createScopeFromSnapshot } from './app-shell-state.js';
+import { createFailedConversationView } from './app-conversation-state.js';
 
 export function AppShell() {
   const config = readAppConfig();
   const [scope, setScope] = useState(() => readAppScope());
   const api = useMemo(() => createClientSnapshotApiBoundary(), []);
   const workspaceApi = useMemo(() => createWorkspacePanelApiBoundary({ sendAction: action => api.sendAction(action) }), [api]);
-  const [conversation, setConversation] = useState<ClientConversationView>(() => ({ status: 'loading' }));
+  const [conversation, setConversation] = useState<ClientConversationView>(() => ({ status: 'loading', revision: 0 }));
   const workspacePanel = useWorkspacePanelController({
     scope,
     api: workspaceApi,
@@ -40,7 +41,7 @@ export function AppShell() {
     let disposed = false;
     let subscription: ClientEventSubscription | null = null;
 
-    setConversation({ status: 'loading' });
+    setConversation({ status: 'loading', revision: 0 });
     api.loadSnapshot({ scope })
       .then(snapshot => {
         if (disposed) {
@@ -61,12 +62,10 @@ export function AppShell() {
             }));
           },
           fail(error) {
-            setConversation({
-              status: 'failed',
-              error: {
-                message: readErrorMessage(error),
-              },
-            });
+            setConversation(current => createFailedConversationView({
+              current,
+              error,
+            }));
           },
         });
       })
@@ -75,12 +74,10 @@ export function AppShell() {
           return;
         }
 
-        setConversation({
-          status: 'failed',
-          error: {
-            message: readErrorMessage(error),
-          },
-        });
+        setConversation(current => createFailedConversationView({
+          current,
+          error,
+        }));
       });
 
     return () => {
@@ -117,14 +114,6 @@ export function AppShell() {
       />
     </AppLayout>
   );
-}
-
-function readErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return 'Unable to load conversation';
 }
 
 function writeBrowserScope(scope: ReturnType<typeof createScopeFromSnapshot>): void {

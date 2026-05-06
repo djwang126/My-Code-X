@@ -20,10 +20,10 @@ const events: EventBusPort = {
 function createOpenClientDependencies() {
   const conversation: ConversationService = {
     apply() {
-      return { revision: 0, items: [] };
+      return { status: 'ready', revision: 0, items: [] };
     },
     snapshot() {
-      return { revision: 0, items: [] };
+      return { status: 'ready', revision: 0, items: [] };
     },
   };
   const turn: TurnService = {

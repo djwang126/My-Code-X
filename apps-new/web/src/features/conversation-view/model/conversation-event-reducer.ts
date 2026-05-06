@@ -1,6 +1,7 @@
 import type {
   ClientConversationItem,
   ClientConversationReadyView,
+  ClientConversationTimelinePosition,
   ClientConversationView,
   ClientEvent,
   ClientEventScope,
@@ -30,6 +31,7 @@ export function applyConversationClientEvent(input: ApplyConversationClientEvent
         conversation: input.conversation,
         revision: input.event.revision,
         item: input.event.item,
+        position: input.event.position,
       });
 
     case 'snapshot':
@@ -56,12 +58,14 @@ interface UpsertConversationItemInput {
   readonly conversation: ClientConversationView;
   readonly revision: number;
   readonly item: ClientConversationItem;
+  readonly position: ClientConversationTimelinePosition;
 }
 
 interface UpsertConversationItemFromEventInput {
   readonly conversation: ClientConversationView;
   readonly revision: string;
   readonly item: ClientConversationItem;
+  readonly position: ClientConversationTimelinePosition;
 }
 
 interface ReplaceConversationFromEventInput {
@@ -73,7 +77,7 @@ interface ReplaceConversationFromEventInput {
 function replaceConversationFromEvent(input: ReplaceConversationFromEventInput): ClientConversationView {
   const revision = readConversationRevision(input.revision);
 
-  if (revision === null || !shouldApplyConversationRevision({
+  if (revision === null || input.replacement.revision !== revision || !shouldApplyConversationRevision({
     conversation: input.conversation,
     revision,
   })) {
@@ -97,6 +101,7 @@ function upsertConversationItemFromEvent(input: UpsertConversationItemFromEventI
     conversation: input.conversation,
     revision,
     item: input.item,
+    position: input.position,
   });
 }
 
@@ -106,8 +111,8 @@ interface ShouldApplyConversationRevisionInput {
 }
 
 function shouldApplyConversationRevision(input: ShouldApplyConversationRevisionInput): boolean {
-  if (input.conversation.status !== 'ready') {
-    return true;
+  if (input.conversation.status === 'loading') {
+    return input.revision >= input.conversation.revision;
   }
 
   return input.revision > input.conversation.revision;
@@ -120,17 +125,72 @@ function upsertConversationItem(input: UpsertConversationItemInput): ClientConve
 
   const itemIndex = input.conversation.items.findIndex(item => item.id === input.item.id);
 
-  if (itemIndex < 0) {
+  if (itemIndex >= 0) {
     return createReadyConversation({
       revision: input.revision,
-      items: [...input.conversation.items, input.item],
+      items: input.conversation.items.map((item, index) => (index === itemIndex ? input.item : item)),
     });
+  }
+
+  const items = insertConversationItem({
+    items: input.conversation.items,
+    item: input.item,
+    position: input.position,
+  });
+
+  if (items === input.conversation.items) {
+    return input.conversation;
   }
 
   return createReadyConversation({
     revision: input.revision,
-    items: input.conversation.items.map((item, index) => (index === itemIndex ? input.item : item)),
+    items,
   });
+}
+
+interface InsertConversationItemInput {
+  readonly items: readonly ClientConversationItem[];
+  readonly item: ClientConversationItem;
+  readonly position: ClientConversationTimelinePosition;
+}
+
+function insertConversationItem(input: InsertConversationItemInput): readonly ClientConversationItem[] {
+  switch (input.position.kind) {
+    case 'append':
+      return [...input.items, input.item];
+
+    case 'before-item': {
+      const position = input.position;
+      const targetIndex = input.items.findIndex(item => item.id === position.itemId);
+
+      if (targetIndex < 0) {
+        return input.items;
+      }
+
+      return [
+        ...input.items.slice(0, targetIndex),
+        input.item,
+        ...input.items.slice(targetIndex),
+      ];
+    }
+
+    case 'after-item': {
+      const position = input.position;
+      const targetIndex = input.items.findIndex(item => item.id === position.itemId);
+
+      if (targetIndex < 0) {
+        return input.items;
+      }
+
+      return [
+        ...input.items.slice(0, targetIndex + 1),
+        input.item,
+        ...input.items.slice(targetIndex + 1),
+      ];
+    }
+  }
+
+  return input.items;
 }
 
 interface CreateReadyConversationInput {
