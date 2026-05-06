@@ -1,385 +1,207 @@
 # Feature-Workspace
 
-Workspace 是 My-Code-X 手机端侧边栏功能，用来管理本机项目目录，并按目录查看对应 Codex threads。
+Workspace 是 My-Code-X 手机端侧边栏功能，用来管理用户手动添加的本机项目目录，并按目录查看、恢复和整理对应的 Codex threads。
 
-Conversation 是主页。Workspace 不是独立主页，不负责新建 thread，不负责发送消息，不负责 turn 操作，也不维护 Codex thread 的自定义语义。Workspace 只包装 cwd，并把 cwd 作为 Codex `thread/list`、`thread/resume`、`thread/archive`、`thread/unarchive`、`thread/name/set` 等接口的工作区边界。
-
-本功能的核心原则是：Workspace 可以管理 My-Code-X 自己保存的 cwd 列表，但 thread 列表的显示字段、顺序、分页和可操作能力必须尊重 Codex app-server 的接口结果，不能在 Codex thread/list 之上发明额外 thread 语义。Workspace 可以显式使用 Codex `thread/list` 已提供的排序能力，但不得在 Codex 返回结果之上自行重排。
+Workspace 不是独立主页。Conversation 仍是主页，Workspace 只作为侧边栏抽屉存在。Workspace 不负责新建 thread，不负责发送消息，不负责 turn 操作，也不为 Codex thread 发明额外状态。Workspace 以 cwd 作为工作区边界，并尊重 Codex 返回的 thread 字段、顺序、分页和操作结果。
 
 ## 用户故事
 
-1. 作为 My-Code-X 用户，我想手动添加一个本机项目目录作为 Workspace，这样我可以告诉 My-Code-X 这个目录是 Codex 对话的工作区。
-2. 作为 My-Code-X 用户，我想在手机端侧边栏看到已添加的 Workspace 列表，这样我可以从不同项目目录之间切换。
-3. 作为 My-Code-X 用户，我想 Workspace 对外以 canonical cwd 作为身份，这样同一个目录不会被重复添加成多个工作区。
-4. 作为 My-Code-X 用户，我想给 Workspace 设置一个可选名称，这样侧边栏可以按我的习惯显示项目。
-5. 作为 My-Code-X 用户，我想 Workspace 名称只是显示字段，不影响身份，这样我可以把名称改成任何内容，包括空字符串。
-6. 作为 My-Code-X 用户，我想添加 Workspace 时如果不填名称，系统使用目录 basename 作为初始名称，这样新记录默认可读。
-7. 作为 My-Code-X 用户，我想后续重命名 Workspace 时可以改成空字符串，这样显示名完全由我控制。
-8. 作为 My-Code-X 用户，我想 Workspace cwd 输入时自动去掉首尾空白，这样复制路径时的误差不会导致添加失败。
-9. 作为 My-Code-X 用户，我想 Workspace name 原样保存，不自动 trim，这样我输入什么显示名就保存什么显示名。
-10. 作为 My-Code-X 用户，我想添加 Workspace 时校验 cwd 是存在的绝对目录，并且当前进程可以访问，这样不会添加一个无法使用的工作区。
-11. 作为 My-Code-X 用户，我想编辑已保存 Workspace 的 cwd，这样我可以把一个工作区切换到另一个本机项目目录。
-12. 作为 My-Code-X 用户，我想编辑 cwd 时使用和添加 Workspace 相同的路径校验、canonicalize 和重复检查，这样 Workspace 身份仍然清楚。
-13. 作为 My-Code-X 用户，我想 cwd 编辑只是把该 Workspace 改到新的 canonical cwd，不自动猜测、修复、迁移或保留旧 cwd 身份，这样路径变化不会产生隐藏语义。
-14. 作为 My-Code-X 用户，我想如果添加了重复 cwd，系统阻止新增并提示已存在，这样 Workspace 列表不会混乱。
-15. 作为 My-Code-X 用户，我想添加 Workspace 成功后仍留在 Workspace 列表，这样我能确认记录已被添加。
-16. 作为 My-Code-X 用户，我想 Workspace 列表按添加顺序展示，这样列表稳定且没有隐式排序变化。
-17. 作为 My-Code-X 用户，我想打开侧边栏时检查 Workspace cwd 是否仍然可用，这样我能看出哪些目录已经移动、删除或不可访问。
-18. 作为 My-Code-X 用户，我想 unavailable Workspace 仍显示在列表中，这样我知道曾经添加过这个目录。
-19. 作为 My-Code-X 用户，我想 unavailable Workspace 只能移除，这样坏路径不会继续进入 thread 列表。
-20. 作为 My-Code-X 用户，我想 remove Workspace 只移除 My-Code-X 记录，不删除本地目录和 Codex threads，这样误操作不会破坏项目和历史。
-21. 作为 My-Code-X 用户，我想 remove Workspace 不需要确认，这样轻量管理不会被打断。
-22. 作为 My-Code-X 用户，我想当前侧边栏会话选中的 Workspace 不能 remove，但可以 rename，这样当前侧边栏上下文不会被自己删除。
-23. 作为 My-Code-X 用户，我想当前侧边栏会话选中的 Workspace 在 Workspace 列表中高亮，这样我知道本次侧边栏会话正在查看或最近进入哪个工作区。
-24. 作为 My-Code-X 用户，我想从 Workspace 列表进入某个 Workspace 后看到该 cwd 下的 active threads，这样我能继续已有对话。
-25. 作为 My-Code-X 用户，我想 active thread 列表完全来自 Codex `thread/list`，这样 My-Code-X 不会展示和 Codex 不一致的 thread。
-26. 作为 My-Code-X 用户，我想 thread 列表展示 Codex 返回的 `name`、`preview`、`updatedAt`，这样我能识别历史对话。
-27. 作为 My-Code-X 用户，我想 thread 字段为空时不要被 My-Code-X 兜底成自造文案，这样看到的内容保持来自 Codex。
-28. 作为 My-Code-X 用户，我想 `updatedAt` 显示成手机友好的本地时间，这样我能读懂更新时间。
-29. 作为 My-Code-X 用户，我想 thread 列表按 Codex `updated_at desc` 返回顺序展示，这样我优先看到最近更新的对话且 My-Code-X 不会自行重排历史。
-30. 作为 My-Code-X 用户，我想 thread 列表一次加载 10 条，并能继续加载更多，这样手机端列表轻量但仍能查看更多历史。
-31. 作为 My-Code-X 用户，我想加载更多失败时保留已有列表，并在加载更多位置看到错误，这样已加载内容不会丢失。
-32. 作为 My-Code-X 用户，我想没有 active threads 时只看到空状态，不出现新建 thread 入口，这样 Workspace 功能边界保持清楚。
-33. 作为 My-Code-X 用户，我想点击 active thread 时恢复这个 thread 并切换主 Conversation，这样我能继续阅读或使用该对话。
-34. 作为 My-Code-X 用户，我想 resume 成功后侧边栏自动关闭，这样手机端主界面回到 Conversation。
-35. 作为 My-Code-X 用户，我想 resume 失败时侧边栏保持打开，并在对应 thread 卡片显示错误，这样我知道哪个操作失败。
-36. 作为 My-Code-X 用户，我想当前主界面正在显示的 active thread 在列表中高亮，这样我知道当前 Conversation 来自哪个 thread。
-37. 作为 My-Code-X 用户，我想点击当前正在显示的 active thread 不响应，这样不会重复 resume 当前 thread。
-38. 作为 My-Code-X 用户，我想在 active thread 的更多菜单中 rename thread，这样我能整理已有对话。
-39. 作为 My-Code-X 用户，我想 thread rename 允许空字符串，并直接交给 Codex `thread/name/set`，这样 My-Code-X 不限制 Codex 的命名行为。
-40. 作为 My-Code-X 用户，我想 thread rename 成功后当前卡片立即显示新 name，但列表不重排，这样反馈及时且顺序仍尊重原列表。
-41. 作为 My-Code-X 用户，我想如果 rename 的是当前主 Conversation thread，Conversation 自己通过重新 resume 当前 thread 刷新标题或相关信息，这样 Workspace 不直接修改 Conversation 内部状态。
-42. 作为 My-Code-X 用户，我想在 active thread 的更多菜单中 archive thread，这样我可以整理 active 列表。
-43. 作为 My-Code-X 用户，我想 archive 不需要确认，因为 archived 页面可以 unarchive。
-44. 作为 My-Code-X 用户，我想 archive 成功后当前列表保留该卡片、打“已归档”标记并禁用交互，这样当前操作结果不会突然消失。
-45. 作为 My-Code-X 用户，我想“已归档”标记只在当前侧边栏会话中有效，不持久化为 thread 状态，这样 My-Code-X 不发明 Codex thread 状态。
-46. 作为 My-Code-X 用户，我想 archive 当前主 Conversation thread 后，主 Conversation 进入空选择状态，这样不会继续显示一个已被我归档的当前对话。
-47. 作为 My-Code-X 用户，我想通过小按钮打开当前 Workspace 的 archived thread 页面，这样 archived threads 和 active threads 分开管理。
-48. 作为 My-Code-X 用户，我想 archived 页面调用 Codex `thread/list` 的 `archived=true`，这样 archived 列表也尊重 Codex。
-49. 作为 My-Code-X 用户，我想 archived thread 只允许 unarchive，不允许 resume、rename 或 archive，这样 archived 页面语义单一。
-50. 作为 My-Code-X 用户，我想 archived 页面没有数据时看到空状态，不出现其他操作。
-51. 作为 My-Code-X 用户，我想 archived 页面不高亮当前 Conversation thread，这样不会暗示 archived thread 可直接打开。
-52. 作为 My-Code-X 用户，我想 unarchive 成功后仍留在 archived 页面，卡片打“已恢复”标记并禁用交互，这样操作结果清楚且不自动跳转。
-53. 作为 My-Code-X 用户，我想从 archived 返回 active 时重新拉 active thread list，这样能看到上游最新 active 结果。
-54. 作为 My-Code-X 用户，我想 Workspace 相关加载和操作失败都在侧边栏内就地展示，这样不会打断主 Conversation。
-55. 作为 My-Code-X 用户，我想侧边栏外 overlay 可以在没有提交中弹窗时关闭侧边栏，这样手机端抽屉行为自然且不会中断提交中的操作。
-56. 作为 My-Code-X 用户，我想侧边栏 thread 列表顶部有返回或切换 Workspace 按钮，这样我能回到 Workspace 列表。
-57. 作为 My-Code-X 用户，我想打开侧边栏时默认显示当前 Conversation scope 对应的已保存可用 Workspace thread 列表，否则显示 Workspace 列表，这样当前上下文优先但不承认未保存 cwd。
-58. 作为 My-Code-X 用户，我想当前 Conversation 的 cwd 如果不在 Workspace 列表里，侧边栏仍显示 Workspace 列表，这样未保存 cwd 不会被临时当作 Workspace。
-59. 作为 My-Code-X 用户，我想 URL 或 client scope 中的 workspace cwd 必须已经保存，Workspace 功能才承认它，这样 Workspace 管理边界清楚。
-60. 作为 My-Code-X 用户，我想 Workspace 配置不可读、不可写或损坏时得到明确提示，这样我知道工作区管理是否能持久保存。
-61. 作为 My-Code-X 用户，我想配置不可写或损坏时仍能进入内存模式临时使用 Workspace，这样当前运行不被完全阻塞。
-62. 作为 My-Code-X 用户，我想内存模式明确提示本次变更不会持久保存，这样我不会误以为修改已保存。
-63. 作为 My-Code-X 开发者，我希望 Workspace 数据存储在 My-Code-X 自己的数据目录 `~/.my-code-x`，这样它不污染仓库源码目录，也不混入 Codex 原生 `~/.codex` 数据。
-64. 作为 My-Code-X 开发者，我希望 Workspace 持久化记录有内部稳定 `id`，这样 cwd 编辑和并发合并可以定位同一条记录。
-65. 作为 My-Code-X 开发者，我希望内部 `id` 不成为用户可见的 Workspace 身份，也不替代 URL 或 client scope 中的 canonical cwd，这样产品语义仍然简单。
-66. 作为 My-Code-X 开发者，我希望 Workspace 写入前读取最新文件，并优先按内部 `id` 修改目标记录，再完整写回，这样不同 Workspace 的并发修改尽量不互相覆盖。
-67. 作为 My-Code-X 开发者，我希望同一 Workspace 并发修改时最后写入胜出，这样第一版并发规则简单。
-68. 作为 My-Code-X 开发者，我希望 Workspace 不监听目录变化、不提供手动刷新、不做自动扫描，这样第一版边界保持简单。
-69. 作为 My-Code-X 开发者，我希望“上次打开 Workspace”由未来 slot feature 处理，而不是本功能临时发明持久 UI 状态。
+1. 作为正在管理本机项目工作区的 My-Code-X 用户，我想要手动添加一个本机项目目录作为 Workspace，这样我可以让 My-Code-X 把该目录作为 Codex 对话工作区。
+2. 作为正在手机端切换项目的 My-Code-X 用户，我想要在侧边栏看到已添加的 Workspace 列表，这样我可以选择要浏览 threads 的项目目录。
+3. 作为正在维护清晰 Workspace 列表的 My-Code-X 用户，我想要同一个目录只出现一次，这样重复记录不会干扰我选择工作区。
+4. 作为正在识别多个项目目录的 My-Code-X 用户，我想要给 Workspace 设置可选名称，这样我可以按自己的习惯识别项目。
+5. 作为正在重命名 Workspace 的 My-Code-X 用户，我想要 Workspace 名称只作为显示字段，这样名称变化不会改变 Workspace 身份。
+6. 作为正在快速添加 Workspace 的 My-Code-X 用户，我想要空名称自动使用目录名称作为初始显示名，这样新 Workspace 默认可读。
+7. 作为正在自定义 Workspace 显示名的 My-Code-X 用户，我想要后续可以把 Workspace 名称改成空字符串，这样显示名完全由我控制。
+8. 作为正在粘贴本机路径的 My-Code-X 用户，我想要 cwd 输入自动去掉首尾空白，这样复制路径时的空白不会导致添加失败。
+9. 作为正在添加 Workspace 的 My-Code-X 用户，我想要系统校验 cwd 是存在且可访问的本机目录，这样我不会保存无法使用的工作区。
+10. 作为正在添加 Workspace 的 My-Code-X 用户，我想要添加重复目录时被阻止并看到明确提示，这样我知道该目录已经保存过。
+11. 作为正在确认添加结果的 My-Code-X 用户，我想要添加 Workspace 成功后仍停留在 Workspace 列表，这样我可以立即看到新增记录。
+12. 作为正在浏览 Workspace 列表的 My-Code-X 用户，我想要列表按添加顺序展示，这样列表顺序稳定且容易理解。
+13. 作为正在打开侧边栏的 My-Code-X 用户，我想要看到每个 Workspace 当前是否可用，这样我能发现目录已经移动、删除或不可访问。
+14. 作为正在处理失效项目目录的 My-Code-X 用户，我想要不可用 Workspace 仍显示在列表中，这样我知道曾经添加过这个目录。
+15. 作为正在处理不可用 Workspace 的 My-Code-X 用户，我想要不可用 Workspace 只能移除，这样坏路径不会继续进入 thread 列表。
+16. 作为正在清理 Workspace 列表的 My-Code-X 用户，我想要移除 Workspace 只删除 My-Code-X 记录，这样本地目录和 Codex threads 不会被误删。
+17. 作为正在快速清理 Workspace 列表的 My-Code-X 用户，我想要移除 Workspace 不需要确认，这样轻量管理不会被打断。
+18. 作为正在当前侧边栏会话中查看 Workspace 的 My-Code-X 用户，我想要当前选中的 Workspace 不能被移除，这样当前上下文不会被自己删除。
+19. 作为正在当前侧边栏会话中切换页面的 My-Code-X 用户，我想要当前选中的 Workspace 在列表中高亮，这样我知道本次侧边栏正在查看或最近进入哪个工作区。
+20. 作为正在修正工作区目录的 My-Code-X 用户，我想要编辑已保存 Workspace 的 cwd，这样我可以把一个工作区切换到另一个本机项目目录。
+21. 作为正在编辑 Workspace cwd 的 My-Code-X 用户，我想要编辑 cwd 时使用和添加 Workspace 相同的路径规则，这样 Workspace 身份仍然清楚。
+22. 作为正在改变 Workspace 目录的 My-Code-X 用户，我想要 cwd 编辑只改变该 Workspace 后续使用的新目录，这样路径变化不会产生隐藏迁移语义。
+23. 作为正在继续项目对话的 My-Code-X 用户，我想要从 Workspace 列表进入某个 Workspace 后看到该 cwd 下的 active threads，这样我能继续已有对话。
+24. 作为正在核对 Codex 历史的 My-Code-X 用户，我想要 active thread 列表完全来自 Codex，这样 My-Code-X 不会展示和 Codex 不一致的 thread。
+25. 作为正在识别历史对话的 My-Code-X 用户，我想要 thread 列表展示 Codex 返回的名称、预览和更新时间，这样我能判断要打开哪个对话。
+26. 作为正在查看 thread 列表的 My-Code-X 用户，我想要 thread 字段为空时保持为空，这样 My-Code-X 不会用自造文案误导我。
+27. 作为正在手机端阅读 thread 时间的 My-Code-X 用户，我想要 thread 更新时间显示成本地绝对时间，这样我能读懂更新时间。
+28. 作为正在查找最近对话的 My-Code-X 用户，我想要 thread 列表优先显示最近更新的对话，这样我能快速找到最近使用的历史。
+29. 作为正在手机端浏览大量 threads 的 My-Code-X 用户，我想要 thread 列表一次加载少量内容并支持加载更多，这样列表保持轻量且仍能查看更多历史。
+30. 作为正在加载更多 threads 的 My-Code-X 用户，我想要加载更多失败时保留已有列表，这样已加载内容不会丢失。
+31. 作为正在查看空工作区历史的 My-Code-X 用户，我想要没有 active threads 时只看到空状态，这样 Workspace 不会暗示它能新建 thread。
+32. 作为正在继续已有对话的 My-Code-X 用户，我想要点击 active thread 时恢复该 thread 并切换主 Conversation，这样我能继续阅读或使用该对话。
+33. 作为正在手机端恢复对话的 My-Code-X 用户，我想要恢复 thread 成功后侧边栏自动关闭，这样主界面回到 Conversation。
+34. 作为正在恢复对话的 My-Code-X 用户，我想要恢复 thread 失败时侧边栏保持打开并显示卡片错误，这样我知道哪个操作失败。
+35. 作为正在对照当前主对话和列表的 My-Code-X 用户，我想要当前主 Conversation 正在显示的 active thread 在列表中高亮，这样我知道当前对话来自哪个 thread。
+36. 作为正在避免重复操作的 My-Code-X 用户，我想要点击当前正在显示的 active thread 不响应，这样不会重复恢复当前 thread。
+37. 作为正在整理 active threads 的 My-Code-X 用户，我想要在 active thread 的更多菜单中重命名 thread，这样我能整理已有对话。
+38. 作为正在重命名 thread 的 My-Code-X 用户，我想要 thread 重命名允许空字符串，这样 My-Code-X 不额外限制 Codex 的命名行为。
+39. 作为正在重命名 active thread 的 My-Code-X 用户，我想要重命名成功后当前卡片立即显示新名称但列表不重排，这样反馈及时且顺序稳定。
+40. 作为正在重命名当前主 Conversation thread 的 My-Code-X 用户，我想要 Conversation 自己刷新相关显示，这样侧边栏不直接修改主界面内部状态。
+41. 作为正在整理 active 列表的 My-Code-X 用户，我想要在 active thread 的更多菜单中归档 thread，这样我可以把不需要继续显示的对话移出 active 列表。
+42. 作为正在快速归档 thread 的 My-Code-X 用户，我想要归档 active thread 不需要确认，这样轻量整理不会被打断。
+43. 作为正在确认归档结果的 My-Code-X 用户，我想要归档成功后当前列表保留该卡片并标记“已归档”，这样当前操作结果不会突然消失。
+44. 作为正在理解归档反馈的 My-Code-X 用户，我想要“已归档”标记只在当前侧边栏会话中有效，这样 My-Code-X 不会暗示存在额外持久 thread 状态。
+45. 作为正在归档当前主 Conversation thread 的 My-Code-X 用户，我想要主 Conversation 进入空选择状态，这样主界面不会继续显示已归档的当前对话。
+46. 作为正在管理已归档对话的 My-Code-X 用户，我想要打开当前 Workspace 的 archived thread 页面，这样 archived threads 和 active threads 分开管理。
+47. 作为正在核对已归档历史的 My-Code-X 用户，我想要 archived thread 列表完全来自 Codex，这样 archived 列表也尊重 Codex。
+48. 作为正在管理 archived threads 的 My-Code-X 用户，我想要 archived thread 只允许恢复，这样 archived 页面语义单一。
+49. 作为正在查看空 archived 页面的 My-Code-X 用户，我想要没有 archived threads 时只看到空状态，这样页面不会提供无意义操作。
+50. 作为正在查看 archived 页面和当前对话关系的 My-Code-X 用户，我想要 archived 页面不高亮当前 Conversation thread，这样页面不会暗示 archived thread 可直接打开。
+51. 作为正在恢复 archived thread 的 My-Code-X 用户，我想要恢复成功后仍留在 archived 页面并看到“已恢复”标记，这样操作结果清楚且不自动跳转。
+52. 作为正在从 archived 返回 active 的 My-Code-X 用户，我想要返回 active 时重新拉 active thread list，这样我能看到最新 active 结果。
+53. 作为正在使用 Workspace 侧边栏的 My-Code-X 用户，我想要 Workspace 相关加载和操作失败都在侧边栏内就地展示，这样主 Conversation 不会被打断。
+54. 作为正在关闭手机端抽屉的 My-Code-X 用户，我想要侧边栏外 overlay 可以在没有提交中弹窗时关闭侧边栏，这样抽屉行为自然。
+55. 作为正在提交弹窗操作的 My-Code-X 用户，我想要存在提交中弹窗时 overlay 点击不关闭侧边栏或弹窗，这样提交中的操作不会被中断。
+56. 作为正在 thread 列表中切换工作区的 My-Code-X 用户，我想要 thread 列表顶部有返回或切换 Workspace 的按钮，这样我能回到 Workspace 列表。
+57. 作为正在当前 Conversation 上下文中打开侧边栏的 My-Code-X 用户，我想要优先展示当前 Conversation scope 对应的已保存可用 Workspace，这样当前上下文优先。
+58. 作为正在未保存 cwd 的 Conversation 中打开侧边栏的 My-Code-X 用户，我想要侧边栏显示 Workspace 列表，这样未保存 cwd 不会被临时当作 Workspace。
+59. 作为正在管理 Workspace 持久数据的 My-Code-X 用户，我想要配置不可读、不可写或损坏时得到明确提示，这样我知道工作区管理是否能持久保存。
+60. 作为正在遇到 Workspace 持久化问题的 My-Code-X 用户，我想要仍能临时使用 Workspace，这样当前运行不被完全阻塞。
+61. 作为正在临时模式下修改 Workspace 的 My-Code-X 用户，我想要看到本次变更不会持久保存的明确提示，这样我不会误以为修改已保存。
 
-## 功能需求
+## 功能需求设计
 
-### Workspace 身份与持久化
-
-1. Workspace 的对外身份和业务身份必须是 canonical cwd。
-2. 同一个 canonical cwd 只能存在一条 Workspace 记录。
-3. Workspace 持久化记录必须包含 `id`、`cwd`、`name` 和 `createdAt`。
-4. `id` 是 My-Code-X 内部稳定记录 id，只用于编辑、rename、remove 和并发合并定位，不得成为用户可见 Workspace 身份。
-5. URL 或 client scope 中的 `workspaceId` 必须继续使用 canonical cwd，不得使用内部 `id`。
-6. `cwd` 必须保存为当前系统下的 canonical absolute path。
-7. `name` 只是显示字段，不能参与 Workspace 身份判断。
-8. `createdAt` 只用于保留添加顺序或并发合并时的稳定顺序，不得用于最近打开排序。
-9. Workspace cwd 可以编辑；编辑 cwd 成功后，该 Workspace 记录的对外身份必须变为新的 canonical cwd，内部 `id` 必须保持不变。
-10. 编辑 cwd 不得保留旧 cwd 身份，不得维护旧 cwd 到新 cwd 的映射，也不得迁移 Codex threads。
-11. Workspace 列表必须按添加顺序展示。
-12. Workspace 功能不得保存 `lastOpenedAt` 或基于最近打开时间排序。
-13. Workspace 数据必须存储在用户 home 下的 `.my-code-x` 数据目录。
-14. Windows 下 `.my-code-x` 位于用户 home，例如 `C:\Users\<user>\.my-code-x`。
-15. macOS 和 Linux 下 `.my-code-x` 位于 `~/.my-code-x`。
-16. Workspace 数据不得存储在项目仓库目录中。
-17. Workspace 数据不得写入 Codex 原生 `~/.codex`。
-18. 如果 `.my-code-x` 目录不存在，服务端应在启动或首次写入时创建。
-19. URL 或 client scope 中的 `workspaceId` 使用 canonical cwd，并进行 URL encode。
-20. URL 或 client scope 暴露 cwd 是本地个人工具的可接受行为。
-21. URL 或 client scope 不承诺可跨设备分享。
-22. URL 或 client scope 中的 cwd 必须存在于已保存 Workspace 列表中，Workspace 功能才承认它。
-
-### 添加 Workspace
-
-1. 添加 Workspace 必须通过手动输入 cwd。
-2. 添加表单必须支持可选输入 name。
-3. cwd 输入必须先 trim 首尾空白，再进行校验和 canonicalize。
-4. cwd 必须是绝对路径。
-5. cwd 必须存在。
-6. cwd 必须是目录。
-7. 当前 My-Code-X 进程必须能访问 cwd。
-8. cwd 校验失败时必须阻止添加，并展示具体失败原因。
-9. cwd 校验和 canonicalize 必须考虑多平台路径差异。
-10. Windows 必须支持盘符路径和 UNC 路径。
-11. Windows 下重复判断必须处理路径大小写不敏感问题。
-12. Linux 和 macOS 下重复判断必须基于当前文件系统 canonical path。
-13. name 必须原样保存，不 trim。
-14. 添加成功的 Workspace 必须生成新的内部稳定 `id`。
-15. 添加成功的 Workspace 必须记录 `createdAt`，用于保留添加顺序。
-16. 添加时如果 name 是完全空字符串，必须保存 cwd basename 作为初始 name。
-17. 添加后用户 rename 成空字符串时，必须保存空字符串，不再 fallback basename。
-18. 添加重复 canonical cwd 时不得新增记录，必须提示已存在。
-19. 添加成功后侧边栏必须仍停留在 Workspace 列表。
-20. 添加成功后不得立即调用 Codex `thread/list`。
-
-### 编辑 Workspace cwd
-
-1. Workspace cwd 编辑必须通过手动输入新的 cwd。
-2. 新 cwd 输入必须先 trim 首尾空白，再进行校验和 canonicalize。
-3. 新 cwd 必须满足添加 Workspace 的同一组路径规则：绝对路径、存在、是目录、当前进程可访问，并符合多平台 canonical path 处理规则。
-4. 新 cwd canonicalize 后如果与其他已保存 Workspace 重复，必须阻止保存并提示已存在。
-5. 编辑 cwd 成功后，必须用新的 canonical cwd 替换该 Workspace 记录的旧 cwd。
-6. 编辑 cwd 成功后必须保留该 Workspace 的内部 `id` 和现有 name，不自动改成新 cwd basename。
-7. 编辑 cwd 成功后不得立即调用 Codex `thread/list`，除非侧边栏当前正在查看该 Workspace 的 active thread 列表。
-8. 如果侧边栏当前正在查看该 Workspace 的 active thread 列表，cwd 编辑成功后必须用新 cwd 重新调用 active `thread/list`。
-9. Workspace cwd 编辑不得直接通知或修改主 Conversation；如果主 Conversation 仍引用旧 cwd，它只是不再被 Workspace 功能承认为已保存 Workspace scope。
-10. Workspace cwd 编辑是普通记录编辑，不是修复流程；本版不提供自动修复、自动重新定位、旧路径迁移、候选路径推荐或旧 cwd 到新 cwd 的别名映射。
-
-### Workspace 列表
-
-1. Workspace 列表必须在侧边栏中展示。
-2. 持久化模式下，侧边栏打开时必须重新读取 Workspace 持久化数据。
-3. 侧边栏打开时必须检查每个 Workspace cwd 当前是否可用。
-4. 内存模式下，侧边栏打开时必须使用当前内存 Workspace 状态，不得重新读取或写回损坏、不可读或不可写的持久化文件。
-5. Workspace 列表不得实时监听 cwd 是否消失。
-6. Workspace 列表不得提供手动刷新按钮。
-7. Workspace 列表必须有加载状态。
-8. Workspace 列表必须提供固定的“添加 Workspace”入口。
-9. 可用 Workspace 必须显示 name 和 cwd。
-10. name 为空字符串时，Workspace 列表必须显示空白 name，不得 fallback 到 cwd basename。
-11. 可用 Workspace 必须支持进入。
-12. 可用 Workspace 必须支持 rename。
-13. 可用 Workspace 必须支持编辑 cwd。
-14. 非当前侧边栏会话选中的可用 Workspace 必须支持 remove。
-15. 当前侧边栏会话选中的 Workspace 必须支持 rename。
-16. 当前侧边栏会话选中的 Workspace 必须支持编辑 cwd。
-17. 当前侧边栏会话选中的 Workspace 不得支持 remove。
-18. 当前侧边栏会话选中的 Workspace 必须在 Workspace 列表中高亮，即使用户已经从该 Workspace thread 列表返回 Workspace 列表。
-19. unavailable Workspace 必须显示 name、cwd 和“不可用”标记。
-20. unavailable Workspace 只能 remove。
-21. unavailable Workspace 不得进入 thread 列表。
-22. remove Workspace 不需要确认。
-23. remove Workspace 只删除 My-Code-X Workspace 记录，不删除本地目录。
-24. remove Workspace 不删除 Codex threads。
-25. Workspace add、rename、编辑 cwd、remove 不得通知或影响主 Conversation。
-26. Workspace rename 成功后必须立即更新当前列表项 name。
-27. Workspace rename 弹窗提交中不得关闭。
-28. Workspace cwd 编辑弹窗提交中不得关闭。
-
-### 手机端侧边栏导航
-
-1. Conversation 必须是主页。
-2. Workspace 必须作为手机端侧边栏抽屉功能存在。
-3. 主 Conversation 顶部必须提供 Workspace 按钮，用于打开侧边栏。
-4. 点击侧边栏外 overlay 必须关闭侧边栏。
-5. 如果存在提交中的 rename、cwd 编辑或 thread rename 弹窗，overlay 点击不得关闭侧边栏或弹窗。
-6. 侧边栏默认展示规则必须是：如果当前 Conversation scope 的 cwd 是已保存且可用的 Workspace，则展示该 Workspace 的 active thread 列表。
-7. 如果当前 Conversation scope 的 cwd 不在已保存 Workspace 列表中，侧边栏必须默认展示 Workspace 列表。
-8. 如果没有当前 Conversation scope，侧边栏必须默认展示 Workspace 列表。
-9. “上次打开 Workspace”必须作为未来 slot feature 的职责，本版不得实现持久化上次打开 Workspace。
-10. Workspace thread 列表顶部必须提供返回或切换 Workspace 的按钮。
-11. 进入 Workspace thread 列表时，该 Workspace 成为当前侧边栏会话选中的 Workspace。
-12. 当前侧边栏会话选中的 Workspace 定义为本次侧边栏打开期间用户正在查看或最近进入的 Workspace。
-13. 从 Workspace thread 列表返回 Workspace 列表时，当前侧边栏会话选中的 Workspace 必须保留，用于列表高亮和 remove 禁用。
-14. 关闭侧边栏时，当前侧边栏会话选中的 Workspace 必须清除；下次打开仍按当前 Conversation scope 重新决定默认页面。
-
-### Active Thread 列表
-
-1. 进入 Workspace active thread 列表时，必须调用 Codex `thread/list`。
-2. 每次进入 Workspace active thread 列表都必须重新调用 Codex `thread/list`。
-3. `thread/list` 参数必须包含当前 Workspace 的 canonical cwd。
-4. active thread 列表必须使用 `archived = false`。
-5. active thread 列表必须传 `sortKey = "updated_at"`。
-6. active thread 列表必须传 `sortDirection = "desc"`。
-7. active thread 列表每页 `limit` 必须为 10。
-8. active thread 列表必须支持通过 Codex `nextCursor` 加载更多。
-9. active thread 列表必须完全使用 Codex 返回顺序。
-10. My-Code-X 不得在前端或后端重排 active thread 列表。
-11. active thread 列表不得使用 Codex `searchTerm`。
-12. active thread 列表不得自行添加 Codex 未返回的 thread。
-13. active thread 列表必须展示 Codex 返回的 `name`、`preview`、`updatedAt`。
-14. Codex 原始 `updatedAt` 是 Unix 秒数时，server 或 presenter 必须先规范化为 ISO string 或 null。
-15. 前端只负责把规范化后的 ISO string 格式化为手机友好的本地时间，不得猜测 number 单位。
-16. `name` 为空时不得用 `preview` 或“未命名对话”兜底。
-17. `preview` 为空时不得用其他文案兜底。
-18. `updatedAt` 缺失时不得用其他时间兜底。
-19. `updatedAt` 不得显示为相对时间。
-20. active thread 列表必须有加载状态。
-21. active thread 首屏加载失败必须显示错误状态。
-22. active thread 首屏加载失败不得伪装成空列表。
-23. active thread 空列表必须显示空状态。
-24. active thread 空状态不得提供新建 thread 入口。
-25. 加载更多失败时必须保留已有列表。
-26. 加载更多失败时必须在加载更多区域显示错误。
-27. 加载更多失败后再次点击加载更多按钮必须重试同一次分页请求。
-28. 当前主 Conversation 的 thread 如果出现在 active 列表中，必须高亮。
-29. 点击当前主 Conversation 正在显示的 active thread 时不得响应，并且侧边栏保持打开。
-
-### Active Thread 操作
-
-1. 点击非当前 active thread 卡片必须调用 Codex `thread/resume`。
-2. `thread/resume` 成功后，主 Conversation 必须切换到该 thread。
-3. `thread/resume` 成功后，侧边栏必须关闭。
-4. `thread/resume` 失败时，侧边栏必须保持打开。
-5. `thread/resume` 失败时，必须在对应 thread 卡片上显示错误。
-6. active thread 更多菜单必须支持 Codex `thread/name/set`。
-7. active thread 更多菜单必须支持 Codex `thread/archive`。
-8. active thread rename 必须允许空字符串。
-9. active thread rename 必须把用户输入原样传给 Codex `thread/name/set`。
-10. active thread rename 成功后必须更新当前卡片的 `name`。
-11. active thread rename 成功后不得重排列表。
-12. active thread rename 成功后不得重新拉取列表。
-13. 如果 rename 的 thread 是当前主 Conversation thread，必须触发 Conversation 自己通过 `thread/resume` 刷新当前 thread。
-14. Workspace 不得直接修改 Conversation 内部标题或 conversation state。
-15. active thread archive 不需要确认。
-16. active thread archive 成功后，当前 active 列表中必须保留该卡片。
-17. active thread archive 成功后，该卡片必须显示“已归档”标记。
-18. active thread archive 成功后，该卡片必须禁用交互。
-19. “已归档”标记只在当前侧边栏页面会话中有效。
-20. “已归档”标记不得持久化到 Workspace 数据。
-21. “已归档”标记不得作为 Codex thread 状态存储。
-22. 如果 archive 的 thread 是当前主 Conversation thread，应用层必须取消当前 thread 选择。
-23. 当前 thread 选择取消后，Conversation 必须进入空选择状态。
-24. Workspace 不得直接修改 Conversation 内部状态来清空 conversation。
-25. active thread 操作进行中必须禁用当前操作项。
-26. active thread 操作进行中不得禁用整个侧边栏。
-27. archive、rename 操作失败必须在侧边栏内就地显示。
-28. archive、rename 操作成功后侧边栏不得关闭。
-29. rename 弹窗提交中不得关闭，直到成功或失败。
-
-### Archived Thread 页面
-
-1. Archived threads 必须是侧边栏内的单独页面或面板。
-2. 当前 Workspace thread 列表必须提供一个小按钮进入 Archived 页面。
-3. Archived 页面必须调用 Codex `thread/list`。
-4. Archived 页面 `thread/list` 参数必须包含当前 Workspace 的 canonical cwd。
-5. Archived 页面必须使用 `archived = true`。
-6. Archived 页面必须传 `sortKey = "updated_at"`。
-7. Archived 页面必须传 `sortDirection = "desc"`。
-8. Archived 页面每页 `limit` 必须为 10。
-9. Archived 页面必须支持通过 Codex `nextCursor` 加载更多。
-10. Archived 页面必须展示 Codex 返回的 `name`、`preview`、`updatedAt`。
-11. Codex 原始 `updatedAt` 是 Unix 秒数时，server 或 presenter 必须先规范化为 ISO string 或 null。
-12. Archived 页面字段为空时不得兜底。
-13. Archived 页面 `updatedAt` 必须由前端从规范化后的 ISO string 格式化为手机友好的本地时间。
-14. Archived 页面 thread 顺序必须完全使用 Codex 返回顺序。
-15. Archived 页面不得自行重排。
-16. Archived 页面不得使用 Codex `searchTerm`。
-17. Archived 页面必须有加载状态。
-18. Archived 页面首屏加载失败必须显示错误状态，并提供返回当前 Workspace 的入口。
-19. Archived 页面加载更多失败时必须保留已有列表，并在加载更多区域显示错误。
-20. Archived 页面空列表必须显示空状态。
-21. Archived 页面空状态不得提供操作。
-22. Archived thread 只能执行 Codex `thread/unarchive`。
-23. Archived thread 不得 resume。
-24. Archived thread 不得 rename。
-25. Archived thread 不得 archive。
-26. Archived 页面不得高亮当前 Conversation thread。
-27. unarchive 成功后必须留在 Archived 页面。
-28. unarchive 成功后，当前卡片必须显示“已恢复”标记。
-29. unarchive 成功后，当前卡片必须禁用交互。
-30. “已恢复”标记只在当前侧边栏页面会话中有效。
-31. “已恢复”标记不得持久化为 Workspace 或 thread 状态。
-32. unarchive 成功后不得触发 active 列表预取。
-33. 从 Archived 页面返回 active thread 列表时，必须重新调用 active `thread/list`。
-34. unarchive 操作失败必须在侧边栏内就地显示。
-35. unarchive 操作成功后侧边栏不得关闭。
-
-### 持久化错误和内存模式
-
-1. `.my-code-x` 或 Workspace 配置不可读时，必须显示错误。
-2. `.my-code-x` 或 Workspace 配置不可读时，必须进入内存空列表。
-3. 不可读进入内存空列表后，必须允许用户临时添加 Workspace。
-4. Workspace 配置文件损坏时，必须显示错误。
-5. Workspace 配置文件损坏时，允许进入内存模式。
-6. Workspace 配置文件损坏时，不得写回损坏文件。
-7. Workspace 配置文件损坏时，不得自动覆盖。
-8. Workspace 配置文件损坏时，不得自动修复。
-9. Workspace 配置文件损坏时，不得自动备份。
-10. `.my-code-x` 或 Workspace 配置不可写时，必须显示错误。
-11. 写入失败时，必须显示错误。
-12. 写入失败后，内存状态必须更新为用户刚刚执行的变更结果。
-13. 写入失败后，Workspace 功能必须切换到内存模式。
-14. 内存模式下必须提示“当前 Workspace 变更不会持久保存”或等价信息。
-15. 内存模式下允许继续 add、rename、编辑 cwd、remove。
-16. 内存模式下后续变更不得尝试写回损坏或不可写文件。
-17. 内存模式第一版不提供手动恢复持久化按钮。
-18. 服务重启后可以重新尝试读取和写入持久化数据。
-19. 持久化模式下，add、rename、编辑 cwd、remove 写入前必须读取最新 Workspace 文件。
-20. add 必须根据 canonical cwd 做重复检查，并为新记录生成内部稳定 `id`。
-21. rename、编辑 cwd、remove 必须优先根据内部 `id` 修改目标记录；如果调用方只有 canonical cwd，则可以用 canonical cwd 定位目标记录。
-22. 编辑 cwd 必须以目标记录的内部 `id` 定位原记录，并以新 canonical cwd 做重复检查和保存。
-23. add、rename、编辑 cwd、remove 必须把合并后的完整列表写回文件。
-24. 不同 Workspace 的并发修改应尽量保留。
-25. 同一个 Workspace 被并发修改时，按内部 `id` 定位并最后写入胜出。
-26. 如果并发 cwd 编辑导致旧 canonical cwd 已无法定位，且调用方没有内部 `id`，本次操作必须失败并提示记录已变更或不存在，不得自动猜测。
-27. 写文件应使用临时文件和原子替换。
+1. Given 用户打开 My-Code-X, when 用户未打开 Workspace 侧边栏, then Conversation 必须仍是主页。
+2. Given 用户点击主 Conversation 顶部的 Workspace 入口, when 侧边栏打开, then Workspace 必须以手机端抽屉形式展示。
+3. Given 当前 Conversation scope 对应一个已保存且可用的 Workspace, when 用户打开侧边栏, then 侧边栏默认展示该 Workspace 的 active thread 列表。
+4. Given 当前 Conversation scope 不存在、未保存或不可用, when 用户打开侧边栏, then 侧边栏默认展示 Workspace 列表。
+5. Given 用户关闭侧边栏, when 用户下次再次打开侧边栏, then 默认页面必须重新按当前 Conversation scope 判断。
+6. Given 用户打开侧边栏, when Workspace 列表加载中, then 侧边栏必须显示加载状态。
+7. Given Workspace 列表加载成功, when 展示列表, then Workspace 必须按添加顺序展示。
+8. Given Workspace 列表展示, when 用户查看列表, then 侧边栏必须提供固定的添加 Workspace 入口。
+9. Given Workspace 列表为空, when 展示列表, then 侧边栏必须显示空状态和添加 Workspace 入口。
+10. Given Workspace 可用, when 展示 Workspace 列表项, then 列表项必须显示 name 和 cwd。
+11. Given Workspace name 为空字符串, when 展示 Workspace 列表项, then name 区域必须保持空白，不得回退到 cwd 名称。
+12. Given Workspace 不可用, when 展示 Workspace 列表项, then 列表项必须显示 name、cwd、不可用标记和可理解的不可用原因。
+13. Given Workspace 不可用, when 用户尝试操作该列表项, then 只能执行 remove。
+14. Given Workspace 可用, when 用户点击进入, then 侧边栏必须展示该 Workspace 的 active thread 列表。
+15. Given Workspace 可用, when 用户打开更多操作, then 必须支持 rename 和编辑 cwd。
+16. Given Workspace 不是当前侧边栏会话选中的 Workspace, when 用户打开更多操作, then 必须支持 remove。
+17. Given Workspace 是当前侧边栏会话选中的 Workspace, when 用户打开更多操作, then 不得提供 remove。
+18. Given 用户进入某个 Workspace 的 thread 列表, when 用户返回 Workspace 列表, then 该 Workspace 必须继续在本次侧边栏会话中高亮。
+19. Given 用户关闭侧边栏, when 侧边栏关闭完成, then 本次侧边栏会话选中的 Workspace 必须清除。
+20. Given 用户点击侧边栏外 overlay, when 没有提交中的弹窗, then 侧边栏必须关闭。
+21. Given 用户点击侧边栏外 overlay, when 存在提交中的 Workspace rename、cwd 编辑或 thread rename 弹窗, then 侧边栏和弹窗必须保持打开。
+22. Given 用户提交添加 Workspace 表单, when cwd 为空或 trim 后为空, then 添加必须失败并提示 cwd 必填。
+23. Given 用户提交添加 Workspace 表单, when cwd 不是绝对路径, then 添加必须失败并提示路径必须是绝对路径。
+24. Given 用户提交添加 Workspace 表单, when cwd 不存在, then 添加必须失败并提示路径不存在。
+25. Given 用户提交添加 Workspace 表单, when cwd 不是目录, then 添加必须失败并提示路径不是目录。
+26. Given 用户提交添加 Workspace 表单, when 当前进程不能访问 cwd, then 添加必须失败并提示路径不可访问。
+27. Given 用户提交添加 Workspace 表单, when cwd 可以解析为已保存 Workspace 的同一目录, then 添加必须失败并提示已存在。
+28. Given 用户提交添加 Workspace 表单, when name 是完全空字符串, then 添加成功后的初始 name 必须使用目录名称。
+29. Given 用户提交添加 Workspace 表单, when name 不是完全空字符串, then 添加成功后的 name 必须保持用户输入。
+30. Given 用户添加 Workspace 成功, when 返回操作结果, then 侧边栏必须仍停留在 Workspace 列表。
+31. Given 用户添加 Workspace 成功, when 操作完成, then 不得自动进入该 Workspace 的 thread 列表。
+32. Given 用户 rename Workspace, when 输入任意 name 包括空字符串, then 保存后的 name 必须等于用户输入。
+33. Given 用户 rename Workspace 成功, when 操作完成, then 当前列表项必须立即显示新 name。
+34. Given 用户 rename Workspace 失败, when 操作完成, then 侧边栏必须就地显示错误。
+35. Given 用户编辑 Workspace cwd, when 新 cwd 为空、不是绝对路径、不存在、不是目录或不可访问, then 保存必须失败并显示对应路径错误。
+36. Given 用户编辑 Workspace cwd, when 新 cwd 与其他 Workspace 重复, then 保存必须失败并提示已存在。
+37. Given 用户编辑 Workspace cwd 成功, when 操作完成, then 该 Workspace 必须使用新 cwd 作为后续工作区身份。
+38. Given 用户编辑 Workspace cwd 成功, when 操作完成, then Workspace name 必须保持不变。
+39. Given 用户编辑 Workspace cwd 成功, when 当前侧边栏正在查看该 Workspace 的 active thread 列表, then 侧边栏必须用新 cwd 重新加载 active thread 列表。
+40. Given 用户编辑 Workspace cwd 成功, when 主 Conversation 仍引用旧 cwd, then Workspace 不得直接修改主 Conversation。
+41. Given 用户 remove Workspace, when 操作成功, then 该 Workspace 必须从 Workspace 列表移除。
+42. Given 用户 remove Workspace, when 操作成功, then 本地项目目录不得被删除。
+43. Given 用户 remove Workspace, when 操作成功, then Codex threads 不得被删除。
+44. Given 用户 remove Workspace 失败, when 操作完成, then 侧边栏必须就地显示错误。
+45. Given 用户进入 active thread 列表, when 页面加载, then 必须请求当前 Workspace 的 active threads。
+46. Given 用户进入 active thread 列表, when 请求 Codex thread/list, then 请求必须使用当前 Workspace cwd、archived=false、limit=10、sortKey=updated_at、sortDirection=desc，并且不得使用 searchTerm。
+47. Given active thread 列表请求成功, when 展示列表, then 必须使用 Codex 返回的顺序。
+48. Given active thread 列表请求成功, when 展示 thread 卡片, then 卡片必须展示 Codex 返回的 name、preview 和 updatedAt。
+49. Given thread name 为空, when 展示卡片, then 不得用 preview 或自造标题兜底。
+50. Given thread preview 为空, when 展示卡片, then 不得用其他文案兜底。
+51. Given thread updatedAt 缺失或不可展示, when 展示卡片, then 不得发明时间。
+52. Given active thread 首屏加载失败, when 展示页面, then 必须显示错误状态和返回 Workspace 列表入口。
+53. Given active thread 首屏加载成功且无 items, when 展示页面, then 必须显示空状态且不得提供新建 thread 入口。
+54. Given active thread 列表还有更多结果, when 用户点击加载更多, then 必须用 Codex nextCursor 加载下一页。
+55. Given 加载更多成功, when 操作完成, then 新 items 必须追加到已有列表后面。
+56. Given 加载更多失败, when 操作完成, then 已有列表必须保留，并在加载更多区域显示错误。
+57. Given 加载更多失败, when 用户再次点击加载更多, then 必须重试同一次分页请求。
+58. Given active thread 是当前主 Conversation thread, when 展示卡片, then 卡片必须高亮并禁用 resume。
+59. Given 用户点击当前主 Conversation thread 卡片, when 点击发生, then 侧边栏必须保持打开且不得重复 resume。
+60. Given 用户点击非当前 active thread, when resume 成功, then 主 Conversation 必须切换到该 thread。
+61. Given 用户点击非当前 active thread, when resume 成功, then 侧边栏必须关闭。
+62. Given 用户点击非当前 active thread, when resume 失败, then 侧边栏必须保持打开并在对应卡片显示错误。
+63. Given 用户在 active thread 更多菜单中 rename, when rename 成功, then 当前卡片必须显示新 name。
+64. Given 用户在 active thread 更多菜单中 rename, when rename 成功, then active thread 列表不得重排。
+65. Given 用户在 active thread 更多菜单中 rename, when rename 成功, then 不得重新拉取 active thread 列表。
+66. Given 用户 rename 当前主 Conversation thread, when rename 成功, then 主 Conversation 必须通过自己的刷新流程更新相关显示。
+67. Given 用户 rename active thread 失败, when 操作完成, then rename 弹窗必须保持可见并显示错误。
+68. Given 用户 archive active thread, when archive 成功, then 当前列表必须保留该卡片。
+69. Given 用户 archive active thread, when archive 成功, then 该卡片必须显示“已归档”标记并禁用交互。
+70. Given 用户 archive active thread, when archive 成功, then 侧边栏必须保持打开。
+71. Given 用户 archive 当前主 Conversation thread, when archive 成功, then 主 Conversation 必须进入空选择状态。
+72. Given 用户 archive active thread 失败, when 操作完成, then 对应卡片或操作区域必须显示错误。
+73. Given 用户进入 archived thread 页面, when 页面加载, then 必须请求当前 Workspace 的 archived threads。
+74. Given 用户进入 archived thread 页面, when 请求 Codex thread/list, then 请求必须使用当前 Workspace cwd、archived=true、limit=10、sortKey=updated_at、sortDirection=desc，并且不得使用 searchTerm。
+75. Given archived thread 列表请求成功, when 展示列表, then 必须使用 Codex 返回的顺序。
+76. Given archived thread 首屏加载失败, when 展示页面, then 必须显示错误状态和返回当前 Workspace 的入口。
+77. Given archived thread 列表为空, when 展示页面, then 必须显示空状态且不得提供操作。
+78. Given archived thread 卡片展示, when 用户查看操作, then 只能提供 unarchive。
+79. Given archived thread 卡片展示, when 用户点击卡片, then 不得 resume。
+80. Given archived thread 卡片展示, when 用户打开更多操作, then 不得提供 rename 或 archive。
+81. Given 用户 unarchive archived thread, when unarchive 成功, then 当前页面必须保留该卡片。
+82. Given 用户 unarchive archived thread, when unarchive 成功, then 该卡片必须显示“已恢复”标记并禁用交互。
+83. Given 用户 unarchive archived thread, when unarchive 成功, then 不得自动跳转 active 页面。
+84. Given 用户从 archived 页面返回 active 页面, when 返回发生, then 必须重新加载 active thread 列表。
+85. Given Workspace 配置不可读、损坏、不可写或写入失败, when 用户打开或操作 Workspace, then 必须显示明确错误。
+86. Given Workspace 进入临时模式, when 用户继续 add、rename、编辑 cwd 或 remove, then 操作必须作用于本次运行内的临时状态。
+87. Given Workspace 处于临时模式, when 展示侧边栏, then 必须提示本次变更不会持久保存。
 
 ## 边界情况和错误处理
 
-1. cwd 输入为空：添加失败，显示 cwd 必填或等价错误。
-2. cwd 输入 trim 后不是绝对路径：添加失败，显示路径必须是绝对路径。
-3. cwd 不存在：添加失败，显示路径不存在。
-4. cwd 不是目录：添加失败，显示路径不是目录。
-5. cwd 当前进程不可访问：添加失败，显示无权限或不可访问。
-6. cwd canonicalize 失败：添加失败，显示路径不可解析。
-7. Windows 下同一路径大小写不同：必须识别为重复 Workspace。
-8. 重复 canonical cwd：不新增，提示已存在。
-9. 已保存 Workspace cwd 后来不存在：列表显示 unavailable，只允许 remove。
-10. 已保存 Workspace cwd 后来无权限：列表显示 unavailable，只允许 remove。
-11. unavailable Workspace 被点击进入：不得进入 thread 列表。
-12. 当前侧边栏会话选中的 Workspace 不显示 remove 操作，即使用户已经返回 Workspace 列表。
-13. remove 非当前侧边栏会话选中的 Workspace 后：只更新 Workspace 列表，不影响主 Conversation。
-14. remove Workspace 失败：侧边栏内显示错误。
-15. rename Workspace 失败：rename 弹窗或列表项就地显示错误。
-16. 编辑 Workspace cwd 失败：cwd 编辑弹窗或列表项就地显示错误。
-17. 编辑 Workspace cwd 时新 cwd 无效：阻止保存，并显示与添加 Workspace 相同类型的路径错误。
-18. 编辑 Workspace cwd 时新 canonical cwd 与其他 Workspace 重复：阻止保存，并提示已存在。
-19. 编辑当前侧边栏会话正在查看 active thread 列表的 Workspace cwd 成功：该侧边栏 Workspace 使用新 cwd，并重新拉取 active thread list。
-20. 编辑 Workspace cwd 成功：不自动修改 Workspace name，不迁移 Codex threads，不保留旧 cwd 身份。
-21. `.my-code-x` 不存在：应创建目录或在失败时进入错误/内存模式。
-22. `.my-code-x` 不可读：提示错误，进入内存空列表。
-23. Workspace 配置损坏：提示错误，进入内存模式，不写回损坏文件。
-24. `.my-code-x` 不可写：提示错误，进入内存模式。
-25. 写入中途失败：更新内存状态，提示未保存，切换内存模式。
-26. 多页面修改不同 Workspace：持久化模式下写入前读取最新文件并合并目标记录，尽量保留其他修改。
-27. 多页面修改同一 Workspace：最后写入胜出。
-28. 当前 Conversation scope 的 cwd 未保存：侧边栏默认显示 Workspace 列表。
-29. URL 中 workspace cwd 未保存：Workspace 功能不承认该 cwd。
-30. Workspace 添加成功后 thread/list 失败：添加结果保留；只有进入 thread 列表时显示 thread/list 错误。
-31. active thread 首屏 `thread/list` 失败：显示错误状态和返回 Workspace 列表入口。
-32. active thread 为空：显示空状态，不显示新建 thread。
-33. active thread 加载更多失败：保留已有列表，在加载更多区域显示错误；再次点击加载更多重试。
-34. active thread 字段为空：对应展示为空，不显示兜底标题或兜底 preview。
-35. active thread `updatedAt` 规范化或格式化失败：显示为空或原字段不可用状态，但不得发明时间。
-36. 点击当前正在显示的 thread：不响应，保持侧边栏打开。
-37. resume 非当前 thread 失败：对应卡片显示错误，侧边栏保持打开。
-38. resume 非当前 thread 成功：主 Conversation 切换 thread，侧边栏关闭。
-39. rename thread 失败：rename 弹窗保持可见并显示错误。
-40. rename 当前主 thread 成功：Workspace 更新卡片 name，并触发 Conversation 自己 resume 当前 thread 进行刷新。
-41. archive 非当前 thread 成功：当前卡片显示“已归档”，禁用交互，侧边栏保持打开。
-42. archive 当前主 thread 成功：应用层取消当前 thread 选择，Conversation 进入空选择状态。
-43. archive 失败：对应卡片或操作区域显示错误。
-44. Archived 页面 `thread/list` 失败：显示错误状态和返回当前 Workspace 的入口。
-45. Archived 页面为空：显示空状态，不提供操作。
-46. Archived 页面加载更多失败：保留已有列表，在加载更多区域显示错误；再次点击加载更多重试。
-47. Archived thread 字段为空：对应展示为空，不显示兜底标题或兜底 preview。
-48. Archived thread 点击卡片：不得 resume。
-49. Archived thread rename：不得提供入口。
-50. Archived thread unarchive 成功：当前卡片显示“已恢复”，禁用交互，侧边栏保持打开。
-51. Archived thread unarchive 失败：对应卡片或操作区域显示错误。
-52. 从 Archived 返回 active：重新拉取 active thread list。
-53. 操作进行中重复点击同一操作：必须被禁用。
-54. rename 弹窗提交中用户尝试关闭：必须阻止关闭。
-55. 侧边栏外 overlay 点击：没有提交中弹窗时关闭侧边栏，但不得取消已经提交且不可取消的后端请求；存在提交中的 rename、cwd 编辑或 thread rename 弹窗时必须阻止关闭。
+1. cwd 输入为空或 trim 后为空时，阻止添加或保存，并提示 cwd 必填。
+2. cwd 不是绝对路径时，阻止添加或保存，并提示路径必须是绝对路径。
+3. cwd 不存在时，阻止添加或保存，并提示路径不存在。
+4. cwd 不是目录时，阻止添加或保存，并提示路径不是目录。
+5. cwd 当前进程不可访问时，阻止添加或保存，并提示无权限或不可访问。
+6. cwd 解析失败时，阻止添加或保存，并提示路径不可解析。
+7. 同一目录使用不同文本形式输入时，必须识别为重复 Workspace。
+8. 已保存 Workspace 后来变为不可用时，列表仍显示该 Workspace，但只允许 remove。
+9. 用户点击不可用 Workspace 时，不得进入 thread 列表。
+10. 当前侧边栏会话选中的 Workspace 即使已经返回 Workspace 列表，也不得显示 remove 操作。
+11. remove Workspace 失败时，侧边栏内显示错误，列表保持可理解状态。
+12. rename Workspace 失败时，rename 弹窗或列表项就地显示错误。
+13. 编辑 Workspace cwd 失败时，cwd 编辑弹窗或列表项就地显示错误。
+14. 编辑当前正在查看 active thread 列表的 Workspace cwd 成功时，侧边栏使用新 cwd 重新拉取 active thread list。
+15. 当前 Conversation scope 的 cwd 未保存时，侧边栏默认显示 Workspace 列表。
+16. URL 或 client scope 中的 cwd 未保存时，Workspace 功能不承认该 cwd。
+17. Workspace 添加成功后，如果之后进入 thread 列表失败，添加结果仍保留，thread 错误只显示在 thread 页面。
+18. active thread 首屏加载失败时，显示错误状态，不伪装成空列表。
+19. active thread 为空时，显示空状态，不显示新建 thread 入口。
+20. active thread 加载更多失败时，保留已有列表，并允许重试同一分页。
+21. active thread 字段为空时，对应展示为空，不显示兜底标题、兜底预览或兜底时间。
+22. 点击当前正在显示的 thread 时，不响应并保持侧边栏打开。
+23. resume 非当前 thread 失败时，对应卡片显示错误，侧边栏保持打开。
+24. resume 非当前 thread 成功时，主 Conversation 切换 thread，侧边栏关闭。
+25. rename thread 失败时，rename 弹窗保持可见并显示错误。
+26. archive 当前主 thread 成功时，Conversation 进入空选择状态。
+27. archive 失败时，对应卡片或操作区域显示错误。
+28. archived 页面加载失败时，显示错误状态和返回当前 Workspace 的入口。
+29. archived 页面为空时，显示空状态，不提供操作。
+30. archived 页面加载更多失败时，保留已有列表，并允许重试同一分页。
+31. archived thread 字段为空时，对应展示为空，不显示兜底标题、兜底预览或兜底时间。
+32. archived thread 点击卡片时，不得 resume。
+33. archived thread 不得提供 rename 或 archive 入口。
+34. unarchive 成功时，当前卡片显示“已恢复”，禁用交互，侧边栏保持打开。
+35. unarchive 失败时，对应卡片或操作区域显示错误。
+36. 操作进行中重复点击同一操作时，必须被禁用。
+37. 提交中的弹窗被用户尝试关闭时，必须阻止关闭。
+38. overlay 点击在没有提交中弹窗时关闭侧边栏，但不得取消已经提交且不可取消的后端请求。
+39. overlay 点击在存在提交中弹窗时，必须阻止关闭侧边栏和弹窗。
+40. Workspace 无法持久保存时，必须提示用户当前变更只在本次运行内有效。
 
-## 不在本范围
+## 不在范围
 
 1. Workspace 页面或侧边栏中新建 thread。
 2. Conversation 输入框、消息发送、重新发送、发送失败 UI。
@@ -397,52 +219,37 @@ Conversation 是主页。Workspace 不是独立主页，不负责新建 thread�
 14. Workspace 手动排序。
 15. Workspace 置顶。
 16. Workspace 最近打开排序。
-17. Workspace `lastOpenedAt`。
-18. 实时监听 cwd 是否消失。
-19. 手动刷新 Workspace 列表。
-20. Thread 搜索。
-21. Thread 自定义排序。
-22. Thread source/model 过滤。
-23. Thread 自定义状态标签。
-24. 删除 Codex threads。
-25. 删除本地项目目录。
-26. 打开系统文件管理器。
-27. 自动修复 Workspace cwd、自动重新定位路径、路径迁移、候选路径推荐或旧 cwd 别名映射。
-28. 自动备份损坏 Workspace 配置。
-29. 自动修复损坏 Workspace 配置。
-30. 内存模式下手动恢复持久化按钮。
-31. 多页面实时同步。
-32. 多页面冲突提示。
-33. 文件锁级并发控制。
-34. Desktop layout。
-35. “上次打开 Workspace”的 slot 持久化实现。
-36. 将 unavailable Workspace 自动移除。
-37. 将 URL 中未保存 cwd 自动添加为 Workspace。
-38. 允许 archived thread resume。
-39. 允许 archived thread rename。
-40. 允许 archived thread archive。
+17. 实时监听 cwd 是否消失。
+18. 手动刷新 Workspace 列表。
+19. Thread 搜索。
+20. Thread 自定义排序。
+21. Thread source 或 model 过滤。
+22. Thread 自定义状态标签。
+23. 删除 Codex threads。
+24. 删除本地项目目录。
+25. 打开系统文件管理器。
+26. 自动修复 Workspace cwd、自动重新定位路径、路径迁移、候选路径推荐或旧 cwd 别名映射。
+27. 自动备份或自动修复损坏的 Workspace 配置。
+28. 临时模式下手动恢复持久化按钮。
+29. 多页面实时同步。
+30. 多页面冲突提示。
+31. 文件锁级并发控制。
+32. Desktop layout。
+33. “上次打开 Workspace”的 slot 持久化实现。
+34. 将不可用 Workspace 自动移除。
+35. 将 URL 或 client scope 中未保存 cwd 自动添加为 Workspace。
+36. 允许 archived thread resume。
+37. 允许 archived thread rename。
+38. 允许 archived thread archive。
 
 ## 未来计划
 
-1. slot feature 可以保存上次打开的 Workspace，并在侧边栏打开时恢复该 Workspace 的 thread 列表。
+1. Slot feature 可以保存上次打开的 Workspace，并在侧边栏打开时恢复该 Workspace 的 thread 列表。
 2. Workspace 可以支持手动排序、置顶或搜索。
-3. Workspace 可以支持专门的 cwd 修复或重新定位向导，但这不同于本版已支持的普通 cwd 编辑。
+3. Workspace 可以支持专门的 cwd 修复或重新定位向导。
 4. Workspace 可以支持从 Codex 历史中导入候选 cwd，但需要用户确认。
-5. Thread 列表可以使用 Codex `searchTerm` 提供搜索。
-6. Thread 列表可以暴露 Codex 已有的 source/model 过滤，但不得发明 Codex 没有的过滤语义。
-7. 内存模式可以提供手动重试持久化。
+5. Thread 列表可以使用 Codex searchTerm 提供搜索。
+6. Thread 列表可以暴露 Codex 已有的 source 或 model 过滤。
+7. 临时模式可以提供手动重试持久化。
 8. 多页面并发可以增加版本检测或冲突提示。
 9. 如果未来支持桌面端，可以另行设计常驻侧边栏布局。
-
-## 进一步说明
-
-1. Workspace 管理的是 My-Code-X 自己保存的 cwd 列表。
-2. Codex threads 仍然由 Codex app-server 管理。
-3. My-Code-X 不读取 `~/.codex/sessions` 作为 Workspace 功能的数据来源。
-4. My-Code-X 调用 `thread/list` 时只传递当前 Workspace cwd、本功能确定的分页、archived 参数，以及 Codex 已有的 `sortKey = "updated_at"`、`sortDirection = "desc"`。
-5. Thread 列表字段和可操作项必须来自 Codex app-server 已有接口。
-6. “已归档”和“已恢复”是当前 UI 会话中的 action 结果标记，不是持久 thread 状态。
-7. Workspace feature 不直接修改 Conversation 内部状态；需要影响主 Conversation 时，通过应用层选择变更或让 Conversation 自己恢复刷新。
-8. Workspace cwd 编辑是普通 Workspace 记录编辑；它只改变该记录后续使用的 canonical cwd，不表示 Codex threads 迁移，也不表示旧 cwd 与新 cwd 有持续关系。
-9. Workspace 持久化记录的内部 `id` 只解决 My-Code-X 自己的编辑定位和并发合并问题；它不是 Workspace 的产品身份，也不得替代 URL、client scope 或 Codex `thread/list` 使用的 canonical cwd。
-10. Thread `updatedAt` 在进入客户端展示协议前必须规范化为 ISO string 或 null；前端不得猜测 Codex 原始时间字段的单位。
