@@ -56,10 +56,6 @@ _Avoid_: Conversation item、全局弹窗、Client notice
 My-Code-X 保存的本机项目目录记录，产品身份是 canonical cwd。
 _Avoid_: Codex cwd scope、Thread.cwd、任意 cwd
 
-**Selection**:
-当前客户端选中的 My-Code-X Workspace canonical cwd 和 Codex `Thread` id。
-_Avoid_: Conversation、全局服务端当前会话
-
 **Thread list**:
 Codex app-server 根据 `Codex cwd scope` 返回的 Codex `Thread` 分页列表。
 _Avoid_: Workspace registry、扫描 `~/.codex/sessions` 得到的列表
