@@ -12,6 +12,8 @@ When investigating workspace, 先理解文件目录，再定向阅读。不要�
 Never touch the running '4310' my-code-x main server yourself
 It's my personal project so breaking changes are acceptable
 Main development is on Windows but the code is cross-platform(Linux, macOS)
+Context glossary at [CONTEXT.md](./CONTEXT.md)
+Current feature overview at [overview.md](./docs/features/overview.md)
 
 ## Product Rule
 Respect the Original Codex app server. Every parameter sent should be a deliberate decision.
