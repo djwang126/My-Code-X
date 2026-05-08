@@ -11,7 +11,7 @@ The current server grew around one large exchange-centered flow. Over time, seve
 - whether an interaction context is alive
 - how conversation lines are created and managed
 - how one active turn runs
-- how Codex is reached as an external runtime
+- how Codex is reached through the Codex runtime boundary
 - how HTTP requests are mapped into use cases
 
 Those concerns change for different reasons. Keeping them behind one broad exchange service makes startup, state ownership, recovery, thread operations, and message execution hard to reason about.
@@ -37,7 +37,7 @@ It answers questions like:
 - what routing key should application use for this client?
 
 It should stay small. It is not the owner of runtime attachment, thread
-recovery, thread operations, transcript state, pending requests, or one model
+recovery, thread operations, transcript state, `Pending interaction`, or one model
 turn.
 
 ### `features/thread`
@@ -51,7 +51,7 @@ It answers questions like:
 - when was this thread last updated?
 
 It is not the owner of current client selection, thread operations, transcript
-state, pending requests, runtime settings, or one turn progressing from input to
+state, `Pending interaction`, runtime settings, or one turn progressing from input to
 output.
 
 ### `features/thread-actions`
@@ -102,7 +102,7 @@ be introduced only when real conversation behavior is migrated.
 
 `adapters/codex` owns the Codex external runtime boundary.
 
-It is responsible for turning the external Codex process/protocol into a local `RuntimePort`. The rest of the server should think in terms of runtime commands, runtime events, and runtime results rather than raw Codex transport details.
+It is responsible for turning the external Codex process/protocol into a local `RuntimePort`. The rest of the server should think in terms of Codex runtime commands, Codex runtime events, and Codex runtime results rather than raw Codex transport details.
 
 ### `http`
 
@@ -250,6 +250,6 @@ The most important rules are:
 - cross-feature flows belong in `application`
 - HTTP controllers call `application`, not feature services
 - adapters implement ports and do not know about features
-- runtime events and domain events are separate concepts
+- Codex runtime events and domain events are separate concepts
 - feature state files are private implementation details
 - `shared` stays pure and boring

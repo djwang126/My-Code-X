@@ -208,10 +208,10 @@ state constructors.
 ## Event rules
 
 ```text
-RuntimeEvent != DomainEvent
+Codex runtime event != DomainEvent
 ```
 
-- Runtime events come from an external runtime adapter.
+- Codex runtime events come from an external Codex runtime adapter.
 - Domain events are produced by feature code after runtime input has been
   interpreted inside the feature boundary.
 - The event bus carries domain events, not raw adapter payloads.
@@ -219,7 +219,7 @@ RuntimeEvent != DomainEvent
 The intended feature flow is:
 
 ```text
-runtime event -> feature interpretation -> domain event -> state update -> event bus
+Codex runtime event -> feature interpretation -> domain event -> state update -> event bus
 ```
 
 Concrete event fields can be introduced later. The separation of names and
