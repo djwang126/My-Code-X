@@ -33,11 +33,11 @@ _Avoid_: Client notice、Conversation error
 _Avoid_: Thread、页面、完整聊天工作区
 
 **Conversation item**:
-My-Code-X 面向 Web client 的 timeline 展示单元，由 Codex `ThreadItem` 或 Codex runtime event 投影而来。
+My-Code-X 面向 Web client 的 timeline 展示单元，由 Codex `ThreadItem` 或 `Codex runtime event` 投影而来。
 _Avoid_: ThreadItem、任意 UI 卡片
 
 **Work trace**:
-当前选中 Codex `Thread` 的某个 `Turn` 内，由已知 Codex 非消息 `ThreadItem` 或 Codex runtime event 投影出的 `Conversation item`。
+当前选中 Codex `Thread` 的某个 `Turn` 内，由已知 Codex 非消息 `ThreadItem` 或 `Codex runtime event` 投影出的 `Conversation item`。
 _Avoid_: 所有非消息 item、日志、Unknown item
 
 **Unknown item**:
@@ -56,12 +56,8 @@ _Avoid_: Conversation item、全局弹窗、Client notice
 My-Code-X 保存的本机项目目录记录，产品身份是 canonical cwd。
 _Avoid_: Codex cwd scope、Thread.cwd、任意 cwd
 
-**workspaceId**:
-My-Code-X Workspace 的 canonical cwd。
-_Avoid_: record id、opaque id、跨设备共享 id
-
 **Selection**:
-当前客户端选中的 `workspaceId` 和 `threadId`。
+当前客户端选中的 My-Code-X Workspace canonical cwd 和 Codex `Thread` id。
 _Avoid_: Conversation、全局服务端当前会话
 
 **Thread list**:
@@ -77,7 +73,7 @@ My-Code-X 连接并驱动的 Codex app-server 会话或进程能力抽象。
 _Avoid_: My-Code-X runtime、Node runtime、adapter
 
 **Codex runtime event**:
-Codex runtime 从 Codex app-server 接收到，并经 adapter 规范化后的 typed event。
+`Codex runtime` 从 Codex app-server 接收到，并经 adapter 规范化后的 typed event。
 _Avoid_: Client event、Conversation event、raw notification
 
 **Client action**:
@@ -98,13 +94,13 @@ _Avoid_: Codex system notice、Error item、Conversation item
 
 ## Relationships
 
-- 一个 **My-Code-X Workspace** 的 **workspaceId** 是该记录的 canonical cwd。
-- 一个 **workspaceId** 可以作为 Codex `thread/list` 的 `cwd` 参数，从而形成一个 **Codex cwd scope**。
+- 一个 **My-Code-X Workspace** 的产品身份是该记录的 canonical cwd。
+- 一个 **My-Code-X Workspace** 的 canonical cwd 可以作为 Codex `thread/list` 的 `cwd` 参数，从而形成一个 **Codex cwd scope**。
 - 一个 **Thread list** 属于 Codex app-server 的查询结果，不属于 **My-Code-X Workspace** registry。
-- 一个 **Selection** 最多指向一个 **workspaceId** 和一个 Codex **Thread**。
+- 一个 **Selection** 最多指向一个 **My-Code-X Workspace** 和一个 Codex **Thread**。
 - 一个 **Conversation** 投影当前选中的一个 Codex **Thread**。
 - 一个 **Thread** 包含零个或多个 **Turn**。
-- 一个 **Turn** 可以产生零个或多个 **ThreadItem** 和 Codex runtime event。
+- 一个 **Turn** 可以产生零个或多个 **ThreadItem** 和零个或多个 **Codex runtime event**。
 - 一个 **Conversation item** 由 Codex **ThreadItem** 或 **Codex runtime event** 投影而来。
 - **Work trace**、**Unknown item** 和 **Error item** 都是 **Conversation item** 的分类。
 - **Pending interaction** 可以与 **Conversation** 视觉相邻，但不属于 **Conversation** timeline。
@@ -115,7 +111,7 @@ _Avoid_: Codex system notice、Error item、Conversation item
 ## Example dialogue
 
 > **Dev:** "用户打开一个 My-Code-X Workspace 后，我们是不是从 registry 里读它的历史 Conversation？"
-> **Domain expert:** "不是。My-Code-X Workspace 只提供 canonical cwd，也就是 workspaceId；Codex app-server 用这个 cwd 形成 Codex cwd scope，再返回 Thread list。"
+> **Domain expert:** "不是。My-Code-X Workspace 只提供 canonical cwd；Codex app-server 用这个 cwd 形成 Codex cwd scope，再返回 Thread list。"
 >
 > **Dev:** "那点击一个 thread 后，Conversation 是不是等于这个 Thread？"
 > **Domain expert:** "不是。Thread 是 Codex 原生容器；Conversation 是当前选中 Thread 的只读 timeline 投影。"
