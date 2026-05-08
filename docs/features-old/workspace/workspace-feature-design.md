@@ -1,8 +1,8 @@
 # Feature-Workspace
 
-Workspace 是 My-Code-X 手机端侧边栏功能，用来管理用户手动添加的本机项目目录，并按目录查看、恢复和整理对应的 Codex threads。
+Workspace 是 My-Code-X 手机端侧边栏功能，用来管理用户手动添加的本机项目目录，并按目录查看、恢复和整理对应的 Codex `Thread`。
 
-Workspace 不是独立主页。Conversation 仍是主页，Workspace 只作为侧边栏抽屉存在。Workspace 不负责新建 thread，不负责发送消息，不负责 turn 操作，也不为 Codex thread 发明额外状态。Workspace 以 cwd 作为工作区边界，并尊重 Codex 返回的 thread 字段、顺序、分页和操作结果。
+Workspace 不是独立主页。`Conversation` 仍是主页，Workspace 只作为侧边栏抽屉存在。Workspace 不负责新建 `Thread`，不负责发送消息，不负责 `Turn` 操作，也不为 Codex `Thread` 发明额外状态。My-Code-X Workspace 的产品身份是 canonical cwd，并使用该 cwd 形成 `Codex cwd scope`；Codex app-server 根据这个 scope 返回 `Thread list`，My-Code-X 尊重 Codex 返回的 thread 字段、顺序、分页和操作结果。
 
 ## 用户故事
 

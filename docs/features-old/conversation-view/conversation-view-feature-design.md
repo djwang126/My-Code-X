@@ -1,8 +1,8 @@
 # Feature-Conversation View
 
-Conversation View 是 My-Code-X 主界面的只读对话阅读功能，用来展示当前 Codex thread 的 conversation timeline。它让用户在手机或桌面上按顺序阅读用户消息、assistant 消息、Codex 工作痕迹、会话内错误，以及空状态、加载状态和恢复结果。
+Conversation View 是 My-Code-X 主界面的只读对话阅读功能，用来展示当前选中 Codex `Thread` 的 `Conversation` timeline。它让用户在手机或桌面上按顺序阅读用户消息、assistant 消息、`Work trace`、会话内错误，以及空状态、加载状态和恢复结果。
 
-Conversation View 的核心定位是阅读。它不负责输入、发送、重试、取消、approval、pending request、手动刷新、搜索、跳转或打开 workspace 文件。它只展示系统确认后的权威 conversation 内容，并把这些内容组织成适合移动端阅读的聊天界面。
+Conversation View 的核心定位是阅读。它不负责输入、发送、重试、取消、approval、`Pending interaction`、手动刷新、搜索、跳转或打开 workspace 文件。它只展示系统确认后的权威 `Conversation` 内容，并把这些内容组织成适合移动端阅读的聊天界面。
 
 ## 用户故事
 
@@ -43,7 +43,7 @@ Conversation View 的核心定位是阅读。它不负责输入、发送、重�
 35. 作为正在阅读完成对话的 My-Code-X 用户，我想要界面不显示额外完成提示，这样 timeline 不出现 Codex 没有表达的状态噪音。
 36. 作为正在手机上阅读对话的 My-Code-X 用户，我想要消息、工作痕迹和错误不显示时间戳，这样界面更简洁。
 37. 作为正在专注阅读当前对话的 My-Code-X 用户，我想要 Conversation View 不提供搜索、筛选、跳转和手动刷新控件，这样阅读体验保持聚焦。
-38. 作为正在处理 pending request 或 approval 的 My-Code-X 用户，我想要这些操作可以在视觉上靠近对话，但不混入 conversation timeline，这样阅读和操作职责清楚。
+38. 作为正在处理 `Pending interaction` 或 approval 的 My-Code-X 用户，我想要这些操作可以在视觉上靠近对话，但不混入 `Conversation` timeline，这样阅读和操作职责清楚。
 39. 作为正在维护 My-Code-X 的开发者，我想要 Conversation View 展示系统确认的 conversation 权威内容，这样 My-Code-X 不维护另一套对话语义。
 40. 作为正在维护 My-Code-X 的开发者，我想要同一个权威 item 的更新仍表现为同一个 timeline item，这样 UI 与 conversation 身份保持一致。
 
@@ -96,7 +96,7 @@ Conversation View 的核心定位是阅读。它不负责输入、发送、重�
 45. Given timeline item 包含时间数据, when Conversation View 渲染消息、工作痕迹或错误, then 不得显示时间戳。
 46. Given Conversation View 展示当前 thread, when 用户阅读界面, then 不得提供搜索、筛选或 item 跳转控件。
 47. Given Conversation View 展示当前 thread, when 用户阅读界面, then 不得提供手动刷新、重试、取消、approval 或发送控件。
-48. Given pending request 或 approval 与当前 conversation 相关, when 页面组合展示这些操作, then 它们可以视觉相邻但不得进入 Conversation View timeline。
+48. Given `Pending interaction` 或 approval 与当前 `Conversation` 相关, when 页面组合展示这些操作, then 它们可以视觉相邻但不得进入 Conversation View timeline。
 49. Given 工作痕迹 item 展示, when 用户查看卡片, then Conversation View 不需要提供专门复制按钮。
 50. Given assistant 或用户消息很长, when Conversation View 渲染消息, then 不得套用工作痕迹的 30 行截断规则。
 51. Given workspace 文件引用被视觉区分, when 用户点击或查看该引用, then Conversation View 不负责打开本地文件。
@@ -131,7 +131,7 @@ Conversation View 的核心定位是阅读。它不负责输入、发送、重�
 ## 不在本范围
 
 1. 输入框、消息编辑、发送、重新发送、发送失败 UI 和 optimistic 用户消息。
-2. approval 处理、pending request 处理、取消、重试和其他操作控件。
+2. approval 处理、`Pending interaction` 处理、取消、重试和其他操作控件。
 3. 手动刷新或手动重新加载当前 thread。
 4. conversation 搜索、筛选、item permalink 或跳转。
 5. 从 workspace 文件引用打开本地文件。

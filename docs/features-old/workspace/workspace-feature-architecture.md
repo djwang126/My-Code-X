@@ -2,17 +2,17 @@
 
 ## Summary
 
-Workspace 采用“Workspace Registry + Codex thread 权威来源 + Application 跨功能编排 + Frontend 侧边栏会话态”的结构。
+Workspace 采用“My-Code-X Workspace Registry + Codex `Thread` 权威来源 + Application 跨功能编排 + Frontend 侧边栏会话态”的结构。
 
-Workspace Registry 只保存 My-Code-X 自己管理的工作区记录。Codex app-server 是 thread 列表、thread 字段、thread 顺序、分页游标、归档状态、重命名结果和恢复结果的权威来源。Workspace 不从 registry 推断 thread，不持久化 thread UI 标记，也不把 Codex thread 重新解释成 My-Code-X 自定义状态。
+Workspace Registry 只保存 My-Code-X 自己管理的 `My-Code-X Workspace` 记录。Codex app-server 是 `Thread list`、thread 字段、thread 顺序、分页游标、归档状态、重命名结果和恢复结果的权威来源。Workspace 不从 registry 推断 thread，不持久化 thread UI 标记，也不把 Codex `Thread` 重新解释成 My-Code-X 自定义状态。
 
-Workspace 的产品身份是 canonical cwd。内部稳定记录 id 只服务于 registry 记录定位、cwd 编辑和并发合并，不成为 URL、client scope、selection 或 Codex 请求中的 Workspace 身份。
+My-Code-X Workspace 的产品身份是 canonical cwd，也就是 `workspaceId`。内部稳定记录 id 只服务于 registry 记录定位、cwd 编辑和并发合并，不成为 URL、client scope、`Selection` 或 Codex 请求中的 Workspace 身份。
 
 ## Domain Model & Invariants
 
 Workspace record 是用户手动保存的本机项目目录记录。每条记录包含内部稳定记录 id、canonical cwd、name 和 createdAt。
 
-canonical cwd 是 Workspace 的产品身份、重复判断依据、client scope workspaceId 和 Codex thread/list cwd 参数。name 是纯显示字段，不参与身份判断。createdAt 只用于保留添加顺序和合并后的稳定顺序，不表达最近打开时间。
+canonical cwd 是 My-Code-X Workspace 的产品身份、重复判断依据、client scope `workspaceId` 和 Codex `thread/list.cwd` 参数。name 是纯显示字段，不参与身份判断。createdAt 只用于保留添加顺序和合并后的稳定顺序，不表达最近打开时间。
 
 Workspace registry 是有序记录集合。同一个 canonical cwd 最多存在一条记录。cwd 编辑会让同一条 Workspace record 使用新的 canonical cwd，内部记录 id、name 和 createdAt 保持不变。cwd 编辑不创建旧 cwd 别名，不迁移 Codex threads，不维护旧 cwd 到新 cwd 的映射。
 
@@ -20,7 +20,7 @@ cwd canonicalization 必须保留跨平台路径语义。Windows 支持盘符路
 
 Workspace availability 是即时检查结果，不是持久字段。不可用 Workspace 仍是 registry record，但只允许 remove。不可用原因可以进入展示和调试信息，但不成为新的 Workspace 生命周期状态。
 
-Workspace thread page 是 Codex thread/list 的分页查询结果，不属于 Workspace registry。active page 使用 active threads，archived page 使用 archived threads。两类页面都保留 Codex 返回顺序。name、preview 为空时保持为空。updatedAt 在进入客户端展示协议前规范化为可展示时间值或 null。
+Workspace thread page 是 Codex `thread/list` 在某个 `Codex cwd scope` 下的分页查询结果，不属于 Workspace registry。active page 使用 active threads，archived page 使用 archived threads。两类页面都保留 Codex 返回顺序。name、preview 为空时保持为空。updatedAt 在进入客户端展示协议前规范化为可展示时间值或 null。
 
 “已归档”和“已恢复”是当前侧边栏页面会话中的动作结果标记。它们只存在于前端临时页面状态中，不写入 Workspace registry，不写入 Codex，也不成为 thread feature 的持久状态。
 
@@ -90,7 +90,7 @@ registry 损坏时不得自动覆盖、自动修复或自动备份原 registry�
 
 用户打开侧边栏时，Application 读取当前 Conversation scope，获取 Workspace registry snapshot 和 availability snapshot。如果当前 Conversation scope 的 canonical cwd 已保存且可用，Application 查询该 Workspace 的 active threads 并返回 active page；否则返回 Workspace list page。
 
-添加 Workspace 时，前端提交 cwd 和 name。Workspace feature trim cwd、校验路径、canonicalize、检查重复、创建 record，然后更新 registry。添加成功返回更新后的 Workspace list projection，不触发 thread list 查询。
+添加 Workspace 时，前端提交 cwd 和 name。Workspace feature trim cwd、校验路径、canonicalize、检查重复、创建 record，然后更新 registry。添加成功返回更新后的 Workspace list projection，不触发 `Thread list` 查询。
 
 rename Workspace 时，前端提交目标记录引用、当前 workspaceId 和新 name。Workspace feature 定位目标记录，使用当前 workspaceId 做一致性保护，只更新 name，并返回更新后的 Workspace list projection。
 
@@ -98,9 +98,9 @@ rename Workspace 时，前端提交目标记录引用、当前 workspaceId 和�
 
 remove Workspace 时，Workspace feature 删除 registry record。该操作只影响 Workspace registry，不删除本地目录，不删除 Codex threads，不通知主 Conversation。
 
-进入 active thread page 时，Application 先确认 workspaceId 对应已保存且可用 Workspace，再查询 Codex active thread list。查询参数固定包含当前 Workspace cwd、archived=false、limit=10、sortKey=updated_at、sortDirection=desc 和可选 cursor，不传 searchTerm。返回结果保持 Codex 顺序，Presenter 只做产品 contract 投影和时间规范化。
+进入 active thread page 时，Application 先确认 workspaceId 对应已保存且可用 Workspace，再查询 Codex active `Thread list`。查询参数固定包含当前 Workspace cwd、archived=false、limit=10、sortKey=updated_at、sortDirection=desc 和可选 cursor，不传 searchTerm。返回结果保持 Codex 顺序，Presenter 只做产品 contract 投影和时间规范化。
 
-进入 archived thread page 时，Application 使用同一 canonical cwd 查询 Codex archived thread list。查询参数固定包含当前 Workspace cwd、archived=true、limit=10、sortKey=updated_at、sortDirection=desc 和可选 cursor，不传 searchTerm。archived page 不允许 resume、rename 或 archive。
+进入 archived thread page 时，Application 使用同一 canonical cwd 查询 Codex archived `Thread list`。查询参数固定包含当前 Workspace cwd、archived=true、limit=10、sortKey=updated_at、sortDirection=desc 和可选 cursor，不传 searchTerm。archived page 不允许 resume、rename 或 archive。
 
 resume active thread 时，Application 校验 Workspace scope，调用 thread action capability 恢复目标 thread，并协调 slot、thread 和 Conversation 状态。成功后返回主界面更新所需 snapshot 并关闭侧边栏；失败时返回卡片级错误。
 
@@ -138,7 +138,7 @@ Workspace cwd edit input 包含目标 record reference、当前 workspaceId 和�
 
 Workspace remove input 包含目标 record reference 和当前 workspaceId。
 
-Registry mutation output 返回 typed validation error、typed persistence error 或更新后的 Workspace list projection。成功 add、rename、cwd edit 和 remove 不隐式返回 thread list，除非 cwd edit 改变了当前正在查看的 active thread page。
+Registry mutation output 返回 typed validation error、typed persistence error 或更新后的 Workspace list projection。成功 add、rename、cwd edit 和 remove 不隐式返回 `Thread list`，除非 cwd edit 改变了当前正在查看的 active thread page。
 
 Thread page contract 包含 workspaceId、page mode、resource state、ordered thread items、nextCursor、load-more state 和可选 page-level error。
 
@@ -180,7 +180,7 @@ Path inspection capability 负责用户输入项目路径的只读检查和 cano
 
 Clock capability 负责创建时间值。Id capability 负责内部记录 id 生成。
 
-Codex runtime capability 负责 Codex thread listing、reading 和 mutation transport。Workspace feature 不直接消费 Codex runtime capability；需要 thread list 或 thread action 时由 Application 编排。
+Codex runtime capability 负责 Codex thread listing、reading 和 mutation transport。Workspace feature 不直接消费 Codex runtime capability；需要 `Thread list` 或 `Thread action` 时由 Application 编排。
 
 Thread action capability 负责 resume、rename、archive 和 unarchive 的产品级动作结果。Workspace registry mutation 和 thread mutation 保持分离。
 

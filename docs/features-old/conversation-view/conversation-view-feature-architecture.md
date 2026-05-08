@@ -2,35 +2,35 @@
 
 ## Summary
 
-Conversation View 采用“Codex app-server 权威来源、My-Code-X 后端 conversation 投影、前端只读渲染”的结构。
+Conversation View 采用“Codex app-server 权威来源、My-Code-X 后端 `Conversation` 投影、前端只读渲染”的结构。
 
-Codex app-server 是 conversation 内容、item 身份、item 更新方式、工作痕迹结构和错误事实的权威来源。My-Code-X 后端负责把外部 conversation facts 转换为稳定的 Conversation View 领域状态和客户端协议。前端只消费客户端协议并负责 Markdown 渲染、折叠展开、复制、链接行为和移动端布局。
+Codex app-server 是 Codex `Thread`、`Turn`、`ThreadItem`、item 身份、item 更新方式、工作痕迹结构和错误事实的权威来源。My-Code-X 后端负责把这些外部事实转换为稳定的 `Conversation` 领域状态和客户端协议。前端只消费客户端协议并负责 Markdown 渲染、折叠展开、复制、链接行为和移动端布局。
 
-Conversation View 是 timeline-only 功能。发送、重试、取消、approval、pending request、手动刷新、搜索、跳转和 workspace 文件打开都在 Conversation View 边界之外。页面组合层可以把相关功能放在视觉邻近位置，但这些功能不进入 conversation timeline，也不改变 Conversation View 的状态模型。
+Conversation View 是 timeline-only 功能。发送、重试、取消、approval、`Pending interaction`、手动刷新、搜索、跳转和 workspace 文件打开都在 Conversation View 边界之外。页面组合层可以把相关功能放在视觉邻近位置，但这些功能不进入 `Conversation` timeline，也不改变 Conversation View 的状态模型。
 
 ## Domain Model & Invariants
 
-Conversation resource 表达当前 selected thread 的 conversation 读取结果。它只包含 loading、ready 和 failed 三类有效状态。空状态是 ready 状态下 timeline 为空的展示结果，不是独立 conversation item。
+Conversation resource 表达当前选中 Codex `Thread` 的 `Conversation` 读取结果。它只包含 loading、ready 和 failed 三类有效状态。空状态是 ready 状态下 timeline 为空的展示结果，不是独立 `Conversation item`。
 
-Conversation timeline 是按权威顺序排列的 item 集合。timeline 只包含 conversation 内容：用户消息、assistant 消息、Codex 工作痕迹、未知 Codex item 和 conversation-scoped 错误。加载失败、恢复失败和基础设施错误不进入 timeline。
+Conversation timeline 是按权威顺序排列的 `Conversation item` 集合。timeline 只包含 `Conversation` 内容：用户消息、assistant 消息、`Work trace`、`Unknown item` 和 conversation-scoped 错误。加载失败、恢复失败和基础设施错误不进入 timeline。
 
 Conversation item 是 timeline 的最小展示单位。每个 item 必须有稳定身份，优先来自 Codex app-server 的原生 item 身份。权威来源表示为同一个 item 的后续更新时，Conversation View 更新同一个 item；权威来源表示为多个 item 时，Conversation View 展示多个 item。
 
 Message item 表示用户消息或 assistant 消息。内容保存为原始 Markdown 文本。复制整条消息或代码块时使用原始文本，不使用渲染后的页面内容。
 
-Work trace item 表示 Codex 原生工作痕迹。它保留原生 item type 作为卡片标题，并把可观察 payload 投影为通用字段列表。字段列表保留原始字段名、字段值和字段顺序。
+Work trace item 表示当前选中 Codex `Thread` 的某个 `Turn` 内，由已知 Codex 非消息 `ThreadItem` 或 Codex runtime event 投影出的 `Conversation item`。它保留原生 item type 作为卡片标题，并把可观察 payload 投影为通用字段列表。字段列表保留原始字段名、字段值和字段顺序。
 
-Unknown item 表示 My-Code-X 当前没有专门样式的 Codex item。它和 work trace item 使用同一套通用字段列表展示策略，保证 Codex schema 演进时新信息仍可观察。
+Unknown item 表示来自当前选中 Codex `Thread` 或 `Turn`，但 My-Code-X 当前没有专门产品分类或样式的 Codex item 投影。它和 work trace item 使用同一套通用字段列表展示策略，保证 Codex schema 演进时新信息仍可观察。
 
 Unknown item 不是 work trace item。它可以复用字段列表投影和字段列表渲染，但产品分类必须保持 unknown，不能为了复用 UI 而伪装成已知工作痕迹。
 
-Error item 表示属于当前 conversation 的聊天过程错误。它保留原始错误信息，以 timeline 错误卡片展示。同一个 turn 范围内的错误更新同一个 error item，避免重复展示同一失败事实。
+Error item 表示可归属到当前选中 Codex `Thread` 和 `Turn` 的 conversation-scoped 错误投影。它保留原始错误信息，以 timeline 错误卡片展示。同一个 `Turn` 范围内的错误更新同一个 error item，避免重复展示同一失败事实。
 
 Conversation revision 表示后端投影的单调版本。snapshot 和 events 都携带 revision，前端用它判断更新顺序和是否需要替换本地视图。
 
 通用字段列表是工作痕迹和未知 item 的共享领域概念。字段值可以是简单值或复杂结构；复杂结构在客户端以安全、可读文本展示。30 行截断是前端阅读策略，不是后端数据截断。
 
-Conversation View 不保存或展示时间戳、完成横幅、操作控件状态、pending request 业务状态、approval 状态、搜索筛选状态或跳转锚点状态。
+Conversation View 不保存或展示时间戳、完成横幅、操作控件状态、`Pending interaction` 业务状态、approval 状态、搜索筛选状态或跳转锚点状态。
 
 ## System Boundaries
 
@@ -46,7 +46,7 @@ Presenter 负责把 Conversation feature 的领域状态投影为 frontend-facin
 
 Frontend Conversation View 负责只读渲染和本地展示状态。它不创建 optimistic item，不自行分类 Codex raw item，不推断 turn lifecycle，也不拥有 app-server 语义。
 
-Thread、turn、runtime request、pending interaction 和 approval 属于独立功能边界。它们可以与 Conversation View 在页面上组合，但不成为 Conversation View 的内部状态。
+`Thread`、`Turn`、`Pending interaction`、approval 和其他 runtime request 属于独立功能边界。它们可以与 Conversation View 在页面上组合，但不成为 Conversation View 的内部状态。
 
 ## State Ownership
 
@@ -62,7 +62,7 @@ Thread feature 拥有 thread metadata。
 
 Turn feature 拥有 turn lifecycle。
 
-Runtime request feature 拥有 pending interaction state。
+Runtime request feature 拥有 `Pending interaction` state。
 
 Presenter 拥有 frontend-facing projection 职责。
 
@@ -116,19 +116,19 @@ Presenter 只做投影。它把领域状态转换成客户端协议，并剥离�
 
 HTTP 和 event delivery 只负责 transport 映射。它们不协调 slot、thread、turn、runtime request 和 conversation 业务关系。
 
-Runtime access 和 client event delivery 通过可替换端口接入。Conversation projection 可以用内存输入独立测试，不依赖真实 Codex 进程。
+Codex runtime access 和 `Client event` delivery 通过可替换端口接入。Conversation projection 可以用内存输入独立测试，不依赖真实 Codex 进程。
 
 ### API contracts
 
 Snapshot contract 包含当前 conversation view 的 resource state。Ready snapshot 携带 revision 和有序 items；failed snapshot 携带非 conversation 错误；loading snapshot 表示当前 conversation 尚未可展示。
 
-Event contract 使用聚合后的 conversation events，不向浏览器发送高频原始 runtime events。Event 按 selected scope 归属，并携带单调 revision。
+Event contract 使用聚合后的 conversation events，不向浏览器发送高频原始 Codex runtime events。Event 按 selected scope 归属，并携带单调 revision。
 
 Conversation replacement event 用于恢复、重建或权威快照替换。Item upsert event 用于新增 item 或更新已有 item。Resource state event 用于 loading、ready 和 failed 的变化。
 
 Item upsert event 携带完整 item snapshot。新增 item 进入后端权威位置；已有 item 原地更新。排序不能用单个 upsert 表达时，使用 replacement event 提供完整有序列表。
 
-Error contract 区分 conversation error item 和 non-conversation error。Conversation error item 进入 timeline。Non-conversation error 进入 resource state、notice 或 action result。
+Error contract 区分 conversation error item 和 non-conversation error。Conversation error item 进入 timeline。Non-conversation error 进入 resource state、`Client notice` 或 action result。
 
 UI behavior contract 只携带渲染必须知道的信息，例如 message role、原生 item type、字段列表、workspace reference 标记和错误原始信息。纯布局决策留给前端。
 
@@ -140,7 +140,7 @@ Runtime、system 或 realtime 错误只有在同时能归属到当前 conversati
 
 Runtime error 不改变 turn lifecycle。Turn lifecycle 只由明确的 turn lifecycle facts 更新。
 
-读取失败、恢复失败、scope 缺失、transport failure 和基础设施错误不进入 timeline。它们通过 resource state、notice 或 action result 展示。
+读取失败、恢复失败、scope 缺失、transport failure 和基础设施错误不进入 timeline。它们通过 resource state、`Client notice` 或 action result 展示。
 
 错误路由在 typed error 语义仍可用时完成。后端不能在路由前把所有错误压平成普通字符串，否则无法判断错误是否属于 conversation timeline。
 
@@ -150,7 +150,7 @@ Codex adapter 负责解析和校验外部 protocol shape。进入内部 feature 
 
 Runtime port 提供 conversation-relevant input、恢复结果和 app-server lifecycle facts。Conversation feature 不直接依赖具体进程启动方式。
 
-Client event delivery port 负责把 presenter 输出推送到浏览器。它不参与 conversation item 分类或聚合。
+`Client event` delivery port 负责把 presenter 输出推送到浏览器。它不参与 conversation item 分类或聚合。
 
 Storage 只用于支持当前系统已有的 thread 恢复和状态读取能力。Conversation View 不单独持久化一套自定义 transcript。
 
@@ -212,7 +212,7 @@ Work trace renderer 负责折叠、字段列表展示和长内容逐步展开。
 
 Error renderer 负责 timeline 错误卡片展示。它不改写错误原因，不提供 retry 或 cancel 控件。
 
-页面组合层可以把 Conversation View 与输入框、pending request、approval 或 workspace 入口放在同一页面，但这些控件通过各自 feature 工作。
+页面组合层可以把 Conversation View 与输入框、`Pending interaction`、approval 或 workspace 入口放在同一页面，但这些控件通过各自 feature 工作。
 
 ### API contracts
 
