@@ -26,7 +26,12 @@ _Avoid_: Codex Workspace、Workspace、项目
 Codex app-server 发出的系统级提示事件。
 _Avoid_: Client notice、Conversation error
 
+
 ### My-Code-X 产品概念
+
+ **Active work** ：
+My-Code-X 面向用户组织出来的“需要关注的工作集合”，一个 Active work 通常关联一个 My-Code-X Workspace、一个 Codex `Thread`。
+_Avoid_: Thread、Conversation
 
 **Conversation**:
 当前选中 Codex `Thread` 的只读 timeline 投影。
@@ -99,7 +104,6 @@ _Avoid_: Codex system notice、Error item、Conversation item
 - 一个 **Turn** 可以产生零个或多个 **ThreadItem** 和零个或多个 **Codex runtime event**。
 - 一个 **Conversation item** 由 Codex **ThreadItem** 或 **Codex runtime event** 投影而来。
 - **Work trace**、**Unknown item** 和 **Error item** 都是 **Conversation item** 的分类。
-- **Pending interaction** 可以与 **Conversation** 视觉相邻，但不属于 **Conversation** timeline。
 - **Codex system notice** 可以被投影为 **Client notice**，但二者不是同一个概念。
 - **Codex runtime event** 可以被投影为 **Client event**，但二者不是同一个概念。
 - **Thread action** 可以改变当前 **Selection** 或触发 **Conversation** 刷新，但不由 **Conversation** timeline 拥有。

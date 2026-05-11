@@ -1,6 +1,6 @@
 # Feature Overview
 
-本文概览 `apps-new` 当前已经迁移出的主要功能边界。术语以根目录 `CONTEXT.md` 为准；这里不重复定义词汇，只说明当前实现到哪里。
+本文概览 `apps-new` 当前已经具备/迁移的主要功能。术语以根目录 `CONTEXT.md` 为准；这里不重复定义词汇，只说明当前实现到哪里。
 
 ## 前端 Features
 
@@ -44,7 +44,7 @@ Workspace Panel 相关 application flow 组合 Workspace Registry、Codex runtim
 
 ### Selection State
 
-Selection State 保存当前客户端选择的 workspaceId 和 threadId。实现中由 slot feature 承载，但本文不把 Slot 作为产品术语展开。
+Selection State 保存当前客户端选择的 workspaceId 和 threadId。实现中由 slot feature 承载，是引入多tab管理前的占位功能。
 
 ### Thread Read Model
 
