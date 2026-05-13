@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Active Work UI Mock</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --blue-900: #0b2a5b;
+      --blue-800: #123c7c;
+      --blue-700: #1556a8;
+      --blue-600: #1d6fd6;
+      --blue-100: #dbeafe;
+      --blue-50: #eff6ff;
+      --ink: #0f172a;
+      --muted: #475569;
+      --line: #d8e2ef;
+      --line-strong: #b8c8db;
+      --paper: #ffffff;
+      --wash: #f6f9fd;
+      --soft: #eef5ff;
+      --danger: #b42318;
+      --shadow: 0 20px 55px rgba(15, 23, 42, 0.13);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        linear-gradient(180deg, #eaf3ff 0%, #f8fbff 40%, #ffffff 100%);
+      color: var(--ink);
+    }
+
+    button,
+    textarea {
+      font: inherit;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 18px 12px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .phone {
+      width: min(100%, 430px);
+      min-height: calc(100vh - 36px);
+      background: var(--paper);
+      border: 1px solid rgba(15, 86, 168, 0.18);
+      border-radius: 28px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      padding: 14px 14px 10px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(18px);
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .icon-button {
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      color: var(--blue-800);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 180ms ease, background 180ms ease, color 180ms ease;
+    }
+
+    .icon-button:hover,
+    .icon-button:focus-visible {
+      border-color: var(--blue-600);
+      background: var(--blue-50);
+      outline: none;
+    }
+
+    .title-group {
+      min-width: 0;
+      flex: 1;
+    }
+
+    .kicker {
+      margin: 0 0 2px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .title {
+      margin: 0;
+      color: var(--ink);
+      font-size: 16px;
+      line-height: 1.25;
+      font-weight: 680;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .transcript {
+      flex: 1;
+      overflow: auto;
+      padding: 16px 14px 14px;
+      background: var(--wash);
+    }
+
+    .event {
+      position: relative;
+      margin: 0 0 14px;
+    }
+
+    .event-header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 0 0 5px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    .event-kind {
+      font-weight: 650;
+      color: var(--blue-900);
+    }
+
+    .event-time {
+      flex: 0 0 auto;
+      color: #64748b;
+    }
+
+    .block {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.94);
+      box-shadow: 0 1px 1px rgba(15, 23, 42, 0.03);
+      overflow: hidden;
+    }
+
+    .message {
+      padding: 11px 12px;
+      font-size: 14px;
+      line-height: 1.58;
+    }
+
+    .message p {
+      margin: 0;
+    }
+
+    .message p + p {
+      margin-top: 8px;
+    }
+
+    .user .block {
+      border-color: #b7c9e8;
+      background: #f9fbff;
+    }
+
+    .tool-card {
+      display: grid;
+      grid-template-columns: 34px minmax(0, 1fr);
+      gap: 10px;
+      padding: 10px;
+      align-items: start;
+    }
+
+    .tool-icon {
+      width: 34px;
+      height: 34px;
+      border-radius: 9px;
+      background: var(--blue-50);
+      color: var(--blue-700);
+      border: 1px solid var(--blue-100);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tool-title {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.35;
+      font-weight: 670;
+      color: var(--ink);
+    }
+
+    .code-line {
+      margin: 4px 0 0;
+      padding: 7px 8px;
+      border: 1px solid #d9e5f5;
+      border-radius: 7px;
+      background: #f7fbff;
+      color: #123c7c;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tool-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      background: #fbfdff;
+    }
+
+    .text-button {
+      min-height: 34px;
+      padding: 0 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--blue-800);
+      font-size: 12px;
+      font-weight: 640;
+      transition: background 180ms ease, border-color 180ms ease;
+    }
+
+    .text-button:hover,
+    .text-button:focus-visible {
+      background: var(--blue-50);
+      border-color: var(--blue-600);
+      outline: none;
+    }
+
+    .plan {
+      display: grid;
+      gap: 7px;
+      padding: 10px 12px 12px;
+    }
+
+    .plan-row {
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 8px;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .check {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1px solid var(--blue-600);
+      color: var(--blue-700);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-top: 1px;
+    }
+
+    .check.pending {
+      border-color: var(--line-strong);
+      color: transparent;
+      background: #fff;
+    }
+
+    .approval-card {
+      padding: 12px;
+      border-color: #f1b8b3;
+      background: #fff;
+    }
+
+    .approval-title {
+      margin: 0 0 7px;
+      color: #7a271a;
+      font-size: 13px;
+      font-weight: 720;
+      line-height: 1.4;
+    }
+
+    .approval-copy {
+      margin: 0;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.52;
+    }
+
+    .approval-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 11px;
+    }
+
+    .primary,
+    .secondary {
+      min-height: 44px;
+      border-radius: 9px;
+      font-weight: 680;
+      border: 1px solid transparent;
+      transition: background 180ms ease, border-color 180ms ease;
+    }
+
+    .primary {
+      background: var(--blue-700);
+      color: #fff;
+    }
+
+    .primary:hover,
+    .primary:focus-visible {
+      background: var(--blue-800);
+      outline: none;
+    }
+
+    .secondary {
+      background: #fff;
+      color: #7a271a;
+      border-color: #f1b8b3;
+    }
+
+    .secondary:hover,
+    .secondary:focus-visible {
+      background: #fff7f6;
+      outline: none;
+    }
+
+    .composer {
+      border-top: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.96);
+      padding: 10px 12px 12px;
+    }
+
+    .composer-box {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 44px;
+      gap: 8px;
+      align-items: end;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 48px;
+      max-height: 130px;
+      resize: vertical;
+      border: 1px solid var(--line-strong);
+      border-radius: 12px;
+      padding: 12px;
+      color: var(--ink);
+      background: #fff;
+      outline: none;
+      line-height: 1.45;
+      font-size: 14px;
+    }
+
+    textarea:focus {
+      border-color: var(--blue-600);
+      box-shadow: 0 0 0 3px rgba(29, 111, 214, 0.14);
+    }
+
+    .send-button {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      border: 1px solid var(--blue-700);
+      background: var(--blue-700);
+      color: #fff;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 180ms ease;
+    }
+
+    .send-button:hover,
+    .send-button:focus-visible {
+      background: var(--blue-800);
+      outline: none;
+    }
+
+    svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    @media (min-width: 760px) {
+      .page {
+        padding: 28px;
+      }
+
+      .phone {
+        min-height: 840px;
+        max-height: 900px;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *,
+      *::before,
+      *::after {
+        transition: none !important;
+        scroll-behavior: auto !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="phone" aria-label="Active Work mobile mock">
+      <header class="topbar">
+        <div class="topline">
+          <button class="icon-button" aria-label="返回">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
+          </button>
+          <div class="title-group">
+            <p class="kicker">占位文本</p>
+            <h1 class="title">占位标题</h1>
+          </div>
+          <button class="icon-button" aria-label="更多操作">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="transcript" aria-label="Codex transcript">
+        <article class="event user">
+          <div class="event-header">
+            <span class="event-kind">事件类型</span>
+            <span class="event-time">00:00</span>
+          </div>
+          <div class="block message">
+            <p>占位文本占位文本占位文本，占位文本占位文本。</p>
+          </div>
+        </article>
+
+        <article class="event">
+          <div class="event-header">
+            <span class="event-kind">事件类型</span>
+            <span class="event-time">00:00</span>
+          </div>
+          <div class="block message">
+            <p>占位文本占位文本占位文本，占位文本占位文本占位文本。</p>
+          </div>
+        </article>
+
+        <article class="event">
+          <div class="event-header">
+            <span class="event-kind">事件类型</span>
+            <span class="event-time">00:00</span>
+          </div>
+          <div class="block plan">
+            <div class="plan-row">
+              <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></span>
+              <span>占位文本占位文本占位文本。</span>
+            </div>
+            <div class="plan-row">
+              <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></span>
+              <span>占位文本占位文本占位文本。</span>
+            </div>
+            <div class="plan-row">
+              <span class="check pending" aria-hidden="true"></span>
+              <span>占位文本占位文本占位文本。</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="event">
+          <div class="event-header">
+            <span class="event-kind">事件类型</span>
+            <span class="event-time">00:00</span>
+          </div>
+          <div class="block">
+            <div class="tool-card">
+              <div class="tool-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M4 17l6-6-6-6"></path><path d="M12 19h8"></path></svg>
+              </div>
+              <div>
+                <p class="tool-title">占位标题</p>
+                <p class="code-line">placeholder command --option value</p>
+              </div>
+            </div>
+            <div class="tool-footer">
+              <span>占位状态</span>
+              <button class="text-button">操作</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="event">
+          <div class="event-header">
+            <span class="event-kind">事件类型</span>
+            <span class="event-time">00:00</span>
+          </div>
+          <div class="block message">
+            <p>占位文本占位文本占位文本，占位文本占位文本。</p>
+          </div>
+        </article>
+
+        <article class="event approval">
+          <div class="event-header">
+            <span class="event-kind">事件类型</span>
+            <span class="event-time">00:00</span>
+          </div>
+          <div class="block approval-card">
+            <p class="approval-title">占位标题</p>
+            <p class="approval-copy">占位文本占位文本占位文本，占位文本占位文本。</p>
+            <p class="code-line">placeholder command --flag value</p>
+            <div class="approval-actions">
+              <button class="secondary">次要操作</button>
+              <button class="primary">主要操作</button>
+            </div>
+          </div>
+        </article>
+
+        <article class="event">
+          <div class="event-header">
+            <span class="event-kind">事件类型</span>
+            <span class="event-time">00:00</span>
+          </div>
+          <div class="block">
+            <div class="tool-card">
+              <div class="tool-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg>
+              </div>
+              <div>
+                <p class="tool-title">占位标题</p>
+                <p class="code-line">placeholder/path/example.ext</p>
+              </div>
+            </div>
+            <div class="tool-footer">
+              <span>占位状态</span>
+              <button class="text-button">操作</button>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <form class="composer" aria-label="Reply composer">
+        <div class="composer-box">
+          <textarea aria-label="输入" placeholder="占位输入..."></textarea>
+          <button class="send-button" type="button" aria-label="发送">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4 20-7z"></path></svg>
+          </button>
+        </div>
+      </form>
+    </section>
+  </main>
+</body>
+</html>
