@@ -29,8 +29,8 @@ _Avoid_: Client notice、Conversation error
 
 ### My-Code-X 产品概念
 
- **Active work** ：
-My-Code-X 面向用户组织出来的“需要关注的工作集合”，一个 Active work 通常关联一个 My-Code-X Workspace、一个 Codex `Thread`。
+**Active Work**:
+My-Code-X 面向用户组织出来的“需要关注的工作现场”，一个 Active Work 通常关联一个 My-Code-X Workspace、一个 Codex `Thread`，并组织当前 `Conversation`、`Pending interaction`、`Thread action` 和相关状态。
 _Avoid_: Thread、Conversation
 
 **Conversation**:
@@ -106,6 +106,7 @@ _Avoid_: Codex system notice、Error item、Conversation item
 - **Work trace**、**Unknown item** 和 **Error item** 都是 **Conversation item** 的分类。
 - **Codex system notice** 可以被投影为 **Client notice**，但二者不是同一个概念。
 - **Codex runtime event** 可以被投影为 **Client event**，但二者不是同一个概念。
+- **Active Work** 是用户关注的工作现场；**Conversation** 是其中当前选中 Codex **Thread** 的只读 timeline 投影。
 - **Thread action** 可以改变当前 **Selection** 或触发 **Conversation** 刷新，但不由 **Conversation** timeline 拥有。
 
 ## Example dialogue
@@ -122,6 +123,7 @@ _Avoid_: Codex system notice、Error item、Conversation item
 ## Flagged ambiguities
 
 - “Conversation” 曾被用来泛指 Codex 对话、页面和 timeline；已解决：**Conversation** 只指当前选中 Codex **Thread** 的只读 timeline 投影。
+- “Active Work” 是 My-Code-X 的工作现场概念；**Conversation**、**Pending interaction** 和 **Thread action** 都可以被 Active Work 组织，但不等同于 Active Work。
 - “Workspace” 曾被用来同时表示 My-Code-X 保存记录和 Codex cwd 查询范围；已解决：保存记录叫 **My-Code-X Workspace**，Codex cwd 查询范围叫 **Codex cwd scope**。
 - “runtime event” 曾可能混指 Codex 事件和浏览器 SSE 事件；已解决：Codex 侧叫 **Codex runtime event**，Web client 侧叫 **Client event**。
 - “notice” 曾可能混指 Codex 系统提示和 My-Code-X 前端提示；已解决：Codex 侧叫 **Codex system notice**，Web client 侧叫 **Client notice**。
