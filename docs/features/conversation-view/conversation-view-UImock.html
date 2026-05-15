@@ -201,8 +201,31 @@
     .transcript-row {
       position: relative;
       padding: 11px 14px;
-      border-bottom: 1px solid var(--line);
+      border-bottom: 0;
       background: #fff;
+    }
+
+    .message-row {
+      padding-bottom: 2px;
+      border-bottom: 0;
+    }
+
+    .toolbar-row {
+      padding: 0 14px 8px;
+      border-bottom: 0;
+      background: #fff;
+    }
+
+    .toolbar-row .copy-wrap {
+      margin-top: 0;
+    }
+
+    .toolbar-row--before-user {
+      border-bottom: 1px solid var(--line);
+    }
+
+    .user-message-row {
+      padding-top: 8px;
     }
 
     .event-meta {
@@ -240,7 +263,6 @@
     .copy-inline {
       width: 28px;
       height: 26px;
-      margin-top: 5px;
       border: 0;
       border-radius: 8px;
       background: transparent;
@@ -257,14 +279,25 @@
 
     .copy-wrap {
       display: flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 26px;
+      margin-top: 5px;
     }
 
     .copy-wrap--user {
       justify-content: flex-end;
     }
 
+    .message-time {
+      color: var(--quiet);
+      font-size: 10.5px;
+      line-height: 1.2;
+      white-space: nowrap;
+    }
+
     .code-block {
-      margin: 8px 0 0;
+      margin: 0;
       padding: 8px 10px;
       border-left: 3px solid var(--line-strong);
       background: #f8fafc;
@@ -274,6 +307,31 @@
       font-size: 11.5px;
       line-height: 1.45;
       white-space: pre;
+    }
+
+    .code-block-wrap {
+      position: relative;
+      margin: 8px 0 0;
+    }
+
+    .code-block-copy {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 26px;
+      height: 24px;
+      border: 0;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.88);
+      color: var(--quiet);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .code-block-copy:hover {
+      background: #fff;
+      color: var(--ink);
     }
 
     .event-row {
@@ -307,9 +365,8 @@
     }
 
     .event-row--error {
-      background: #fffafa;
-      border-top: 1px solid #f0b4ae;
-      border-bottom-color: #f0b4ae;
+      background: #fff;
+      border-top: 0;
     }
 
     .event-row--error .event-rule {
@@ -367,15 +424,15 @@
       color: var(--red);
     }
 
-    .event-row--retry {
+    .event-row--recovering {
       background: #f7fbff;
     }
 
-    .event-row--retry .event-rule {
+    .event-row--recovering .event-rule {
       background: var(--blue);
     }
 
-    .status-chip--retry {
+    .status-chip--recovering {
       color: var(--blue);
     }
 
@@ -545,6 +602,7 @@
     }
 
     .copy-inline svg,
+    .code-block-copy svg,
     .disclosure svg {
       width: 15px;
       height: 15px;
@@ -588,58 +646,66 @@
 
       <div class="conversation-timeline" aria-label="Conversation timeline">
         <ol class="timeline-list">
-          <li class="transcript-row">
+          <li class="transcript-row message-row">
+            <article aria-label="Assistant message">
+              <div class="message-text">
+                <p>I found the write path and the CLI parser. I'll add the flag before touching the output layer.</p>
+              </div>
+            </article>
+          </li>
+
+          <li class="toolbar-row toolbar-row--before-user" aria-label="Assistant message toolbar">
+            <div class="copy-wrap">
+              <button class="copy-inline" type="button" aria-label="复制 Codex 消息">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+              <time class="message-time" datetime="2026-05-15T09:40:00">09:40</time>
+            </div>
+          </li>
+
+          <li class="transcript-row message-row user-message-row">
             <article aria-label="User message">
               <div class="message-text message-text--user">
                 <p>Add a CLI flag <code>--dry-run</code> to skip writes.</p>
               </div>
-              <div class="copy-wrap copy-wrap--user">
-                <button class="copy-inline" type="button" aria-label="复制用户消息">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                </button>
-              </div>
             </article>
           </li>
 
-          <li class="transcript-row">
+          <li class="toolbar-row user-toolbar-row" aria-label="User message toolbar">
+            <div class="copy-wrap copy-wrap--user">
+              <time class="message-time" datetime="2026-05-15T09:41:00">09:41</time>
+              <button class="copy-inline" type="button" aria-label="复制用户消息">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
+          </li>
+
+          <li class="transcript-row message-row">
             <article aria-label="Assistant message">
               <div class="message-text">
                 <p>I'll add the flag and thread it through the write path. Here's the patch.</p>
               </div>
-              <pre class="code-block"><code>diff --git a/src/app.rs b/src/app.rs
+              <div class="code-block-wrap">
+                <button class="code-block-copy" type="button" aria-label="复制代码块">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+                </button>
+                <pre class="code-block"><code>diff --git a/src/app.rs b/src/app.rs
 @@ -23,6 +23,9 @@ let matches = clap::Command::new("app")
      .arg(Arg::new("dry-run").long("dry-run")
          .action(clap::ArgAction::SetTrue),</code></pre>
-              <div class="copy-wrap">
-                <button class="copy-inline" type="button" aria-label="复制 Codex 消息">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
-                </button>
               </div>
             </article>
           </li>
 
-          <li class="transcript-row event-row event-row--retry" role="status">
-            <span class="event-rule" aria-hidden="true"></span>
-            <div class="event-content" aria-label="Turn retry status">
-              <div class="event-head">
-                <p class="event-type">connection_retry</p>
-                <span class="status-chip status-chip--retry">2/5</span>
-                <button class="disclosure" type="button" aria-label="展开重连状态详情">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
-                </button>
-              </div>
-              <p class="event-preview">Reconnecting...</p>
-            </div>
-          </li>
-
           <li class="transcript-row event-row">
             <span class="event-rule" aria-hidden="true"></span>
-            <article class="event-content" aria-label="Codex work trace">
+            <!-- Expanded state example. -->
+            <article class="event-content" aria-label="Work trace item">
               <div class="event-head">
                 <p class="event-type">command_execution</p>
                 <span class="status-chip status-chip--work">completed</span>
-                <button class="disclosure" type="button" aria-label="展开工作痕迹详情">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                <button class="disclosure" type="button" aria-label="收起工作痕迹详情">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
                 </button>
               </div>
               <p class="event-preview">cargo check --workspace --quiet</p>
@@ -654,12 +720,13 @@
 
           <li class="transcript-row event-row event-row--unknown">
             <span class="event-rule" aria-hidden="true"></span>
-            <article class="event-content" aria-label="Unknown Codex item">
+            <!-- Expanded state example. -->
+            <article class="event-content" aria-label="Unknown item">
               <div class="event-head">
                 <p class="event-type">thread_realtime_item_added</p>
                 <span class="status-chip status-chip--unknown">received</span>
-                <button class="disclosure" type="button" aria-label="展开未知条目详情">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                <button class="disclosure" type="button" aria-label="收起未知条目详情">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
                 </button>
               </div>
               <p class="event-preview">Realtime event from Codex runtime.</p>
@@ -678,34 +745,76 @@
 
           <li class="transcript-row event-row event-row--error">
             <span class="event-rule" aria-hidden="true"></span>
-            <article class="event-content" aria-label="Conversation error" role="alert">
+            <article class="event-content" aria-label="Error item" role="alert">
               <div class="event-head">
-                <p class="event-type">command_execution</p>
+                <p class="event-type">usage_exceeded</p>
                 <span class="status-chip status-chip--error">failed</span>
-                <button class="disclosure" type="button" aria-label="收起错误详情">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
-                </button>
               </div>
               <p class="error-title">
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5"></path><path d="M12 17h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
-                Terminal failure
+                Usage limit reached
               </p>
-              <p class="error-message">error: test failed, to rerun pass --workspace</p>
+              <p class="error-message">Your usage is used up. Try again after the quota resets.</p>
               <dl class="field-list">
                 <div class="field-row">
-                  <dt class="field-name">turnId</dt>
-                  <dd class="field-value">turn_01HY...</dd>
+                  <dt class="field-name">source</dt>
+                  <dd class="field-value">codex-app-server</dd>
                 </div>
                 <div class="field-row">
-                  <dt class="field-name">willRetry</dt>
-                  <dd class="field-value">false</dd>
+                  <dt class="field-name">code</dt>
+                  <dd class="field-value">usage_exceeded</dd>
                 </div>
                 <div class="field-row">
-                  <dt class="field-name">duration_ms</dt>
-                  <dd class="field-value">12,842</dd>
+                  <dt class="field-name">resetAt</dt>
+                  <dd class="field-value">2026-05-15T18:00:00+08:00</dd>
                 </div>
               </dl>
             </article>
+          </li>
+
+          <li class="toolbar-row toolbar-row--before-user" aria-label="Assistant message toolbar">
+            <div class="copy-wrap">
+              <button class="copy-inline" type="button" aria-label="复制 Codex 消息">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+              <time class="message-time" datetime="2026-05-15T09:42:00">09:42</time>
+            </div>
+          </li>
+
+          <li class="transcript-row message-row user-message-row">
+            <article aria-label="User message">
+              <div class="message-text message-text--user">
+                <p>Keep the implementation small and leave unrelated cleanup alone.</p>
+              </div>
+            </article>
+          </li>
+
+          <li class="toolbar-row user-toolbar-row" aria-label="User message toolbar">
+            <div class="copy-wrap copy-wrap--user">
+              <time class="message-time" datetime="2026-05-15T09:43:00">09:43</time>
+              <button class="copy-inline" type="button" aria-label="复制用户消息">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
+          </li>
+
+          <li class="transcript-row message-row">
+            <article aria-label="Assistant message">
+              <div class="message-text">
+                <p>Understood. I'll keep the change focused and report only the files touched.</p>
+              </div>
+            </article>
+          </li>
+
+          <li class="transcript-row event-row event-row--recovering" role="status">
+            <span class="event-rule" aria-hidden="true"></span>
+            <div class="event-content" aria-label="Recovering error">
+              <div class="event-head">
+                <p class="event-type">connection_retry</p>
+                <span class="status-chip status-chip--recovering">2/5</span>
+              </div>
+              <p class="event-preview">Reconnecting...</p>
+            </div>
           </li>
         </ol>
       </div>
