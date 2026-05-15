@@ -8,14 +8,14 @@ Conversation View 是 My-Code-X 的核心主界面，围绕当前选中 Codex `T
 
 ### Conversation View shell
 
-Conversation View shell 是承载当前 `Conversation`、`Composer`、`Pending interaction` 和页面状态的移动端主界面框架。它让用户阅读当前 Codex `Thread` 的 timeline 投影，并在同一界面继续当前 `Thread`。
+Conversation View shell 是承载当前 `Conversation`、`Composer` 和页面状态的移动端主界面框架。它让用户阅读当前 Codex `Thread` 的 timeline 投影，并在同一界面继续当前 `Thread`。
 
 Functional Requirements:
 
 - 页面展示当前 `Conversation` timeline。
 - `Conversation item` 按发生顺序展示。
 - 页面支持 `message`、`work-trace`、`unknown`、`error` 四类 `Conversation item`。
-- 页面在 timeline 外展示当前 `Thread` 的 `Pending interaction`。
+- 页面可以在当前 active `Turn` 附近展示 `Recovering error` 临时 overlay。
 - 页面展示 `Conversation timeline state`。
 - 页面在 timeline 外展示 `Conversation View notice`。
 - 无 Codex `Thread` 选中时，页面展示无 `Thread` 选中状态。
@@ -68,7 +68,6 @@ Functional Requirements:
 - Work trace item 当前不按 Codex 原生 type 做专门摘要或专门详情渲染。
 - 是否存在专门渲染不改变 Work trace item 和 `Unknown item` 的分类边界。
 - 复杂字段值以安全、可读的文本形式展示。
-- 字段内容过长时需要处理策略（待设计）。
 
 UX Decisions:
 
@@ -79,6 +78,7 @@ UX Decisions:
 - Work trace item 不显示额外的分类文案，例如 `Work trace`。
 - 用户可以展开查看详情。
 - 展开详情后使用通用字段列表，以字段名和值的形式分别显示。
+- 展开详情后不改变用户浏览位置
 
 
 ### Unknown item
@@ -92,7 +92,6 @@ Functional Requirements:
 - Unknown item 如果存在 status 字段，则保留 status。
 - Unknown item 不按来源 type 做专门摘要或专门详情渲染。
 - 复杂字段值以安全、可读的文本形式展示。
-- 长内容支持分段查看。
 
 UX Decisions:
 
@@ -104,11 +103,11 @@ UX Decisions:
 - Unknown item 仍使用通用字段渲染，不把完整 raw payload 作为专门内容区展示。
 - 用户可以展开查看详情。
 - 展开详情后使用通用字段列表，以字段名和值的形式分别显示。
-- 长内容先展示有限内容，并提供继续查看入口。
+
 
 ### Error item
 
-Error item 展示可归属到当前 Codex `Thread` 和 `Turn` 的 terminal failure。它帮助用户理解当前 timeline 中哪里出现失败，以及失败的原始信息。
+Error item 展示可归属到当前 Codex `Thread` 和 `Turn` 的 failure。它帮助用户理解当前 timeline 中哪里出现失败，以及失败的原始信息。
 
 Functional Requirements:
 
@@ -135,21 +134,22 @@ Recovering error 展示当前 active Codex `Turn` 中 Codex 仍会继续尝试�
 Functional Requirements:
 
 - Codex `error` notification with `willRetry = true` 表示当前 `Turn` 的 `Recovering error`，不作为 `Error item`。
-- Recovering error 绑定当前 active `Turn`，可以在 `Conversation` timeline 内靠近当前 active `Turn` 展示，但不作为 `Conversation item`，不参与 `Conversation item` 排序。
+- Recovering error 绑定当前 active `Turn`，可以在 timeline 区域靠近当前 active `Turn` 展示，但不属于 `Conversation item`，也不进入 `Conversation` timeline 排序。
 - 同一个 active `Turn` 再次收到 `willRetry = true` 的 Codex `error` notification 时，覆盖前一个 `Recovering error`。
 - 收到同一个 active `Turn` 的后续正常 `Codex runtime event`，例如 Codex `item/*` delta、progress 或 completed notification 时，清除 `Recovering error`。
 - 收到同一个 active `Turn` 的 Codex `turn/completed` notification 时，清除 `Recovering error`。
-- 如果后续收到 Codex `error` notification with `willRetry = false` 或 `turn/completed` with `status = failed`，按 `Error item` 规则展示 terminal failure。
+- 如果后续收到 Codex `error` notification with `willRetry = false` 或 `turn/completed` with `status = failed`，按 `Error item` 规则展示 failure。
 - Recovering error 保留对应来源里的错误字段，例如 `source`、`threadId`、`turnId`、`willRetry`、`message`、`codexErrorInfo`、`additionalDetails`。
+- Recovering error 不参与 `Conversation item` 排序，不作为恢复历史中的正式 timeline 内容。
 
 UX Decisions:
 
-- Codex `error` notification with `willRetry = true` 在当前进行中的 `Turn` 区域展示临时提示，并靠近最新 `Message item` 或正在更新的 `Conversation item`。
+- Codex `error` notification with `willRetry = true` 在当前进行中的 `Turn` 区域作为临时 overlay 展示。
 - 临时提示使用覆盖式显示，例如 `Reconnecting... 1/5` 被后续 `Reconnecting... 2/5` 替换。
 
 ### Conversation View notice
 
-Conversation View notice 展示不应该投影为 `Conversation item`，也不属于 `Recovering error` 或 `Pending interaction` 的提示、错误或警告。本功能范围内，只涉及上游 Codex 可能出现的提示、错误或警告。
+Conversation View notice 展示不应该投影为 `Conversation item`，也不属于 `Recovering error` 的提示、错误或警告。本功能范围内，只涉及上游 Codex 可能出现的提示、错误或警告。
 
 Functional Requirements:
 
@@ -176,7 +176,6 @@ Functional Requirements:
 - 当前 `Conversation` 恢复失败，且没有可读 timeline 时，页面展示失败状态。
 - 页面已有可读 timeline，但正在同步、重新连接或无法确认内容是否最新时，页面保留 timeline，并展示非阻塞提示。
 - 无 Codex `Thread` 选中状态不属于 `Conversation timeline state`。
-- `Pending interaction` 的展示优先级高于 `Conversation timeline state` 提示。
 - Codex `Turn` 的 running、completed、failed、interrupted 状态不由 `Conversation timeline state` 表达。
 - Conversation timeline state 不作为 `Conversation item` 展示，不参与 timeline 排序。
 
@@ -212,7 +211,7 @@ UX Decisions:
 
 ### Composer
 
-Composer 是 Conversation View 底部的用户输入控制台，用于向当前选中 Codex `Thread` 发送普通用户输入。它根据当前 `Thread` 和 active `Turn` 状态，将用户输入映射为 Codex `turn/start` 或 `turn/steer`。
+Composer 是 Conversation View 底部的用户输入控制台，用于向当前选中 Codex `Thread` 发送普通用户输入。它根据当前 `Thread` 是否存在已知 active `Turn`，将用户输入映射为 Codex `turn/start` 或 `turn/steer`。
 
 Functional Requirements:
 
@@ -220,18 +219,16 @@ Functional Requirements:
 - Composer 为当前用户输入保存本地草稿。
 - 用户可以输入多行文本。
 - 空文本不能发送。
-- 当前 `Thread` 为 idle 时，发送输入触发 Codex `turn/start`。
-- 当前 `Thread` 存在可 steer 的 active regular `Turn` 时，发送输入触发 Codex `turn/steer`。
-- `turn/steer` 必须携带当前 active `Turn` 的 `expectedTurnId`。
-- 当前 active `Turn` 不可 steer 时，Composer 不应默默降级为新 `turn/start`。
+- 当前 `Thread` 已知没有 active `Turn` 时，发送输入触发 Codex `turn/start`。
+- 当前 `Thread` 有已知 active `Turn` 时，发送输入触发 Codex `turn/steer`。
+- `turn/steer` 必须携带当前已知 active `Turn` 的 `expectedTurnId`。
+- My-Code-X 不预判 Codex 是否会接受 `turn/steer`；如果 Codex 拒绝 `turn/steer`，Composer 保留草稿并展示非阻塞错误提示。
 - 发送请求被 Codex 接受后，Composer 清空已发送草稿。
 - 发送请求失败时，Composer 恢复原草稿，并展示非阻塞错误提示。
 - 发送请求被 Codex 接受后，timeline 以后续 Codex `ThreadItem` 和 `Codex runtime event` 投影为准；Composer 不自行伪造 committed `Conversation item`。
-- Composer 不用于响应 `Pending interaction`。
-- 当前没有选中 Codex `Thread`、`Conversation` 正在恢复、连接不可用或目标状态不明确时，Composer 保留草稿但禁用发送。
-- 当前存在 active `Turn` 时，Composer 的主操作可以切换为中断当前 `Turn`，触发 Codex `turn/interrupt`。
+- 当前没有选中 Codex `Thread`、`Conversation` 正在恢复、连接不可用或目标 active/idle 状态不明确时，Composer 保留草稿但禁用发送。
+- 当前存在已知 active `Turn` 时，Composer 的主操作可以切换为中断当前 `Turn`，触发 Codex `turn/interrupt`。
 - 中断当前 `Turn` 不使用并列的额外主按钮。
-- 当 `Pending interaction` 存在时，Composer 主操作依然可用。
 
 UX Decisions:
 
@@ -240,8 +237,6 @@ UX Decisions:
 - 输入框默认低高度，随内容增长到最大高度；超过最大高度后输入框内部滚动。
 - 主操作按钮固定在 Composer 右侧或右下角，保持单手可达。
 - active `Turn` 中的主操作按钮应根据当前动作切换 icon 或可访问名称，例如 steer 或 interrupt。
-- Pending interaction 存在时，固定决策区域展示在 Composer 上方，并拥有更高视觉优先级。
-- Pending interaction 存在时，Composer 可以保留草稿，但应通过层级明确它不是用来回答当前决策请求。
 - 高影响动作，例如 `turn/interrupt`，需要防误触处理。
 - 草稿内容停留在输入区域，不进入 timeline。
 - 发送失败、steer rejected 或连接异常时，用户输入不能丢失。
@@ -249,3 +244,4 @@ UX Decisions:
 
 ## Out of Scope
 - Codex agent 能力重设计
+- `Pending interaction` 的一切功能

@@ -453,7 +453,7 @@
       color: var(--ink);
     }
 
-    .event-preview {
+    .event-note {
       margin: 6px 0 0;
       color: var(--muted);
       font-size: 12px;
@@ -699,7 +699,7 @@
 
           <li class="transcript-row event-row">
             <span class="event-rule" aria-hidden="true"></span>
-            <!-- Expanded state example. -->
+            <!-- Expanded details example; the note below is rendered only while details are expanded. -->
             <article class="event-content" aria-label="Work trace item">
               <div class="event-head">
                 <p class="event-type">command_execution</p>
@@ -708,7 +708,7 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
                 </button>
               </div>
-              <p class="event-preview">cargo check --workspace --quiet</p>
+              <p class="event-note">cargo check --workspace --quiet</p>
               <dl class="field-list">
                 <div class="field-row">
                   <dt class="field-name">exitCode</dt>
@@ -720,7 +720,7 @@
 
           <li class="transcript-row event-row event-row--unknown">
             <span class="event-rule" aria-hidden="true"></span>
-            <!-- Expanded state example. -->
+            <!-- Expanded details example; the note below is rendered only while details are expanded. -->
             <article class="event-content" aria-label="Unknown item">
               <div class="event-head">
                 <p class="event-type">thread_realtime_item_added</p>
@@ -729,7 +729,7 @@
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
                 </button>
               </div>
-              <p class="event-preview">Realtime event from Codex runtime.</p>
+              <p class="event-note">Realtime event from Codex runtime.</p>
               <dl class="field-list">
                 <div class="field-row">
                   <dt class="field-name">source</dt>
@@ -813,7 +813,7 @@
                 <p class="event-type">connection_retry</p>
                 <span class="status-chip status-chip--recovering">2/5</span>
               </div>
-              <p class="event-preview">Reconnecting...</p>
+              <p class="event-note">Reconnecting...</p>
             </div>
           </li>
         </ol>
