@@ -1,6 +1,6 @@
-# Feature-Multi Active Work
+# Feature-Workspace Thread Browser
 
-`Multi Active Work` 让用户在 My-Code-X 中同时关注、切换、恢复和处理多个仍需注意的 Codex 工作，使移动端使用体验更适合并行开发。
+`Workspace Thread Browser` 让用户在 My-Code-X 中按 `My-Code-X Workspace` 查看、切换、恢复和整理 Codex `Thread`，使移动端使用体验更适合并行开发。
 
 ## User identity
 
