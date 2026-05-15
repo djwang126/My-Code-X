@@ -7,21 +7,24 @@
   <style>
     :root {
       color-scheme: light;
-      --blue-900: #0b2a5b;
-      --blue-800: #123c7c;
-      --blue-700: #1556a8;
-      --blue-600: #1d6fd6;
-      --blue-100: #dbeafe;
-      --blue-50: #eff6ff;
-      --ink: #0f172a;
-      --muted: #475569;
-      --line: #d8e2ef;
-      --line-strong: #b8c8db;
+      --ink: #172033;
+      --muted: #5f6d7e;
+      --quiet: #8490a0;
+      --line: #d9e0ea;
+      --line-strong: #bdc8d7;
       --paper: #ffffff;
-      --wash: #f6f9fd;
-      --soft: #eef5ff;
-      --danger: #b42318;
-      --shadow: 0 20px 55px rgba(15, 23, 42, 0.13);
+      --canvas: #f4f7fb;
+      --assistant: #ffffff;
+      --user: #e8f2ff;
+      --blue: #206bc4;
+      --blue-soft: #dbeafe;
+      --green: #168252;
+      --green-soft: #dff7eb;
+      --amber: #99640d;
+      --amber-soft: #fff3d7;
+      --red: #b42318;
+      --red-soft: #ffe4e1;
+      --shadow: 0 18px 46px rgba(23, 32, 51, 0.14);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
@@ -32,8 +35,7 @@
     body {
       margin: 0;
       min-height: 100vh;
-      background:
-        linear-gradient(180deg, #eaf3ff 0%, #f8fbff 40%, #ffffff 100%);
+      background: #e9eef5;
       color: var(--ink);
     }
 
@@ -48,17 +50,19 @@
 
     .page {
       min-height: 100vh;
-      padding: 18px 12px;
+      padding: 16px 10px;
       display: flex;
       justify-content: center;
     }
 
     .phone {
+      position: relative;
       width: min(100%, 430px);
-      min-height: calc(100vh - 36px);
+      min-height: calc(100vh - 32px);
+      max-height: 900px;
       background: var(--paper);
-      border: 1px solid rgba(15, 86, 168, 0.18);
-      border-radius: 28px;
+      border: 1px solid rgba(23, 32, 51, 0.1);
+      border-radius: 24px;
       box-shadow: var(--shadow);
       overflow: hidden;
       display: flex;
@@ -66,36 +70,29 @@
     }
 
     .topbar {
-      padding: 14px 14px 10px;
+      padding: 12px 12px 10px;
       border-bottom: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.94);
-      backdrop-filter: blur(18px);
+      background: rgba(255, 255, 255, 0.96);
+      backdrop-filter: blur(14px);
     }
 
     .topline {
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 9px;
     }
 
     .icon-button {
-      width: 44px;
-      height: 44px;
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
       border: 1px solid var(--line);
-      border-radius: 12px;
+      border-radius: 8px;
       background: #fff;
-      color: var(--blue-800);
+      color: var(--ink);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      transition: border-color 180ms ease, background 180ms ease, color 180ms ease;
-    }
-
-    .icon-button:hover,
-    .icon-button:focus-visible {
-      border-color: var(--blue-600);
-      background: var(--blue-50);
-      outline: none;
     }
 
     .title-group {
@@ -107,268 +104,395 @@
       margin: 0 0 2px;
       color: var(--muted);
       font-size: 12px;
-      line-height: 1.35;
+      line-height: 1.25;
     }
 
     .title {
       margin: 0;
-      color: var(--ink);
       font-size: 16px;
-      line-height: 1.25;
+      line-height: 1.22;
       font-weight: 680;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .turn-inline-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: fit-content;
+      max-width: 100%;
+      margin-top: 8px;
+      padding: 7px 9px;
+      border: 1px solid #c9d7e8;
+      border-radius: 8px;
+      background: #f7fbff;
+      color: #294867;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .turn-inline-status svg {
+      flex: 0 0 auto;
     }
 
     .conversation-timeline {
       flex: 1;
       overflow: auto;
-      padding: 16px 14px 14px;
-      background: var(--wash);
+      padding: 14px 12px 12px;
+      background: var(--canvas);
     }
 
-    .event {
-      position: relative;
-      margin: 0 0 14px;
-    }
-
-    .event-header {
+    .timeline-list {
       display: flex;
-      align-items: baseline;
-      justify-content: space-between;
+      flex-direction: column;
       gap: 12px;
-      margin: 0 0 5px;
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.3;
+      margin: 0;
+      padding: 0;
+      list-style: none;
     }
 
-    .event-kind {
-      font-weight: 650;
-      color: var(--blue-900);
+    .timeline-item {
+      display: flex;
+      width: 100%;
     }
 
-    .event-time {
-      flex: 0 0 auto;
-      color: #64748b;
+    .timeline-item--user {
+      justify-content: flex-end;
     }
 
-    .block {
-      border: 1px solid var(--line);
-      border-radius: 10px;
-      background: rgba(255, 255, 255, 0.94);
-      box-shadow: 0 1px 1px rgba(15, 23, 42, 0.03);
+    .timeline-item--assistant,
+    .timeline-item--trace,
+    .timeline-item--unknown,
+    .timeline-item--error {
+      justify-content: flex-start;
+    }
+
+    .message-card,
+    .trace-card,
+    .error-card {
+      max-width: min(100%, 376px);
+      border-radius: 8px;
       overflow: hidden;
     }
 
-    .message {
-      padding: 11px 12px;
+    .message-card {
+      width: fit-content;
+      padding: 10px 12px 9px;
+      border: 1px solid var(--line);
+      line-height: 1.55;
       font-size: 14px;
-      line-height: 1.58;
+      box-shadow: 0 1px 1px rgba(23, 32, 51, 0.04);
     }
 
-    .message p {
+    .message-card--user {
+      max-width: 84%;
+      border-color: #bdd3ee;
+      background: var(--user);
+    }
+
+    .message-card--assistant {
+      max-width: 92%;
+      background: var(--assistant);
+    }
+
+    .message-card p {
       margin: 0;
     }
 
-    .message p + p {
+    .message-card p + p {
       margin-top: 8px;
     }
 
-    .user .block {
-      border-color: #b7c9e8;
-      background: #f9fbff;
+    .code-block {
+      position: relative;
+      margin: 8px 0 0;
+      border: 1px solid #d4dbe6;
+      border-radius: 8px;
+      background: #f7f9fc;
+      overflow: hidden;
     }
 
-    .tool-card {
+    .code-block pre {
+      margin: 0;
+      padding: 10px 11px;
+      overflow-x: auto;
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .copy-button {
+      margin-top: 8px;
+      min-height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 0 8px;
+    }
+
+    .trace-card {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: 0 1px 1px rgba(23, 32, 51, 0.04);
+    }
+
+    .trace-card--work {
+      border-left: 4px solid var(--green);
+    }
+
+    .trace-card--unknown {
+      border-style: dashed;
+      border-left: 4px solid var(--amber);
+      background: #fffdf7;
+    }
+
+    .trace-summary {
       display: grid;
-      grid-template-columns: 34px minmax(0, 1fr);
-      gap: 10px;
+      grid-template-columns: 28px minmax(0, 1fr) auto;
+      gap: 9px;
+      align-items: center;
       padding: 10px;
-      align-items: start;
     }
 
-    .tool-icon {
-      width: 34px;
-      height: 34px;
-      border-radius: 9px;
-      background: var(--blue-50);
-      color: var(--blue-700);
-      border: 1px solid var(--blue-100);
-      display: flex;
+    .trace-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
     }
 
-    .tool-title {
-      margin: 0;
-      font-size: 13px;
-      line-height: 1.35;
-      font-weight: 670;
-      color: var(--ink);
+    .trace-card--work .trace-icon {
+      background: var(--green-soft);
+      color: var(--green);
     }
 
-    .code-line {
-      margin: 4px 0 0;
-      padding: 7px 8px;
-      border: 1px solid #d9e5f5;
-      border-radius: 7px;
-      background: #f7fbff;
-      color: #123c7c;
-      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+    .trace-card--unknown .trace-icon {
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .trace-title {
+      min-width: 0;
+    }
+
+    .trace-type {
+      margin: 0;
+      color: var(--ink);
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
       font-size: 12px;
-      line-height: 1.45;
+      line-height: 1.35;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
     }
 
-    .tool-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 8px 10px;
-      border-top: 1px solid var(--line);
+    .status-pill {
+      min-width: 0;
+      max-width: 82px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: #f7f9fc;
       color: var(--muted);
-      font-size: 12px;
-      background: #fbfdff;
+      font-size: 11px;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    .text-button {
-      min-height: 34px;
-      padding: 0 9px;
+    .field-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0 10px 10px 47px;
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: minmax(72px, 0.38fr) minmax(0, 1fr);
+      gap: 8px;
+      margin: 0;
+      align-items: start;
+    }
+
+    .field-name {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .field-value {
+      margin: 0;
+      min-width: 0;
+      color: var(--ink);
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+
+    .field-value pre {
+      margin: 0;
+      max-height: 86px;
+      overflow: auto;
+      padding: 7px 8px;
+      border: 1px solid #d8dee8;
+      border-radius: 8px;
+      background: #f7f9fc;
+      white-space: pre-wrap;
+    }
+
+    .expand-button {
+      justify-self: start;
+      min-height: 30px;
+      padding: 0 8px;
       border: 1px solid var(--line-strong);
       border-radius: 8px;
       background: #fff;
-      color: var(--blue-800);
+      color: var(--muted);
       font-size: 12px;
-      font-weight: 640;
-      transition: background 180ms ease, border-color 180ms ease;
     }
 
-    .text-button:hover,
-    .text-button:focus-visible {
-      background: var(--blue-50);
-      border-color: var(--blue-600);
-      outline: none;
+    .error-card {
+      width: 100%;
+      border: 1px solid #f0b4ae;
+      border-left: 4px solid var(--red);
+      background: #fffafa;
     }
 
-    .plan {
+    .error-head {
       display: grid;
-      gap: 7px;
-      padding: 10px 12px 12px;
+      grid-template-columns: 28px minmax(0, 1fr);
+      gap: 9px;
+      padding: 10px 10px 8px;
+      align-items: start;
     }
 
-    .plan-row {
+    .error-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--red-soft);
+      color: var(--red);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .error-title {
+      margin: 0 0 3px;
+      color: var(--red);
+      font-size: 13px;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+
+    .error-message {
+      margin: 0;
+      color: #641e16;
+      font-size: 13px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+
+    .error-card .field-list {
+      padding-left: 47px;
+    }
+
+    .decision-panel {
+      border-top: 1px solid #f0b4ae;
+      background: #fff9f8;
+      padding: 10px 12px;
+    }
+
+    .decision-panel__head {
       display: grid;
-      grid-template-columns: 18px minmax(0, 1fr);
-      gap: 8px;
+      grid-template-columns: 28px minmax(0, 1fr);
+      gap: 9px;
+      align-items: start;
+    }
+
+    .decision-panel__icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 8px;
+      background: var(--red-soft);
+      color: var(--red);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .decision-panel__title {
+      margin: 0 0 4px;
+      color: #641e16;
+      font-size: 13px;
+      font-weight: 720;
+      line-height: 1.35;
+    }
+
+    .decision-panel__body {
+      margin: 0;
       color: var(--ink);
       font-size: 13px;
       line-height: 1.45;
     }
 
-    .check {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      border: 1px solid var(--blue-600);
-      color: var(--blue-700);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      margin-top: 1px;
-    }
-
-    .check.pending {
-      border-color: var(--line-strong);
-      color: transparent;
-      background: #fff;
-    }
-
-    .approval-card {
-      padding: 12px;
-      border-color: #f1b8b3;
-      background: #fff;
-    }
-
-    .approval-title {
-      margin: 0 0 7px;
-      color: #7a271a;
-      font-size: 13px;
-      font-weight: 720;
-      line-height: 1.4;
-    }
-
-    .approval-copy {
-      margin: 0;
-      color: var(--ink);
-      font-size: 13px;
-      line-height: 1.52;
-    }
-
-    .approval-actions {
+    .decision-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 8px;
-      margin-top: 11px;
+      margin-top: 10px;
     }
 
     .primary,
     .secondary {
-      min-height: 44px;
-      border-radius: 9px;
+      min-height: 42px;
+      border-radius: 8px;
       font-weight: 680;
       border: 1px solid transparent;
-      transition: background 180ms ease, border-color 180ms ease;
     }
 
     .primary {
-      background: var(--blue-700);
+      background: var(--blue);
       color: #fff;
-    }
-
-    .primary:hover,
-    .primary:focus-visible {
-      background: var(--blue-800);
-      outline: none;
     }
 
     .secondary {
       background: #fff;
-      color: #7a271a;
-      border-color: #f1b8b3;
-    }
-
-    .secondary:hover,
-    .secondary:focus-visible {
-      background: #fff7f6;
-      outline: none;
+      color: var(--red);
+      border-color: #f0b4ae;
     }
 
     .composer {
       border-top: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.96);
+      background: rgba(255, 255, 255, 0.98);
       padding: 10px 12px 12px;
     }
 
     .composer-box {
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 44px;
+      grid-template-columns: minmax(0, 1fr) 42px;
       gap: 8px;
       align-items: end;
     }
 
     textarea {
       width: 100%;
-      min-height: 48px;
-      max-height: 130px;
-      resize: vertical;
+      min-height: 44px;
+      max-height: 124px;
+      resize: none;
       border: 1px solid var(--line-strong);
-      border-radius: 12px;
-      padding: 12px;
+      border-radius: 8px;
+      padding: 11px;
       color: var(--ink);
       background: #fff;
       outline: none;
@@ -377,32 +501,60 @@
     }
 
     textarea:focus {
-      border-color: var(--blue-600);
-      box-shadow: 0 0 0 3px rgba(29, 111, 214, 0.14);
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(32, 107, 196, 0.14);
     }
 
     .send-button {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      border: 1px solid var(--blue-700);
-      background: var(--blue-700);
-      color: #fff;
+      width: 42px;
+      height: 42px;
+      border-radius: 8px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      transition: background 180ms ease;
     }
 
-    .send-button:hover,
-    .send-button:focus-visible {
-      background: var(--blue-800);
-      outline: none;
+    .send-button {
+      border: 1px solid var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .send-button--interrupt {
+      border-color: var(--red);
+      background: #fff;
+      color: var(--red);
+    }
+
+    .toast {
+      position: absolute;
+      left: 18px;
+      right: 18px;
+      top: 46%;
+      display: grid;
+      grid-template-columns: 22px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      padding: 10px 12px;
+      border-radius: 8px;
+      background: rgba(23, 32, 51, 0.92);
+      color: #fff;
+      font-size: 13px;
+      line-height: 1.35;
+      box-shadow: 0 12px 30px rgba(23, 32, 51, 0.22);
+    }
+
+    .toast p {
+      margin: 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     svg {
-      width: 20px;
-      height: 20px;
+      width: 18px;
+      height: 18px;
       stroke: currentColor;
       stroke-width: 2;
       fill: none;
@@ -417,16 +569,6 @@
 
       .phone {
         min-height: 840px;
-        max-height: 900px;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *,
-      *::before,
-      *::after {
-        transition: none !important;
-        scroll-behavior: auto !important;
       }
     }
   </style>
@@ -440,8 +582,8 @@
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
           </button>
           <div class="title-group">
-            <p class="kicker">占位文本</p>
-            <h1 class="title">占位标题</h1>
+            <p class="kicker">D:\workspaces\AI-Tools\My-Code-X-C</p>
+            <h1 class="title">Conversation View item card design</h1>
           </div>
           <button class="icon-button" aria-label="更多操作">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
@@ -450,126 +592,141 @@
       </header>
 
       <div class="conversation-timeline" aria-label="Conversation timeline">
-        <article class="event user">
-          <div class="event-header">
-            <span class="event-kind">事件类型</span>
-            <span class="event-time">00:00</span>
-          </div>
-          <div class="block message">
-            <p>占位文本占位文本占位文本，占位文本占位文本。</p>
-          </div>
-        </article>
+        <ol class="timeline-list">
+          <li class="timeline-item timeline-item--user">
+            <article class="message-card message-card--user" aria-label="User message">
+              <p>把 conversation view 的 item card 重新设计一下，mock 不要沿用旧的随机样式。</p>
+              <button class="copy-button" type="button">Copy message</button>
+            </article>
+          </li>
 
-        <article class="event">
-          <div class="event-header">
-            <span class="event-kind">事件类型</span>
-            <span class="event-time">00:00</span>
-          </div>
-          <div class="block message">
-            <p>占位文本占位文本占位文本，占位文本占位文本占位文本。</p>
-          </div>
-        </article>
-
-        <article class="event">
-          <div class="event-header">
-            <span class="event-kind">事件类型</span>
-            <span class="event-time">00:00</span>
-          </div>
-          <div class="block plan">
-            <div class="plan-row">
-              <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></span>
-              <span>占位文本占位文本占位文本。</span>
-            </div>
-            <div class="plan-row">
-              <span class="check" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg></span>
-              <span>占位文本占位文本占位文本。</span>
-            </div>
-            <div class="plan-row">
-              <span class="check pending" aria-hidden="true"></span>
-              <span>占位文本占位文本占位文本。</span>
-            </div>
-          </div>
-        </article>
-
-        <article class="event">
-          <div class="event-header">
-            <span class="event-kind">事件类型</span>
-            <span class="event-time">00:00</span>
-          </div>
-          <div class="block">
-            <div class="tool-card">
-              <div class="tool-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M4 17l6-6-6-6"></path><path d="M12 19h8"></path></svg>
-              </div>
-              <div>
-                <p class="tool-title">占位标题</p>
-                <p class="code-line">placeholder command --option value</p>
+          <li class="timeline-item timeline-item--assistant">
+            <div>
+              <article class="message-card message-card--assistant" aria-label="Assistant message">
+                <p>我会按最新 item 类型处理：timeline 只承载 message、work-trace、unknown 和 error。</p>
+                <div class="code-block">
+                  <pre><code>npm run typecheck:new</code></pre>
+                </div>
+                <button class="copy-button" type="button">Copy message</button>
+              </article>
+              <div class="turn-inline-status" role="status">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 0 1-9 9"></path><path d="M3 12a9 9 0 0 1 9-9"></path><path d="M21 3v6h-6"></path><path d="M3 21v-6h6"></path></svg>
+                <span>Reconnecting... 2/5</span>
               </div>
             </div>
-            <div class="tool-footer">
-              <span>占位状态</span>
-              <button class="text-button">操作</button>
-            </div>
-          </div>
-        </article>
+          </li>
 
-        <article class="event">
-          <div class="event-header">
-            <span class="event-kind">事件类型</span>
-            <span class="event-time">00:00</span>
-          </div>
-          <div class="block message">
-            <p>占位文本占位文本占位文本，占位文本占位文本。</p>
-          </div>
-        </article>
-
-        <article class="event approval">
-          <div class="event-header">
-            <span class="event-kind">事件类型</span>
-            <span class="event-time">00:00</span>
-          </div>
-          <div class="block approval-card">
-            <p class="approval-title">占位标题</p>
-            <p class="approval-copy">占位文本占位文本占位文本，占位文本占位文本。</p>
-            <p class="code-line">placeholder command --flag value</p>
-            <div class="approval-actions">
-              <button class="secondary">次要操作</button>
-              <button class="primary">主要操作</button>
-            </div>
-          </div>
-        </article>
-
-        <article class="event">
-          <div class="event-header">
-            <span class="event-kind">事件类型</span>
-            <span class="event-time">00:00</span>
-          </div>
-          <div class="block">
-            <div class="tool-card">
-              <div class="tool-icon" aria-hidden="true">
-                <svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"></path></svg>
+          <li class="timeline-item timeline-item--trace">
+            <article class="trace-card trace-card--work" aria-label="Codex work trace">
+              <div class="trace-summary">
+                <span class="trace-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M4 17l6-6-6-6"></path><path d="M12 19h8"></path></svg>
+                </span>
+                <div class="trace-title">
+                  <p class="trace-type">command_execution</p>
+                </div>
+                <span class="status-pill">completed</span>
               </div>
-              <div>
-                <p class="tool-title">占位标题</p>
-                <p class="code-line">placeholder/path/example.ext</p>
+              <dl class="field-list">
+                <div class="field-row">
+                  <dt class="field-name">command</dt>
+                  <dd class="field-value">rg --files docs/features/conversation-view</dd>
+                </div>
+                <div class="field-row">
+                  <dt class="field-name">exitCode</dt>
+                  <dd class="field-value">0</dd>
+                </div>
+              </dl>
+            </article>
+          </li>
+
+          <li class="timeline-item timeline-item--unknown">
+            <article class="trace-card trace-card--unknown" aria-label="Unknown Codex item">
+              <div class="trace-summary">
+                <span class="trace-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"></path></svg>
+                </span>
+                <div class="trace-title">
+                  <p class="trace-type">thread_realtime_item_added</p>
+                </div>
+                <span class="status-pill">received</span>
               </div>
-            </div>
-            <div class="tool-footer">
-              <span>占位状态</span>
-              <button class="text-button">操作</button>
-            </div>
-          </div>
-        </article>
+              <dl class="field-list">
+                <div class="field-row">
+                  <dt class="field-name">source</dt>
+                  <dd class="field-value">codex-runtime-event</dd>
+                </div>
+                <div class="field-row">
+                  <dt class="field-name">itemId</dt>
+                  <dd class="field-value">rt_42</dd>
+                </div>
+                <div class="field-row">
+                  <dt class="field-name">status</dt>
+                  <dd class="field-value">received</dd>
+                </div>
+              </dl>
+            </article>
+          </li>
+
+          <li class="timeline-item timeline-item--error">
+            <article class="error-card" aria-label="Conversation error" role="alert">
+              <div class="error-head">
+                <span class="error-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24"><path d="M12 8v5"></path><path d="M12 17h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
+                </span>
+                <div>
+                  <p class="error-title">Terminal failure</p>
+                  <p class="error-message">Command failed because the configured cwd is no longer available.</p>
+                </div>
+              </div>
+              <dl class="field-list">
+                <div class="field-row">
+                  <dt class="field-name">turnId</dt>
+                  <dd class="field-value">turn_01HY...</dd>
+                </div>
+                <div class="field-row">
+                  <dt class="field-name">willRetry</dt>
+                  <dd class="field-value">false</dd>
+                </div>
+                <div class="field-row">
+                  <dt class="field-name">source</dt>
+                  <dd class="field-value">error notification</dd>
+                </div>
+              </dl>
+            </article>
+          </li>
+        </ol>
       </div>
+
+      <aside class="decision-panel" aria-label="Pending interaction">
+        <div class="decision-panel__head">
+          <span class="decision-panel__icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 9v4"></path><path d="M12 17h.01"></path><path d="M5 11V7a7 7 0 0 1 14 0v4"></path><rect x="3" y="11" width="18" height="10" rx="2"></rect></svg>
+          </span>
+          <div>
+            <p class="decision-panel__title">Command execution approval</p>
+            <p class="decision-panel__body">Codex 请求运行可能修改文件的命令。该区域固定在 timeline 外，不作为 Conversation item。</p>
+          </div>
+        </div>
+        <div class="decision-actions">
+          <button class="secondary" type="button">Reject</button>
+          <button class="primary" type="button">Approve</button>
+        </div>
+      </aside>
 
       <form class="composer" aria-label="Reply composer">
         <div class="composer-box">
-          <textarea aria-label="输入" placeholder="占位输入..."></textarea>
-          <button class="send-button" type="button" aria-label="发送">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4 20-7z"></path></svg>
+          <textarea aria-label="输入" placeholder="补充指令或继续当前 Thread"></textarea>
+          <button class="send-button send-button--interrupt" type="button" aria-label="中断当前 Turn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
           </button>
         </div>
       </form>
+
+      <div class="toast" role="status">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4"></path><path d="M12 16h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
+        <p>JSON-RPC request rejected: thread is not ready.</p>
+      </div>
     </section>
   </main>
 </body>
