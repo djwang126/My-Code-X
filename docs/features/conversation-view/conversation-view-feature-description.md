@@ -4,11 +4,9 @@
 
 Conversation View 是 My-Code-X 的核心主界面，是当前 `Selection` 指向的 Codex `Thread` 的移动端只读 timeline，并允许用户在同一页面发送输入，继续当前 `Thread`。
 
-## Capability Sections
+## Feature Capabilities
 
 ### Conversation page
-
-Description:
 
 Conversation page 是当前 `Conversation` 的移动端主页面。它承载用户阅读当前 Codex `Thread` 投影内容的核心体验，让用户按发生顺序理解当前工作现场。
 
@@ -29,8 +27,6 @@ UX Decisions:
 
 ### Message item
 
-Description:
-
 Message item 展示 Codex `userMessage` 和 `agentMessage` 的文本内容。它负责让主对话内容在手机端清晰可读、易复制、易区分。
 
 Functional Requirements:
@@ -43,8 +39,7 @@ Functional Requirements:
 - 代码块、表格在消息中可正常展示。
 - 可解析 md 格式的网址链接，并可点击跳转。
 - 可解析 md 格式的文件/图片引用，并可点击跳转（需要文件功能支持，暂时不做）。
-- 用户可以复制整条 message 的原始文本。
-- 用户可以复制代码块内容。
+- 用户可以复制md渲染后的单独代码块内容。
 
 UX Decisions:
 
@@ -53,11 +48,12 @@ UX Decisions:
 - 用户消息靠右，使用轻量强调底色；Codex 输出靠左，使用更接近正文阅读的中性底色。
 - Message item 不展示调试字段；复制入口弱化为次要操作，避免干扰正文阅读。
 - 代码块使用适合窄屏阅读的排版。
+- 代码块右上角有复制按钮。
 - 宽表格使用横向滚动容器。
+- 一个turn中第一条 `userMessage` （即turn/start）下方有横向工具栏，包含复制按钮，可复制此条`userMessage` 的原始文本。
+- 一个turn中最后一条 `agentMessage` （即turn/completed）下方有横向工具栏，包含复制按钮， 可复制此条 `agentMessage` 的原始文本。
 
 ### Work trace item
-
-Description:
 
 Work trace item 展示 Codex 工作过程中的计划、工具调用、工具结果、文件变更、网页搜索等工作痕迹。它由已知 Codex `ThreadItem` 或可归属到当前 `Turn` 的 typed `Codex runtime event` 投影而来，让用户理解 Codex 正在做什么，并在需要时查看细节证据。
 
@@ -84,8 +80,6 @@ UX Decisions:
 
 ### Unknown item
 
-Description:
-
 Unknown item 展示 My-Code-X 当前尚未专门分类的 Codex `ThreadItem` 或可归属到当前 `Turn` 的 `Codex runtime event`。它用于保证 Codex 新增内容类型时，用户仍然可以看到来源信息和原始细节。
 
 Functional Requirements:
@@ -111,8 +105,6 @@ UX Decisions:
 
 ### Error item
 
-Description:
-
 Error item 展示可归属到当前 Codex `Thread` 和 `Turn` 的不可重试错误或 terminal failure。它帮助用户理解当前 timeline 中哪里出现失败，以及失败的原始信息。
 
 Functional Requirements:
@@ -135,8 +127,6 @@ UX Decisions:
 
 ### Turn transient retry status
 
-Description:
-
 Turn transient retry status 展示当前 active Codex `Turn` 的可重试运行错误。它用于让用户知道当前 `Turn` 没有卡死，而是正在由 Codex app-server 自动重试。
 
 Functional Requirements:
@@ -157,8 +147,6 @@ UX Decisions:
 
 ### Client notice
 
-Description:
-
 Client notice 展示不应该投影为 `Conversation item`，也不属于当前 active `Turn` 临时 retry 状态的提示、错误或警告。
 
 Functional Requirements:
@@ -176,8 +164,6 @@ UX Decisions:
 - Toast 内容使用通用字段渲染，不为不同错误类型设计专门卡片。
 
 ### Conversation view state
-
-Description:
 
 Conversation view state 是 Conversation page 在 timeline 外展示的页面级状态。它帮助用户判断当前页面是否正在恢复、是否可读、是否为空、是否读取失败，以及当前显示内容是否可能不是最新。它不属于 `Conversation item`，不进入 timeline，也不表达 Codex `Thread` 或 `Turn` 的运行状态。
 
@@ -203,8 +189,6 @@ UX Decisions:
 
 ### Conversation live update
 
-Description:
-
 Conversation live update 让用户在 Codex 工作进行中持续看到新的 `Conversation item`。My-Code-X 后端消费 Codex notification stream，并按固定节奏聚合推送给前端，强调移动端的现场感和连续性。
 
 Functional Requirements:
@@ -223,32 +207,8 @@ UX Decisions:
 - 当前进行中的 item 使用轻量动态状态。
 - live timeline 和 item 以 Codex 最终事件为准。
 
-### Pending interaction（待设计）
-
-Description:
-
-Pending interaction 是 Codex app-server 对当前 `Thread` 或 `Turn` 发出的 server reverse request，帮助用户完成授权、确认、拒绝、取消、填写表单或提供工具输入等决策。它不是 `Conversation item`，不进入 timeline。
-
-Functional Requirements:
-
-- 页面展示当前 `Thread` 或 `Turn` 的 `Pending interaction`。
-- Pending interaction 展示请求类型、请求内容和关键风险信息。
-- Pending interaction 保留 Codex request `id` 和 method。
-- 用户可以按请求类型选择 Codex 支持的 decision 或填写所需输入。
-- 用户处理后，My-Code-X 后端用同一个 request `id` 响应 Codex app-server。
-- Pending interaction resolved 后从决策区域移除。
-
-UX Decisions:
-
-- Pending interaction 使用 timeline 外的固定决策区域。
-- Pending interaction 使用高优先级视觉层级。
-- 不同请求类型的可选决策入口清晰分离。
-- 高影响请求使用防误触交互。
-
 
 ### Composer
-
-Description:
 
 Composer 是 Conversation View 底部的用户输入控制台，用于向当前 `Selection` 指向的 Codex `Thread` 发送普通用户输入。它根据当前 `Thread` 和 active `Turn` 状态，将用户输入映射为 Codex `turn/start` 或 `turn/steer`。
 
