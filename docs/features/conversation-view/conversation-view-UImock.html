@@ -670,6 +670,17 @@
         0 3px 8px rgba(15, 42, 104, 0.08);
     }
 
+    .send-button--stop {
+      border: 1px solid #a6524c;
+      border-radius: 15px;
+      background: #f8f3f2;
+      color: #8f322d;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.9),
+        0 1px 1px rgba(143, 50, 45, 0.1),
+        0 3px 8px rgba(143, 50, 45, 0.08);
+    }
+
     .send-button--send .send-icon,
     .send-button--append .send-icon,
     .send-button--disabled .send-icon {
@@ -678,6 +689,17 @@
       display: block;
       object-fit: contain;
       transform: translate(1px, 1px);
+    }
+
+    .send-button--stop .stop-icon {
+      width: 28px;
+      height: 28px;
+      stroke-width: 0.7;
+    }
+
+    .send-button--stop .stop-icon-fill {
+      fill: currentColor;
+      stroke: none;
     }
 
     .send-button--append {
@@ -1138,8 +1160,8 @@
       <form class="composer" aria-label="Reply composer">
         <div class="composer-box">
           <textarea aria-label="输入" placeholder="补充指令或继续当前 Thread"></textarea>
-          <button class="send-button" type="button" aria-label="中断当前 Turn">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+          <button class="send-button send-button--stop" type="button" aria-label="中断当前 Turn">
+            <svg class="stop-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="1.5"></rect><rect class="stop-icon-fill" x="9" y="9" width="6" height="6" rx="0.8"></rect></svg>
           </button>
         </div>
       </form>
@@ -1214,8 +1236,8 @@
       <form class="composer" aria-label="Reply composer">
         <div class="composer-box">
           <textarea aria-label="输入" placeholder="补充指令或继续当前 Thread"></textarea>
-          <button class="send-button" type="button" aria-label="中断当前 Turn">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+          <button class="send-button send-button--stop" type="button" aria-label="中断当前 Turn">
+            <svg class="stop-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="1.5"></rect><rect class="stop-icon-fill" x="9" y="9" width="6" height="6" rx="0.8"></rect></svg>
           </button>
         </div>
       </form>
@@ -1606,8 +1628,8 @@
       <form class="composer composer--safe" aria-label="Reply composer append state">
         <div class="composer-box">
           <textarea aria-label="输入" placeholder="补充指令或继续当前 Thread">同时检查 disabled 和失败提示状态。</textarea>
-          <button class="send-button" type="button" aria-label="中断当前 Turn">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+          <button class="send-button send-button--stop" type="button" aria-label="中断当前 Turn">
+            <svg class="stop-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="1.5"></rect><rect class="stop-icon-fill" x="9" y="9" width="6" height="6" rx="0.8"></rect></svg>
           </button>
         </div>
       </form>

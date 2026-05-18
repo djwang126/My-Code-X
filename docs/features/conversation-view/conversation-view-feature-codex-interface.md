@@ -20,6 +20,7 @@
 - `initialize`
 - `initialized`
 - `thread/resume`
+- `thread/turns/list`
 - `turn/start`
 - `turn/steer`
 - `turn/interrupt`
@@ -96,6 +97,7 @@ Params：
 | --- | --- |
 | `threadId` | 必填。目标 `Thread.id`。 |
 | `persistExtendedHistory` | `true`。让本次及后续会话尽量持久化更完整的 history。需要 `experimentalApi: true`。 |
+| `excludeTurns` | 默认不传或 `false`。传 `true` 时只恢复 thread metadata 和 live 状态，不在 `thread/resume` response 中返回完整 turn history。 |
 | `cwd` | 默认不传。只有用户明确要求用当前 workspace 覆盖 thread 工作目录时才传。 |
 | `model` | 默认不传。只有调用方明确选择模型覆盖时传。 |
 | `modelProvider` | 默认不传。只有用户明确选择 provider 覆盖时传。 |
@@ -129,6 +131,37 @@ Response：
 Note：
 
 - `thread/resume` 返回的历史通常是已经形成的 `ThreadItem`；live event 中出现过的中间态不一定存在于恢复结果中。
+- `excludeTurns = true` 时，`thread.turns` 为空或不包含完整历史；客户端不能把它解释为 thread 没有历史。
+- `excludeTurns = true` 时，app-server 也会跳过恢复后用于历史 token usage 的 `thread/tokenUsage/updated`。
+- 如果目标 thread 已经 loaded/running，`thread/resume` 主要用于订阅和读取当前状态；`model`、`cwd`、`approvalPolicy`、`sandbox`、`permissions` 等 override 不会重新应用，app-server 只记录 ignored override warning。
+- 已 running thread 不允许通过 `history` 恢复；传入和 active rollout 不一致的 `path` 会失败。
+
+### `thread/turns/list`
+
+用途：
+
+- 在不重新 resume thread 的情况下分页读取 stored thread 的 turn history。
+- 可读取 `thread/resume.excludeTurns = true` 时未随 resume response 返回的 stored turn history。
+
+Params：
+
+| 参数 | 填写 |
+| --- | --- |
+| `threadId` | 必填。目标 `Thread.id`。 |
+| `limit` | 默认按 Codex server 规则；调用方可按读取成本和需要的页大小选择。 |
+| `cursor` | 加载下一页或反向页时传 response 中的 cursor。 |
+| `sortDirection` | 默认不传；需要按时间正序补齐较新消息时可按 Codex 语义传 `asc`。 |
+
+Response：
+
+- `data`
+- `nextCursor`
+- `backwardsCursor`
+
+Note：
+
+- `data` 是本页 `Turn[]`。
+- `thread/turns/list` 是历史读取接口，不会订阅 live events，也不会让后续 `turn/start` 自动可用；发送新 turn 仍需 `thread/resume` 或已有 loaded thread。
 
 ## Turn Requests
 
@@ -162,6 +195,8 @@ Params：
 `input` 填写规则：
 
 - 普通文本输入使用 `{ "type": "text", "text": <draft>, "textElements": [] }`。
+- Codex wire protocol 还支持 `image`、`localImage`、`skill`、`mention`。调用方不应丢弃未知或暂未处理的 `UserInput` 原始 payload。
+- `textElements` 使用 `byteRange` 标记正文里的特殊元素范围；没有特殊元素时传空数组。
 
 Response：
 
@@ -194,6 +229,9 @@ Note：
 
 - success response 表示补充输入被接受。
 - 它不会产生新的 `turn/started`。
+- `expectedTurnId` 不能为空，并且必须匹配当前 active turn；不匹配时 request 会失败，不能自动重试到其他 turn。
+- 没有 active turn、`input` 为空、当前 turn 是 review turn 或 compact turn 时，`turn/steer` 会失败。
+- review/compact turn 不可 steer 时，JSON-RPC error data 可能包含 `codexErrorInfo.activeTurnNotSteerable`，表示 active turn 当前不接受 `turn/steer`。
 
 ### `turn/interrupt`
 
@@ -214,8 +252,9 @@ Response：
 
 Note：
 
-- success response 表示 cancellation request 被接受。
+- 对普通 active turn，success response 通常在 core 发出 `TurnAborted` 后返回，表示 cancellation 已被 app-server 观察到。
 - 真正中断完成以后，会收到 `turn/completed`，其中 `turn.status = interrupted`。
+- Codex 内部支持空 `turnId` 的 startup interrupt；普通 active turn cancellation 应提供可靠的 `turnId`。
 
 ### `thread/unsubscribe`
 
@@ -233,6 +272,11 @@ Response：
 
 - `status`：`notLoaded`、`notSubscribed` 或 `unsubscribed`。
 
+Note：
+
+- `unsubscribed` 只表示当前连接不再接收该 thread live events，不表示 thread 立即 unload。
+- 如果这是最后一个 subscriber，app-server 仍会保留 loaded thread；无 subscriber 且无 thread activity 30 分钟后才会发送 `thread/closed`。
+
 
 ## Codex 数据结构
 
@@ -241,20 +285,33 @@ Response：
 常见相关字段：
 
 - `id`
+- `forkedFromId`
 - `preview`
+- `ephemeral`
+- `modelProvider`
 - `name`
 - `cwd`
 - `status`
+- `path`
+- `cliVersion`
+- `source`
+- `agentNickname`
+- `agentRole`
+- `gitInfo`
 - `createdAt`
 - `updatedAt`
 - `turns`
 
 Semantic Notes：
 
-- `name` 和 `preview` 都可以作为 thread label 的来源，具体选择由 feature 决定。
+- `name` 和 `preview` 都是 thread 的文本摘要字段。
 - `cwd` 表示 thread 关联的工作目录。
 - `status` 表示 thread 当前生命周期状态。
-- `turns` 来自 `thread/resume` response，可作为历史 turn 数据来源。
+- `ephemeral = true` 表示该 thread 不持久化到磁盘，通常 `path = null`。
+- `forkedFromId` 表示 fork 来源 thread id。
+- `agentNickname` / `agentRole` 用于 AgentControl 产生的 sub-agent thread 标识。
+- `gitInfo` 表示 thread 创建时的 git context。
+- `turns` 来自 `thread/resume`、`thread/read`、`thread/fork` 或 `thread/turns/list` response；当 `excludeTurns = true` 或 notification 中返回 `Thread` 时，不应假设 `turns` 完整。
 
 ### `ThreadStatus`
 
@@ -301,7 +358,7 @@ Semantic Notes：
 
 - `userMessage`
   - 字段：`id`、`content`
-  - 表示用户输入原文。
+  - 表示用户输入原文；`content` 是 `UserInput[]`，需要处理 text/image/localImage/skill/mention。
 - `agentMessage`
   - 字段：`id`、`text`、`phase`、`memoryCitation`
   - 表示 Codex 回复，`text` 可按 Markdown 文本理解。
@@ -309,24 +366,41 @@ Semantic Notes：
 工作过程信息：
 
 - `hookPrompt`
+  - 字段：`id`、`fragments`
 - `plan`
+  - 字段：`id`、`text`
 - `reasoning`
+  - 字段：`id`、`summary`、`content`
 - `commandExecution`
+  - 字段：`id`、`command`、`cwd`、`processId`、`source`、`status`、`commandActions`、`aggregatedOutput`、`exitCode`、`durationMs`
 - `fileChange`
+  - 字段：`id`、`changes`、`status`
+  - `changes[]` 字段：`path`、`kind`、`diff`
 - `mcpToolCall`
+  - 字段：`id`、`server`、`tool`、`status`、`arguments`、`mcpAppResourceUri?`、`result`、`error`、`durationMs`
 - `dynamicToolCall`
+  - 字段：`id`、`namespace`、`tool`、`arguments`、`status`、`contentItems`、`success`、`durationMs`
 - `collabAgentToolCall`
+  - 字段：`id`、`tool`、`status`、`senderThreadId`、`receiverThreadIds`、`prompt`、`model`、`reasoningEffort`、`agentsStates`
 - `webSearch`
+  - 字段：`id`、`query`、`action`
 - `imageView`
+  - 字段：`id`、`path`
 - `imageGeneration`
+  - 字段：`id`、`status`、`revisedPrompt`、`result`、`savedPath?`
 - `enteredReviewMode`
+  - 字段：`id`、`review`
 - `exitedReviewMode`
+  - 字段：`id`、`review`
 - `contextCompaction`
+  - 字段：`id`
 
 Semantic Notes：
 
 - 工作过程 item 表示 Codex 在 turn 中执行的中间步骤或工具活动。
 - 状态优先来自 item 自带字段，例如 `commandExecution.status`、`fileChange.status`、`mcpToolCall.status`、`dynamicToolCall.status`、`collabAgentToolCall.status`、`imageGeneration.status`。
+- `commandExecution.source` 可区分 agent command、user shell、unified exec startup 或 terminal interaction 来源。
+- `fileChange.changes[].kind = update` 时可能带 `movePath`。
 - 建议保留未识别的 future `ThreadItem.type` 和原始 payload，方便兼容后续 protocol 扩展。
 
 ## Server Notifications
@@ -403,6 +477,25 @@ Payload：
 - `turn.status = failed` 时，`turn.error` 是失败信息来源。
 - `turn.status = interrupted` 时，表示取消请求已经反映到 turn 结果。
 
+#### `thread/tokenUsage/updated`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `tokenUsage`
+
+用途：
+
+- 提供 thread 级 token usage 快照。
+- `tokenUsage.total` 表示累计用量，`tokenUsage.last` 表示最近一次用量。
+- `tokenUsage.modelContextWindow` 表示模型 context window；可能为 `null`。
+
+Note：
+
+- token usage 不属于 `turn/completed.turn` 字段，需要独立监听。
+- `thread/resume` 恢复历史且未使用 `excludeTurns` 时，app-server 可能在 response 后发送该事件，用于恢复历史用量显示。
+
 ### Item lifecycle
 
 #### `item/started`
@@ -462,6 +555,24 @@ Payload：
 
 - 提供结构化 plan 的最新值。
 - `plan[].status` 是步骤状态来源。
+
+#### `item/plan/delta`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `itemId`
+- `delta`
+
+用途：
+
+- 提供 `plan` item 的流式文本增量。
+
+Note：
+
+- 这是 experimental event。
+- 不能假设所有 `delta` 拼接后等于最终 plan 内容；`item/completed` 中的 `plan.text` 仍是权威值。
 
 #### `turn/diff/updated`
 
@@ -742,7 +853,7 @@ Payload：
 
 ## Server Requests
 
-Server Requests 表示 app-server 正在请求客户端侧参与，例如审批、补充输入、elicitation 或 tool call 响应。feature 可以选择完整实现响应流程，也可以只把它们作为状态来源；本文只说明接口形态，不规定界面行为。
+Server Requests 表示 app-server 正在请求客户端侧参与，例如审批、补充输入、elicitation 或 tool call 响应。本文只说明接口形态，不规定界面行为。
 
 ### `item/commandExecution/requestApproval`
 
@@ -765,6 +876,26 @@ Payload：
 Semantic Notes：
 
 - 该 request 归属于对应 `commandExecution` item。
+- `availableDecisions` 存在时，表示服务端提供的可选 decision 集合。
+- 网络单独审批时，`command`、`cwd`、`commandActions` 可能省略，改由 `networkApprovalContext` 表达审批对象。
+
+Response：
+
+- `decision`
+
+`decision` 可选值：
+
+- `accept`
+- `acceptForSession`
+- `acceptWithExecpolicyAmendment`
+- `applyNetworkPolicyAmendment`
+- `decline`
+- `cancel`
+
+Response Notes：
+
+- `decline` 表示拒绝当前命令，但 agent 可以继续 turn。
+- `cancel` 表示拒绝当前命令，并立即中断 turn。
 
 ### `item/fileChange/requestApproval`
 
@@ -780,6 +911,22 @@ Semantic Notes：
 
 - 该 request 归属于对应 `fileChange` item。
 
+Response：
+
+- `decision`
+
+`decision` 可选值：
+
+- `accept`
+- `acceptForSession`
+- `decline`
+- `cancel`
+
+Response Notes：
+
+- `decline` 表示拒绝当前 file change，但 agent 可以继续 turn。
+- `cancel` 表示拒绝当前 file change，并立即中断 turn。
+
 ### `item/tool/requestUserInput`
 
 Payload：
@@ -792,6 +939,15 @@ Payload：
 Semantic Notes：
 
 - 该 request 归属于对应 tool item。
+
+Response：
+
+- `answers`
+
+Response Notes：
+
+- `answers` 是按 question id 映射的对象。
+- 每个 answer 使用 `{ "answers": string[] }`，用于表达单选、多选或 free-form 输入。
 
 ### `mcpServer/elicitation/request`
 
@@ -806,6 +962,18 @@ Semantic Notes：
 
 - 有 `turnId` 时归属到当前 turn。
 - 没有 `turnId` 时归属于 thread-level。
+
+Response：
+
+- `action`
+- `content?`
+- `_meta?`
+
+Response Notes：
+
+- `action` 使用 MCP elicitation action：`accept`、`decline` 或 `cancel`。
+- `content` 只在接受并需要提交表单内容时填写。
+- `_meta` 用于 form-mode action handling 的可选客户端 metadata。
 
 ### `item/permissions/requestApproval`
 
@@ -822,6 +990,18 @@ Semantic Notes：
 
 - 该 request 归属于对应 item。
 
+Response：
+
+- `permissions`
+- `scope`
+- `strictAutoReview?`
+
+Response Notes：
+
+- `permissions` 是授予后的 permission profile，不是简单 decision 字符串。
+- `scope` 默认是 `turn`；可按 Codex 语义使用 `session` 表示本 session 内持续有效。
+- `strictAutoReview` 表示本 turn 后续 command 是否都需要先经过 auto review。
+
 ### `item/tool/call`
 
 Payload：
@@ -836,6 +1016,16 @@ Payload：
 Semantic Notes：
 
 - 表示 app-server 发起 dynamic tool call，并等待客户端侧处理。
+
+Response：
+
+- `contentItems`
+- `success`
+
+Response Notes：
+
+- `contentItems[]` 支持 `inputText` 和 `inputImage`。
+- `success` 表示客户端侧 dynamic tool call 是否成功完成。
 
 ## Event Correlation Notes
 
