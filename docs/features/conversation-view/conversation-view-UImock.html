@@ -659,18 +659,55 @@
     }
 
     .send-button--send {
-      border-color: var(--blue);
-      background: var(--blue);
-      color: #fff;
+      width: 42px;
+      height: 42px;
+      border: 1px solid #294f9a;
+      border-radius: 15px;
+      background: #f3f5f8;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        0 1px 1px rgba(15, 42, 104, 0.1),
+        0 3px 8px rgba(15, 42, 104, 0.08);
+    }
+
+    .send-button--send .send-icon,
+    .send-button--append .send-icon,
+    .send-button--disabled .send-icon {
+      width: 26px;
+      height: 26px;
+      display: block;
+      object-fit: contain;
+      transform: translate(1px, 1px);
     }
 
     .send-button--append {
-      border-color: var(--green);
-      background: var(--green);
-      color: #fff;
+      border: 1px solid #3f8164;
+      border-radius: 15px;
+      background: #f1f5f3;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.95),
+        0 1px 1px rgba(63, 129, 100, 0.1),
+        0 3px 8px rgba(63, 129, 100, 0.08);
     }
 
-    .send-button:disabled,
+    .send-button--disabled {
+      border: 1px solid #a9b3c1;
+      border-radius: 15px;
+      background: #f3f5f8;
+      box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.85),
+        0 1px 1px rgba(95, 109, 126, 0.08);
+    }
+
+    .send-button--disabled .send-icon {
+      filter: grayscale(1);
+      opacity: 0.42;
+    }
+
+    .send-button:disabled {
+      cursor: not-allowed;
+    }
+
     textarea:disabled {
       cursor: not-allowed;
       opacity: 0.5;
@@ -1224,8 +1261,8 @@
       <form class="composer composer--safe" aria-label="Reply composer disabled because no thread">
         <div class="composer-box">
           <textarea aria-label="输入" placeholder="选择 Thread 后可以输入" disabled></textarea>
-          <button class="send-button" type="button" aria-label="发送不可用" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+          <button class="send-button send-button--disabled" type="button" aria-label="发送不可用" disabled>
+            <img class="send-icon" src="send-button-icon-reference.png" alt="" aria-hidden="true">
           </button>
         </div>
       </form>
@@ -1266,8 +1303,8 @@
       <form class="composer composer--safe" aria-label="Reply composer disabled while restoring">
         <div class="composer-box">
           <textarea aria-label="输入" placeholder="内容恢复后可以输入" disabled></textarea>
-          <button class="send-button" type="button" aria-label="发送不可用" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+          <button class="send-button send-button--disabled" type="button" aria-label="发送不可用" disabled>
+            <img class="send-icon" src="send-button-icon-reference.png" alt="" aria-hidden="true">
           </button>
         </div>
       </form>
@@ -1309,7 +1346,7 @@
         <div class="composer-box">
           <textarea aria-label="输入" placeholder="输入给 Codex 的指令"></textarea>
           <button class="send-button send-button--send" type="button" aria-label="发送">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+            <img class="send-icon" src="send-button-icon-reference.png" alt="" aria-hidden="true">
           </button>
         </div>
       </form>
@@ -1352,8 +1389,8 @@
       <form class="composer composer--safe" aria-label="Reply composer disabled after restore failure">
         <div class="composer-box">
           <textarea aria-label="输入" placeholder="恢复后可以输入" disabled></textarea>
-          <button class="send-button" type="button" aria-label="发送不可用" disabled>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+          <button class="send-button send-button--disabled" type="button" aria-label="发送不可用" disabled>
+            <img class="send-icon" src="send-button-icon-reference.png" alt="" aria-hidden="true">
           </button>
         </div>
       </form>
@@ -1500,7 +1537,7 @@
         <div class="composer-box">
           <textarea aria-label="输入" placeholder="补充指令或继续当前 Thread">顺便补充链接点击态。</textarea>
           <button class="send-button send-button--append" type="button" aria-label="追加指令">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+            <img class="send-icon" src="append-button-icon-reference.png" alt="" aria-hidden="true">
           </button>
         </div>
       </form>
@@ -1619,7 +1656,7 @@
 不要把未确认输入加入 timeline。
 连接恢复前保留这个草稿。</textarea>
           <button class="send-button send-button--send" type="button" aria-label="发送">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+            <img class="send-icon" src="send-button-icon-reference.png" alt="" aria-hidden="true">
           </button>
         </div>
       </form>
