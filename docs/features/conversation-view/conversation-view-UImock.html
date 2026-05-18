@@ -194,6 +194,39 @@
       background: #fff;
     }
 
+    .timeline-with-notice {
+      position: relative;
+    }
+
+    .inline-notice {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 18px minmax(0, 1fr);
+      gap: 7px;
+      align-items: center;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--line);
+      background: #fff8e8;
+      color: #6f4c0b;
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .inline-notice svg {
+      width: 16px;
+      height: 16px;
+    }
+
+    .inline-notice p {
+      margin: 0;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .timeline-list {
       display: flex;
       flex-direction: column;
@@ -262,6 +295,55 @@
 
     .message-text p + p {
       margin-top: 7px;
+    }
+
+    .message-text a {
+      color: var(--blue);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .typing-cursor {
+      display: inline-block;
+      width: 6px;
+      height: 1em;
+      margin-left: 2px;
+      border-radius: 2px;
+      background: var(--blue);
+      vertical-align: -2px;
+    }
+
+    .table-scroll {
+      margin-top: 8px;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .markdown-table {
+      width: max-content;
+      min-width: 100%;
+      border-collapse: collapse;
+      font-size: 11.5px;
+      line-height: 1.35;
+    }
+
+    .markdown-table th,
+    .markdown-table td {
+      padding: 7px 9px;
+      border-bottom: 1px solid var(--line);
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    .markdown-table th {
+      background: #f8fafc;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .markdown-table tr:last-child td {
+      border-bottom: 0;
     }
 
     .copy-inline {
@@ -496,6 +578,17 @@
       overflow-wrap: anywhere;
     }
 
+    .field-value--danger {
+      color: var(--red);
+    }
+
+    .collapsed-hint {
+      margin: 4px 0 0;
+      color: var(--quiet);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
     .error-title {
       display: flex;
       align-items: center;
@@ -520,6 +613,10 @@
       border-top: 1px solid var(--line);
       background: rgba(255, 255, 255, 0.98);
       padding: 10px 12px 12px;
+    }
+
+    .composer--safe {
+      padding-bottom: calc(12px + env(safe-area-inset-bottom));
     }
 
     .composer-box {
@@ -559,6 +656,166 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+    }
+
+    .send-button--send {
+      border-color: var(--blue);
+      background: var(--blue);
+      color: #fff;
+    }
+
+    .send-button--append {
+      border-color: var(--green);
+      background: var(--green);
+      color: #fff;
+    }
+
+    .send-button:disabled,
+    textarea:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .composer-help {
+      margin: 7px 2px 0;
+      color: var(--red);
+      font-size: 11px;
+      line-height: 1.35;
+    }
+
+    .confirm-sheet {
+      position: absolute;
+      left: 24px;
+      right: 24px;
+      top: 50%;
+      z-index: 5;
+      transform: translateY(-50%);
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+      box-shadow:
+        0 16px 34px rgba(23, 32, 51, 0.18),
+        0 0 0 999px rgba(23, 32, 51, 0.22);
+    }
+
+    .confirm-sheet p {
+      margin: 0;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.4;
+    }
+
+    .confirm-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .confirm-actions button {
+      min-height: 36px;
+      border: 1px solid var(--line-strong);
+      border-radius: 8px;
+      background: #fff;
+      color: var(--ink);
+      font-size: 13px;
+    }
+
+    .confirm-actions .danger {
+      border-color: var(--red);
+      background: var(--red);
+      color: #fff;
+    }
+
+    .soft-keyboard {
+      display: grid;
+      gap: 6px;
+      padding: 9px 10px 12px;
+      border-top: 1px solid #cfd7e3;
+      background: #d7dde7;
+    }
+
+    .keyboard-row {
+      display: grid;
+      grid-template-columns: repeat(10, 1fr);
+      gap: 4px;
+    }
+
+    .keyboard-key {
+      height: 28px;
+      border-radius: 5px;
+      background: #fff;
+      box-shadow: 0 1px 0 rgba(23, 32, 51, 0.18);
+    }
+
+    .keyboard-row--wide {
+      grid-template-columns: 1.4fr repeat(7, 1fr) 1.4fr;
+    }
+
+    .keyboard-row--space {
+      grid-template-columns: 1fr 3fr 1fr;
+    }
+
+    .state-view {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 28px 26px;
+      text-align: center;
+      background: #fff;
+    }
+
+    .state-card {
+      width: 100%;
+    }
+
+    .state-icon {
+      width: 42px;
+      height: 42px;
+      margin: 0 auto 12px;
+      border-radius: 50%;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--blue);
+      background: var(--blue-soft);
+    }
+
+    .state-icon--quiet {
+      color: var(--muted);
+      background: #eef2f7;
+    }
+
+    .state-icon--error {
+      color: var(--red);
+      background: var(--red-soft);
+    }
+
+    .state-title {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1.35;
+      font-weight: 760;
+    }
+
+    .state-body {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.45;
+    }
+
+    .state-action {
+      min-height: 36px;
+      margin-top: 14px;
+      padding: 0 14px;
+      border: 1px solid var(--blue);
+      border-radius: 8px;
+      background: var(--blue);
+      color: #fff;
+      font-size: 13px;
     }
 
     .toast {
@@ -929,6 +1186,456 @@
       <div class="toast toast--visible" role="status">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4"></path><path d="M12 16h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
         <p>JSON-RPC request rejected: thread is not ready.</p>
+      </div>
+    </section>
+
+    <section class="phone" aria-label="Conversation View no thread selected state">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="system-icons">
+          <span class="signal"><span></span><span></span><span></span></span>
+          <svg viewBox="0 0 24 24"><path d="M5 12.6a10.5 10.5 0 0 1 14 0"></path><path d="M8.5 16a5.5 5.5 0 0 1 7 0"></path><path d="M12 19h.01"></path></svg>
+          <span class="battery"></span>
+        </span>
+      </div>
+
+      <header class="appbar">
+        <button class="icon-button" aria-label="打开侧边栏">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <div class="title-group">
+          <h1 class="title">My-Code-X</h1>
+          <p class="kicker">移动端 Codex 工作台</p>
+        </div>
+        <button class="icon-button" aria-label="更多操作">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
+        </button>
+      </header>
+
+      <div class="state-view">
+        <section class="state-card" aria-label="No thread selected">
+          <div class="state-icon state-icon--quiet">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path></svg>
+          </div>
+          <h2 class="state-title">打开一个 Codex Thread</h2>
+        </section>
+      </div>
+
+      <form class="composer composer--safe" aria-label="Reply composer disabled because no thread">
+        <div class="composer-box">
+          <textarea aria-label="输入" placeholder="选择 Thread 后可以输入" disabled></textarea>
+          <button class="send-button" type="button" aria-label="发送不可用" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="phone" aria-label="Conversation View restoring state">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="system-icons">
+          <span class="signal"><span></span><span></span><span></span></span>
+          <svg viewBox="0 0 24 24"><path d="M5 12.6a10.5 10.5 0 0 1 14 0"></path><path d="M8.5 16a5.5 5.5 0 0 1 7 0"></path><path d="M12 19h.01"></path></svg>
+          <span class="battery"></span>
+        </span>
+      </div>
+
+      <header class="appbar">
+        <button class="icon-button" aria-label="打开侧边栏">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <div class="title-group">
+          <h1 class="title">Refactor app server bridge</h1>
+          <p class="kicker">D:\workspaces\AI-Tools\My-Code-X-C</p>
+        </div>
+        <button class="icon-button" aria-label="更多操作">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
+        </button>
+      </header>
+
+      <div class="state-view">
+        <section class="state-card" aria-label="Restoring thread">
+          <div class="state-icon">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.64-6.36"></path><path d="M21 3v6h-6"></path></svg>
+          </div>
+          <h2 class="state-title">正在恢复内容</h2>
+        </section>
+      </div>
+
+      <form class="composer composer--safe" aria-label="Reply composer disabled while restoring">
+        <div class="composer-box">
+          <textarea aria-label="输入" placeholder="内容恢复后可以输入" disabled></textarea>
+          <button class="send-button" type="button" aria-label="发送不可用" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="phone" aria-label="Conversation View empty thread state">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="system-icons">
+          <span class="signal"><span></span><span></span><span></span></span>
+          <svg viewBox="0 0 24 24"><path d="M5 12.6a10.5 10.5 0 0 1 14 0"></path><path d="M8.5 16a5.5 5.5 0 0 1 7 0"></path><path d="M12 19h.01"></path></svg>
+          <span class="battery"></span>
+        </span>
+      </div>
+
+      <header class="appbar">
+        <button class="icon-button" aria-label="打开侧边栏">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <div class="title-group">
+          <h1 class="title">New Thread</h1>
+          <p class="kicker">D:\workspaces\AI-Tools\My-Code-X-C</p>
+        </div>
+        <button class="icon-button" aria-label="更多操作">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
+        </button>
+      </header>
+
+      <div class="state-view">
+        <section class="state-card" aria-label="Empty thread">
+          <div class="state-icon state-icon--quiet">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13"></path><path d="M8 12h13"></path><path d="M8 18h13"></path><path d="M3 6h.01"></path><path d="M3 12h.01"></path><path d="M3 18h.01"></path></svg>
+          </div>
+          <h2 class="state-title">暂无可展示内容</h2>
+        </section>
+      </div>
+
+      <form class="composer composer--safe" aria-label="Reply composer ready on empty thread">
+        <div class="composer-box">
+          <textarea aria-label="输入" placeholder="输入给 Codex 的指令"></textarea>
+          <button class="send-button send-button--send" type="button" aria-label="发送">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="phone" aria-label="Conversation View restore failed state">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="system-icons">
+          <span class="signal"><span></span><span></span><span></span></span>
+          <svg viewBox="0 0 24 24"><path d="M5 12.6a10.5 10.5 0 0 1 14 0"></path><path d="M8.5 16a5.5 5.5 0 0 1 7 0"></path><path d="M12 19h.01"></path></svg>
+          <span class="battery"></span>
+        </span>
+      </div>
+
+      <header class="appbar">
+        <button class="icon-button" aria-label="打开侧边栏">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <div class="title-group">
+          <h1 class="title">Fix Windows path handling</h1>
+          <p class="kicker">D:\workspaces\AI-Tools\My-Code-X-C</p>
+        </div>
+        <button class="icon-button" aria-label="更多操作">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
+        </button>
+      </header>
+
+      <div class="state-view">
+        <section class="state-card" aria-label="Restore failed">
+          <div class="state-icon state-icon--error">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5"></path><path d="M12 17h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
+          </div>
+          <h2 class="state-title">内容读取失败</h2>
+          <p class="state-body">无法恢复当前 Thread 的可读内容。</p>
+          <button class="state-action" type="button">重试</button>
+        </section>
+      </div>
+
+      <form class="composer composer--safe" aria-label="Reply composer disabled after restore failure">
+        <div class="composer-box">
+          <textarea aria-label="输入" placeholder="恢复后可以输入" disabled></textarea>
+          <button class="send-button" type="button" aria-label="发送不可用" disabled>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="phone" aria-label="Conversation View content variants">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="system-icons">
+          <span class="signal"><span></span><span></span><span></span></span>
+          <svg viewBox="0 0 24 24"><path d="M5 12.6a10.5 10.5 0 0 1 14 0"></path><path d="M8.5 16a5.5 5.5 0 0 1 7 0"></path><path d="M12 19h.01"></path></svg>
+          <span class="battery"></span>
+        </span>
+      </div>
+
+      <header class="appbar">
+        <button class="icon-button" aria-label="打开侧边栏">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <div class="title-group">
+          <h1 class="title">Review markdown rendering</h1>
+          <p class="kicker">D:\workspaces\AI-Tools\My-Code-X-C</p>
+        </div>
+        <button class="icon-button" aria-label="更多操作">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
+        </button>
+      </header>
+
+      <div class="conversation-timeline timeline-with-notice" aria-label="Conversation timeline with content variants">
+        <div class="inline-notice" role="status">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4"></path><path d="M12 16h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
+          <p>内容可能不是最新，正在重新同步。</p>
+        </div>
+
+        <ol class="timeline-list">
+          <li class="transcript-row event-row">
+            <span class="event-rule" aria-hidden="true"></span>
+            <article class="event-content" aria-label="Collapsed work trace item">
+              <div class="event-head">
+                <p class="event-type">plan_update</p>
+                <span class="status-chip status-chip--work">in_progress</span>
+                <button class="disclosure" type="button" aria-label="展开工作痕迹详情">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                </button>
+              </div>
+              <p class="collapsed-hint">3 steps</p>
+            </article>
+          </li>
+
+          <li class="transcript-row event-row">
+            <span class="event-rule" aria-hidden="true"></span>
+            <article class="event-content" aria-label="Web search trace item">
+              <div class="event-head">
+                <p class="event-type">web_search</p>
+                <span class="status-chip status-chip--work">completed</span>
+                <button class="disclosure" type="button" aria-label="展开工作痕迹详情">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                </button>
+              </div>
+              <p class="collapsed-hint">OpenAI Agents SDK streaming docs</p>
+            </article>
+          </li>
+
+          <li class="transcript-row event-row">
+            <span class="event-rule" aria-hidden="true"></span>
+            <article class="event-content" aria-label="Failed file change trace item">
+              <div class="event-head">
+                <p class="event-type">file_change</p>
+                <span class="status-chip status-chip--error">failed</span>
+                <button class="disclosure" type="button" aria-label="收起工作痕迹详情">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
+                </button>
+              </div>
+              <p class="event-note">apply_patch rejected</p>
+              <dl class="field-list">
+                <div class="field-row">
+                  <dt class="field-name">path</dt>
+                  <dd class="field-value">src/ui/ConversationView.tsx</dd>
+                </div>
+                <div class="field-row">
+                  <dt class="field-name">reason</dt>
+                  <dd class="field-value field-value--danger">context mismatch</dd>
+                </div>
+              </dl>
+            </article>
+          </li>
+
+          <li class="transcript-row event-row event-row--unknown">
+            <span class="event-rule" aria-hidden="true"></span>
+            <article class="event-content" aria-label="Collapsed unknown item">
+              <div class="event-head">
+                <p class="event-type">session_shadow_event</p>
+                <span class="status-chip status-chip--unknown">received</span>
+                <button class="disclosure" type="button" aria-label="展开未知条目详情">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
+                </button>
+              </div>
+              <p class="collapsed-hint">codex-runtime-event</p>
+            </article>
+          </li>
+
+          <li class="transcript-row message-row">
+            <article aria-label="Assistant message streaming">
+              <div class="message-text">
+                <p>我正在整理 Markdown 渲染结果，包括链接和宽表格<span class="typing-cursor" aria-hidden="true"></span></p>
+              </div>
+            </article>
+          </li>
+
+          <li class="transcript-row message-row">
+            <article aria-label="Assistant message with markdown table">
+              <div class="message-text">
+                <p>参考 <a href="https://example.com/docs">streaming docs</a> 后，当前覆盖情况如下：</p>
+                <div class="table-scroll" role="region" aria-label="Markdown table scroll area">
+                  <table class="markdown-table">
+                    <thead>
+                      <tr>
+                        <th>Item</th>
+                        <th>Status</th>
+                        <th>Very long file path</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td>links</td>
+                        <td>ok</td>
+                        <td>D:\workspaces\AI-Tools\My-Code-X-C\docs\features\conversation-view</td>
+                      </tr>
+                      <tr>
+                        <td>wide table</td>
+                        <td>scroll</td>
+                        <td>conversation-view-UImock.html</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </article>
+          </li>
+        </ol>
+      </div>
+
+      <form class="composer composer--safe" aria-label="Reply composer ready">
+        <div class="composer-box">
+          <textarea aria-label="输入" placeholder="补充指令或继续当前 Thread">顺便补充链接点击态。</textarea>
+          <button class="send-button send-button--append" type="button" aria-label="追加指令">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="phone" aria-label="Conversation View composer variants">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="system-icons">
+          <span class="signal"><span></span><span></span><span></span></span>
+          <svg viewBox="0 0 24 24"><path d="M5 12.6a10.5 10.5 0 0 1 14 0"></path><path d="M8.5 16a5.5 5.5 0 0 1 7 0"></path><path d="M12 19h.01"></path></svg>
+          <span class="battery"></span>
+        </span>
+      </div>
+
+      <header class="appbar">
+        <button class="icon-button" aria-label="打开侧边栏">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <div class="title-group">
+          <h1 class="title">Composer states</h1>
+          <p class="kicker">D:\workspaces\AI-Tools\My-Code-X-C</p>
+        </div>
+        <button class="icon-button" aria-label="更多操作">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
+        </button>
+      </header>
+
+      <div class="conversation-timeline" aria-label="Conversation timeline for composer variants">
+        <ol class="timeline-list">
+          <li class="transcript-row message-row user-message-row">
+            <article aria-label="User message">
+              <div class="message-text message-text--user">
+                <p>While it runs, also check the mobile composer states.</p>
+              </div>
+            </article>
+          </li>
+
+          <li class="toolbar-row user-toolbar-row" aria-label="User message toolbar">
+            <div class="copy-wrap copy-wrap--user">
+              <time class="message-time" datetime="2026-05-15T09:45:00">09:45</time>
+              <button class="copy-inline" type="button" aria-label="复制用户消息">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
+          </li>
+
+          <li class="transcript-row message-row">
+            <article aria-label="Assistant message">
+              <div class="message-text">
+                <p>I'll keep the current turn running and accept extra instructions.</p>
+              </div>
+            </article>
+          </li>
+        </ol>
+      </div>
+
+      <div class="confirm-sheet" role="dialog" aria-label="Confirm interrupt">
+        <p>中断当前 Turn？</p>
+        <div class="confirm-actions">
+          <button type="button">取消</button>
+          <button class="danger" type="button">中断</button>
+        </div>
+      </div>
+
+      <form class="composer composer--safe" aria-label="Reply composer append state">
+        <div class="composer-box">
+          <textarea aria-label="输入" placeholder="补充指令或继续当前 Thread">同时检查 disabled 和失败提示状态。</textarea>
+          <button class="send-button" type="button" aria-label="中断当前 Turn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section class="phone" aria-label="Conversation View keyboard and long draft state">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="system-icons">
+          <span class="signal"><span></span><span></span><span></span></span>
+          <svg viewBox="0 0 24 24"><path d="M5 12.6a10.5 10.5 0 0 1 14 0"></path><path d="M8.5 16a5.5 5.5 0 0 1 7 0"></path><path d="M12 19h.01"></path></svg>
+          <span class="battery"></span>
+        </span>
+      </div>
+
+      <header class="appbar">
+        <button class="icon-button" aria-label="打开侧边栏">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <div class="title-group">
+          <h1 class="title">Keyboard safe area</h1>
+          <p class="kicker">D:\workspaces\AI-Tools\My-Code-X-C</p>
+        </div>
+        <button class="icon-button" aria-label="更多操作">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
+        </button>
+      </header>
+
+      <div class="conversation-timeline" aria-label="Conversation timeline above keyboard">
+        <ol class="timeline-list">
+          <li class="transcript-row message-row">
+            <article aria-label="Assistant message">
+              <div class="message-text">
+                <p>Draft can grow while the composer remains reachable above the keyboard.</p>
+              </div>
+            </article>
+          </li>
+        </ol>
+      </div>
+
+      <form class="composer composer--safe" aria-label="Reply composer long draft">
+        <div class="composer-box">
+          <textarea aria-label="输入" placeholder="补充指令或继续当前 Thread">请继续，但把变更限制在 UI mock。
+补充一个长输入状态。
+输入框增长到最大高度后内部滚动。
+不要把未确认输入加入 timeline。
+连接恢复前保留这个草稿。</textarea>
+          <button class="send-button send-button--send" type="button" aria-label="发送">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M22 2 11 13"></path><path d="m22 2-7 20-4-9-9-4Z"></path></svg>
+          </button>
+        </div>
+      </form>
+
+      <div class="soft-keyboard" aria-hidden="true">
+        <div class="keyboard-row">
+          <span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span>
+          <span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span>
+        </div>
+        <div class="keyboard-row keyboard-row--wide">
+          <span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span>
+          <span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span>
+        </div>
+        <div class="keyboard-row keyboard-row--space">
+          <span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span>
+        </div>
       </div>
     </section>
   </main>
