@@ -1,552 +1,865 @@
 # Conversation View Codex Interface
 
-本文整理 Conversation View 为满足 feature description 需要用到的 Codex app-server 聊天接口。
+本文整理 Conversation View 为满足 feature description 可能需要使用的 Codex app-server 接口、参数和填写规则。
 
-本文不定义 My-Code-X feature detail、domain model 或 UI 组件设计。
+本文不定义 My-Code-X 的 UI 组件、domain model、草稿保存、重连策略或完整 Pending interaction 处理流程。
 
-## 文档边界
+## Source
 
-Conversation View 用到的 Codex 接口包括两类：
+本文基于本机相邻仓库 `../codex` 的 app-server 源码确认：
 
-- My-Code-X 主动发送给 Codex 的 request / notification。
-- Codex 返回给 My-Code-X 的 response、error、notification、server request。
-
-本文里的 input 指“Conversation View 功能实现需要纳入设计的 Codex 协议信息”，包括发送侧和接收侧。
-
-不在本文定义：
-
-- Web client toast、modal、timeline item 等输出形态。
-- Composer 草稿保存策略。
-- 连接重试、恢复中、内容可能过期等 My-Code-X runtime 机制。
-- 从普通文本内容中猜测出来的类型。
+- `../codex/codex-rs/app-server/README.md`
+- `../codex/codex-rs/app-server-protocol/src/protocol/common.rs`
+- `../codex/codex-rs/app-server-protocol/src/protocol/v2.rs`
+- `../codex/codex-rs/app-server/src/codex_message_processor.rs`
 
 ## 接口总表
 
-### 发送给 Codex 的接口
-
-Conversation View 需要用到这些 client request / notification：
+Conversation View 发送给 Codex 的接口：
 
 - `initialize`
-  - app-server 连接初始化。
-  - 不是 Conversation View 专属，但没有它后续聊天接口不可用。
 - `initialized`
-  - 初始化完成 notification。
-  - 不是 Conversation View 专属，但属于聊天连接前置条件。
 - `thread/resume`
-  - 打开已有 thread，使当前 Conversation View 可以继续对话并订阅后续事件。
-- `thread/read`
-  - 只读读取 thread 历史，不恢复为可继续对话状态。
-- `thread/turns/list`
-  - 分页读取历史 turns。
 - `turn/start`
-  - 当前 Codex 空闲时，发送用户输入并开始新 turn。
 - `turn/steer`
-  - 当前 Codex 正在工作时，追加用户补充指令到 active regular turn。
 - `turn/interrupt`
-  - 当前 Codex 正在工作时，请求中断 active turn。
-- server request response
-  - 对 Codex 发来的审批、用户输入、elicitation、dynamic tool call 等 server request 返回结果。
-  - 完整 Pending interaction 处理流程不在本 feature scope，但接口方向需要在本文列出。
-
-Conversation View 可能间接依赖但不由本文定义的接口：
-
-- `thread/list`
-  - 可用于 thread 选择器或外层 app shell 提供当前选中 thread。
-- `thread/start`
-  - 可用于创建新 thread。当前 feature description 只要求“没有选中 Thread 的状态”和“绑定当前选中 Thread”，不要求 Conversation View 内创建新 thread。
 - `thread/unsubscribe`
-  - 可用于离开页面或切换 thread 时取消订阅。
 
-### Codex 返回给 Conversation View 的接口
+Conversation View 接收并投影的 Codex 信息：
 
-- Codex response 中返回的 `Thread`、`Turn`、`ThreadItem`。
-- Codex notification stream 中的 thread、turn、item、runtime notification。
-- 当前 Conversation View 发出的 request 对应的 success response 或 JSON-RPC error response。
-- 服务端反向 request 中会影响当前 thread 可见状态的信息。
+- 上述 request 的 success response。
+- 上述 request 的 JSON-RPC error response。
+- 当前 thread 相关的 server notification。
+- 当前 thread 相关的 server request。
 
-## 通用关联字段
+## 通用填写原则
 
-所有可进入当前 Conversation View 的 Codex 信息都应优先按这些字段归属：
+- 参数名使用 Codex wire protocol 的 camelCase 名称。
+- 只发送为了当前操作必须表达的参数，未明确覆盖的 runtime 配置不发送。
+- `threadId` 永远来自当前选中的 Codex `Thread.id`。
+- `turnId` 永远来自当前 active turn 或 notification payload。
+- `item.id` / `itemId` 用于合并 item lifecycle、delta、progress 和最终 item。
+- `request id` 用于关联 action response 或 JSON-RPC error response。
+- `method` 和 `ThreadItem.type` 是类型判断来源，不从正文文本猜测类型。
+- My-Code-X 初始化 app-server 时启用 `experimentalApi: true`，因为当前实现会使用 experimental fields，例如 `persistExtendedHistory`，并且需要兼容 Codex 后续实验字段。
+- `optOutNotificationMethods` 不填写或填写空数组；Conversation View 不能主动屏蔽当前文档列出的 notification。
+
+## 连接初始化
+
+### `initialize`
+
+用途：
+
+- 初始化 app-server 连接。
+- 在它成功前不发送其他 request。
+
+Params：
+
+| 参数 | 填写 |
+| --- | --- |
+| `clientInfo.name` | 暂定为 `my-code-x`。 |
+| `clientInfo.title` | 暂定为 `My-Code-X`。 |
+| `clientInfo.version` | 暂定为0.1.0。 |
+| `capabilities.experimentalApi` | `true`。 |
+| `capabilities.optOutNotificationMethods` | 不填写或 `[]`。 |
+
+Response：
+
+- `userAgent`
+- `codexHome`
+- `platformFamily`
+- `platformOs`
+
+### `initialized`
+
+用途：
+
+- `initialize` success response 后发送，表示客户端已完成初始化。
+
+Params：
+
+- 无。
+
+## 打开当前 Thread
+
+### `thread/resume`
+
+用途：
+
+- 打开当前选中的已有 Codex `Thread`。
+- 订阅该 thread 后续 live events。
+- 使 Composer 可以继续在该 thread 上发送 turn。
+
+Params：
+
+| 参数 | 填写 |
+| --- | --- |
+| `threadId` | 必填。当前选中的 `Thread.id`。 |
+| `persistExtendedHistory` | `true`。让本次及后续会话尽量持久化更完整的 history。需要 `experimentalApi: true`。 |
+| `cwd` | 默认不传。只有用户明确要求用当前 workspace 覆盖 thread 工作目录时才传。 |
+| `model` | 默认不传。只有用户在 My-Code-X 中明确选择模型覆盖时传。 |
+| `modelProvider` | 默认不传。只有用户明确选择 provider 覆盖时传。 |
+| `serviceTier` | 默认不传。只有用户明确选择 service tier 覆盖时传；如果要显式恢复默认值，按 Codex double-option 语义传 `null`。 |
+| `approvalPolicy` | 默认不传。只有用户明确覆盖审批策略时传。 |
+| `approvalsReviewer` | 默认不传。只有用户明确覆盖 reviewer 时传。 |
+| `sandbox` | 默认不传。只有用户明确覆盖 legacy sandbox mode 时传。 |
+| `permissions` | 默认不传。只有用户明确选择 permission profile 时传；不能和 `sandbox` 同时传。 |
+| `config` | 默认不传。只有需要注入明确 runtime config 覆盖时传。 |
+| `baseInstructions` | 默认不传。 |
+| `developerInstructions` | 默认不传；若传 `null`，含义必须按 Codex 对应字段语义处理，不能当作空字符串。 |
+| `personality` | 默认不传。 |
+| `history` | 常规 Conversation View 不传。 |
+| `path` | 常规 Conversation View 不传，优先用 `threadId`。 |
+
+Response：
+
+- `thread`
+- `model`
+- `modelProvider`
+- `serviceTier`
+- `cwd`
+- `instructionSources`
+- `approvalPolicy`
+- `approvalsReviewer`
+- `sandbox`
+- `permissionProfile`
+- `activePermissionProfile`
+- `reasoningEffort`
+
+Note：
+
+- 历史重建可能比 live event 少一些中间态；恢复历史时以最终 `ThreadItem` 形态展示。
+
+## Composer 操作
+
+### `turn/start`
+
+用途：
+
+- 当前 thread 空闲时，发送用户输入并开始新 turn。
+
+Params：
+
+| 参数 | 填写 |
+| --- | --- |
+| `threadId` | 必填。当前选中的 `Thread.id`。 |
+| `input` | 必填。原始用户输入转换成 `UserInput[]`，不能删改用户文本。 |
+| `cwd` | 默认不传。只有用户明确覆盖本 turn 及后续 turn 的 cwd 时传。 |
+| `approvalPolicy` | 默认不传。只有用户明确覆盖审批策略时传。 |
+| `approvalsReviewer` | 默认不传。只有用户明确覆盖 reviewer 时传。 |
+| `sandboxPolicy` | 默认不传。只有用户明确覆盖 sandbox policy 时传。 |
+| `permissions` | 默认不传。只有用户明确选择 permission profile 时传；不能和 `sandboxPolicy` 同时传。 |
+| `model` | 默认不传。只有用户明确覆盖模型时传。 |
+| `serviceTier` | 默认不传。只有用户明确覆盖 service tier 时传。 |
+| `effort` | 默认不传。只有用户明确覆盖 reasoning effort 时传。 |
+| `summary` | 默认不传。只有用户明确覆盖 reasoning summary 时传。 |
+| `personality` | 默认不传。 |
+| `outputSchema` | 默认不传。Conversation View 普通聊天不强制结构化输出。 |
+| `collaborationMode` | 默认不传。只有用户明确选择 collaboration mode 时传；需要 `experimentalApi: true`。 |
+| `responsesapiClientMetadata` | 默认不传。 |
+| `environments` | 默认不传。只有用户明确选择 turn environment 时传。 |
+
+`input` 填写规则：
+
+- 普通文本输入使用 `{ "type": "text", "text": <draft>, "textElements": [] }`。
+
+Response：
+
+- `turn`
+
+Note：
+
+- success response 表示请求被接受。
+
+### `turn/steer`
+
+用途：
+
+- 当前 thread 正在执行 active regular turn，且用户有输入内容时，追加补充指令。
+
+Params：
+
+| 参数 | 填写 |
+| --- | --- |
+| `threadId` | 必填。当前选中的 `Thread.id`。 |
+| `expectedTurnId` | 必填。当前 active regular turn id。用于防止追加到错误 turn。 |
+| `input` | 必填。和 `turn/start.input` 同样的 `UserInput[]`。 |
+| `responsesapiClientMetadata` | 默认不传。 |
+
+Response：
+
+- `turnId`
+
+Note：
+
+- success response 表示补充输入被接受。
+- 它不会产生新的 `turn/started`。
+
+### `turn/interrupt`
+
+用途：
+
+- 当前 thread 正在工作，且用户选择中断时，请求取消 active turn。
+
+Params：
+
+| 参数 | 填写 |
+| --- | --- |
+| `threadId` | 必填。当前选中的 `Thread.id`。 |
+| `turnId` | 必填。当前 active turn id；拿不到可靠 `turnId` 时禁用中断按钮。 |
+
+Response：
+
+- `{}`。
+
+Note：
+
+- success response 表示 cancellation request 被接受。
+- 真正中断完成以后，会收到 `turn/completed`，其中 `turn.status = interrupted`。
+
+### `thread/unsubscribe`
+
+用途：
+
+- 取消当前连接对旧 thread 的 live events 订阅。
+
+Params：
+
+| 参数 | 填写 |
+| --- | --- |
+| `threadId` | 必填。要取消订阅的旧 `Thread.id`。 |
+
+Response：
+
+- `status`：`notLoaded`、`notSubscribed` 或 `unsubscribed`。
+
+
+## Codex 数据结构
+
+### `Thread`
+
+Conversation View 使用这些字段：
+
+- `id`
+- `preview`
+- `name`
+- `cwd`
+- `status`
+- `createdAt`
+- `updatedAt`
+- `turns`
+
+Note：
+
+- 页面标题优先使用 `name`，没有时使用 `preview`。
+- 页面顶部 workspace 使用 `cwd`。
+- Composer 可用性和页面状态可参考 `status` 。
+- `turns` 来自 `thread/resume` response，作为初始历史输入使用。
+
+### `ThreadStatus`
+
+需要处理的状态：
+
+- `notLoaded`
+- `idle`
+- `systemError`
+- `active`
+
+`active.activeFlags` 需要识别：
+
+- `waitingOnApproval`
+- `waitingOnUserInput`
+
+Projection：
+
+- `idle`：可以 `turn/start`。
+- `active`：可以根据 Composer 内容选择 `turn/steer` 或 `turn/interrupt`。
+- `waitingOnApproval` / `waitingOnUserInput`：显示 thread 正在等待用户或审批，当前 feature 只展示状态。
+- `systemError`：展示明显异常状态，并禁用发送。
+
+### `Turn`
+
+Conversation View 使用这些字段：
+
+- `id`
+- `items`
+- `status`
+- `error`
+- `startedAt`
+- `completedAt`
+- `durationMs`
+
+Projection：
+
+- `items` 用于历史恢复。
+- live `turn/started` 和 `turn/completed` 中的 `items` 不作为完整 item 列表依赖。
+- `status = failed` 时读取 `error` 作为失败信息。
+
+### `ThreadItem`
+
+普通对话内容：
+
+- `userMessage`
+  - 字段：`id`、`content`
+  - 展示用户输入原文。
+- `agentMessage`
+  - 字段：`id`、`text`、`phase`、`memoryCitation`
+  - 展示 Codex 回复，`text` 支持 Markdown 阅读。
+
+工作过程信息：
+
+- `hookPrompt`
+- `plan`
+- `reasoning`
+- `commandExecution`
+- `fileChange`
+- `mcpToolCall`
+- `dynamicToolCall`
+- `collabAgentToolCall`
+- `webSearch`
+- `imageView`
+- `imageGeneration`
+- `enteredReviewMode`
+- `exitedReviewMode`
+- `contextCompaction`
+
+Projection：
+
+- 工作过程 item 默认紧凑展示，可展开查看字段详情。
+- 状态优先使用 item 自带字段，例如 `commandExecution.status`、`fileChange.status`、`mcpToolCall.status`、`dynamicToolCall.status`、`collabAgentToolCall.status`、`imageGeneration.status`。
+- 未识别的 future `ThreadItem.type` 进入 unknown fallback，不能丢弃。
+
+## Server Notifications
+
+### Thread lifecycle
+
+#### `thread/started`
+
+Payload：
+
+- `thread`
+
+用途：
+
+- 确认当前连接已订阅 thread live events。
+- 更新顶部上下文和 thread status。
+
+#### `thread/status/changed`
+
+Payload：
 
 - `threadId`
-  - 判断是否属于当前选中的 Codex `Thread`。
-- `turnId`
-  - 判断是否属于当前 turn timeline。
-- `item.id` / `itemId`
-  - 合并 live item、delta、progress 和最终 item。
-- request `id`
-  - 关联 action response / JSON-RPC error response。
-- Codex `method` 或 `ThreadItem.type`
-  - 作为类型来源，不从正文文本推断。
+- `status`
 
-## 历史输入
+用途：
 
-功能目标：
+- 更新当前 thread 是否 idle、active、waiting 或 systemError。
+- 决定 Composer 的发送、追加和中断状态。
 
-页面需要恢复当前 Codex `Thread` 的历史内容，并能分页读取大历史。
+#### `thread/name/updated`
 
-需要接收的 Codex 信息：
+Payload：
 
-- `thread/resume` request
-  - 用于打开已有 thread 并订阅 live events。
-  - 关键 params：`threadId`、`path`、`excludeTurns`、`persistExtendedHistory`。
-- `thread/resume` response
-  - 用于恢复并订阅一个可继续对话的 thread。
-  - response 中的 `thread.turns` 可能包含重建历史。
-- `thread/read` request
-  - 用于只读读取历史。
-  - 关键 params：`threadId`、`includeTurns`。
-- `thread/read(includeTurns: true)` response
-  - 用于只读读取历史，不让 thread 进入可继续对话状态。
-- `thread/turns/list` request
-  - 用于分页读取历史。
-  - 关键 params：`threadId`、`cursor`、`limit`、`sortDirection`。
-- `thread/turns/list` response
-  - 用于分页读取 `Turn[]` 历史。
-- `Thread`
-  - 用于页面顶部上下文和 thread 状态。
-  - 关键字段：`id`、`preview`、`name`、`cwd`、`status`、`updatedAt`、`createdAt`。
-- `Turn`
-  - 用于 turn 分组、状态和时间信息。
-  - 关键字段：`id`、`items`、`status`、`error`、`startedAt`、`completedAt`、`durationMs`。
-- `ThreadItem[]`
-  - 用于恢复 timeline 内容。
+- `threadId`
+- `threadName?`
 
-注意：
+用途：
 
-- `ThreadItem` 是历史重建结果，协议明确说明可能 lossy。
-- 历史中的 streaming delta 中间态通常不能恢复，恢复后应以 `ThreadItem` 最终形态展示。
+- 更新页面顶部标题。
 
-## Message reading
+#### `thread/closed`
 
-功能目标：
+Payload：
 
-用户需要看到自己发送的内容和 Codex 回复的内容，并能看到 Codex 回复的实时变化和最终结果。
+- `threadId`
 
-需要接收的 Codex 信息：
+用途：
 
-- `turn/start` request
-  - 当前 Codex 空闲时，由 Composer 发送用户输入。
-  - 关键 params：`threadId`、`input`。
-  - 可选 params：`cwd`、`approvalPolicy`、`approvalsReviewer`、`sandboxPolicy`、`permissions`、`model`、`serviceTier`、`effort`、`summary`、`personality`、`outputSchema`、`collaborationMode`。
-- `turn/start` response
-  - 返回初始 `Turn`，表示请求被接受。
-  - response 中 `turn.items` 通常为空。
-- `turn/steer` request
-  - 当前 Codex 正在工作且用户有输入内容时，向 active regular turn 追加输入。
-  - 关键 params：`threadId`、`expectedTurnId`、`input`。
-- `turn/steer` response
-  - 返回 `{ turnId }`，表示补充输入被接受。
-  - 不会产生新的 `turn/started`。
-- `ThreadItem.type = userMessage`
-  - 用于展示用户输入。
-  - 原始输入来自 `content: UserInput[]`。
-- `ThreadItem.type = agentMessage`
-  - 用于展示 Codex 回复。
-  - 正文来自 `text`。
-- `item/started`
-  - 当 `params.item.type = userMessage` 或 `agentMessage` 时，用于 live 创建 message item。
-- `item/agentMessage/delta`
-  - 用于更新正在生成中的 Codex 回复。
-  - 通过 `threadId + turnId + itemId` 关联到对应 `agentMessage`。
-- `item/completed`
-  - 当 `params.item.type = agentMessage` 时，`item.text` 是该回复的最终权威文本。
-  - 当 `params.item.type = userMessage` 时，表示该用户输入 item 的最终结构。
-- `turn/started`
-  - 用于建立或补全 live turn 的开始状态和 `startedAt`。
-- `turn/completed`
-  - 用于确认 turn terminal state 和 `completedAt`。
+- 当前 thread 被 app-server 关闭时，标记内容可能不是最新。
 
-投影规则：
+### Turn lifecycle
 
-- 每轮对话的第一条用户消息应从该 turn 的 `userMessage` item 顺序中识别。
-- 每轮对话的最后一条 Codex 回复应从该 turn 的 `agentMessage` item 顺序中识别。
-- 不应依赖 `turn/completed.turn.items` 查找最终 message。协议说明 live `turn/completed.turn.items` 通常为空。
-- 最终 assistant 文本以 `item/completed` 中的完整 `agentMessage.text` 为准。
-- `turn/steer` 成功后不产生新 turn；后续 user input 如果进入历史，应继续按同一 active turn 内的 `userMessage` item 展示。
+#### `turn/started`
 
-## Work progress reading
+Payload：
 
-功能目标：
+- `threadId`
+- `turn`
 
-用户需要看到 Codex 的工作过程，例如计划、工具调用、工具结果、文件变更、网页搜索等。
+用途：
 
-需要接收的 Codex 信息：
+- 创建或补全 live turn。
+- 记录 `startedAt` 和 `status = inProgress`。
 
-- 历史和 live 中以下 `ThreadItem.type`：
-  - `reasoning`
-  - `plan`
-  - `commandExecution`
-  - `fileChange`
-  - `mcpToolCall`
-  - `dynamicToolCall`
-  - `collabAgentToolCall`
-  - `webSearch`
-  - `imageView`
-  - `imageGeneration`
-  - `enteredReviewMode`
-  - `exitedReviewMode`
-  - `contextCompaction`
-- `item/started`
-  - 用于创建工作过程 item。
-- `item/completed`
-  - 用于覆盖 item 最终权威状态。
-- `item/plan/delta`
-  - 用于 plan 文本流式更新。
-- `turn/plan/updated`
-  - 用于结构化 plan 状态展示。
-- `item/reasoning/summaryPartAdded`
-  - 用于 reasoning summary 新 section。
-- `item/reasoning/summaryTextDelta`
-  - 用于 reasoning summary 文本增量。
-- `item/reasoning/textDelta`
-  - 用于 raw reasoning 文本增量。
-- `item/commandExecution/outputDelta`
-  - 用于命令输出增量。
-- `item/commandExecution/terminalInteraction`
-  - 用于 terminal interaction 记录。
-- `item/fileChange/outputDelta`
-  - 用于 file change 工具输出增量。
-- `item/fileChange/patchUpdated`
-  - 用于 streaming patch structured snapshot。
-- `turn/diff/updated`
-  - 用于本 turn 聚合 unified diff 最新视图。
-- `item/mcpToolCall/progress`
-  - 用于 MCP 工具进度消息。
-- `item/autoApprovalReview/started`
-  - 用于 auto-review 过程记录。
-- `item/autoApprovalReview/completed`
-  - 用于 auto-review 结果记录。
+#### `turn/completed`
 
-状态字段：
+Payload：
 
-- Codex 没有统一的 work progress `status` 字段。
-- 只有部分 `ThreadItem` 带各自的 `status`，例如：
-  - `commandExecution.status`
-  - `fileChange.status`
-  - `mcpToolCall.status`
-  - `dynamicToolCall.status`
-  - `collabAgentToolCall.status`
-  - `imageGeneration.status`
-- `turn/plan/updated.plan[].status` 可用于结构化计划步骤状态。
+- `threadId`
+- `turn`
 
-投影规则：
+用途：
 
-- 摘要优先使用 Codex 原生 `type`、`method`、`status`、`tool`、`command`、`query` 等字段。
-- 复杂对象进入通用详情展示，不从普通文本中二次解析类型。
-- delta/progress 只能更新已归属的 item 或 turn；无法归属时进入 unknown fallback 或 notice。
+- 设置 turn terminal state。
+- `turn.status = failed` 时，`turn.error` 是失败信息来源。
+- `turn.status = interrupted` 时，确认中断完成。
 
-## Unknown information fallback
+### Item lifecycle
 
-功能目标：
+#### `item/started`
 
-当 Codex 产生 My-Code-X 暂时不能专门理解的信息时，用户仍然能看到来源和细节，避免信息丢失。
+Payload：
 
-需要接收的 Codex 信息：
-
-- 未识别的 `ThreadItem.type`。
-- 未识别的 notification `method`。
-- 已识别 `ThreadItem` 或 notification 中未知的 enum 值。
-- 已识别 `ThreadItem` 或 notification 中暂不专门渲染的字段。
-
-需要保留的字段：
-
-- `method`
-- `ThreadItem.type`
 - `threadId`
 - `turnId`
-- `item.id` / `itemId`
-- status-like 字段，如果存在
-- 原始 payload 或可安全展示的通用字段结构
+- `item`
 
-投影规则：
+用途：
 
-- 能归属到当前 `threadId + turnId` 的未知信息进入 timeline。
-- 只能归属到当前 `threadId`、不能归属到具体 `turnId` 的未知信息进入页面 notice 或 thread-level compact 信息。
-- 不能归属到当前 thread 的未知信息不进入当前 Conversation View。
-- 未知信息不应被当作失败信息展示。
+- 创建或 upsert timeline item。
+- `item.type` 决定普通消息、工作过程或 unknown fallback。
 
-## Failure reading
+#### `item/completed`
 
-功能目标：
+Payload：
 
-用户需要看到当前工作中的明确失败，以及可用于排查的错误信息。
+- `threadId`
+- `turnId`
+- `item`
 
-需要接收的 Codex 信息：
+用途：
 
-- 当前 Conversation View 发出的 request 对应的 JSON-RPC error response
-  - 包括 `thread/resume`、`thread/read`、`thread/turns/list`、`turn/start`、`turn/steer`、`turn/interrupt` 等。
-  - request error 首先是对应操作的失败反馈，不天然等于 timeline failure。
-- `error` notification
-  - shape：`{ threadId, turnId, willRetry, error }`。
-  - `error.message` 是优先展示文本。
-  - `error.codexErrorInfo` 和 `error.additionalDetails` 用于排查详情。
-- `turn/completed`
-  - 当 `turn.status = failed` 时，表示 turn terminal failure。
-  - `turn.error` 是失败原因来源。
-- `Turn.error`
-  - 字段：`message`、`codexErrorInfo`、`additionalDetails`。
+- 用最终 `item` 覆盖同 `threadId + turnId + item.id` 的临时状态。
+- 对 `agentMessage`，最终权威文本是 `item.text`。
 
-投影规则：
+### Message streaming
 
-- `willRetry = false` 的 `error` notification 可以作为当前 turn 的明确失败候选。
-- `willRetry = true` 的 `error` notification 不应作为最终失败展示；它表示 Codex 可能仍在自动恢复。
-- `turn/completed.status = failed` 是 terminal failure 的权威状态。
-- 同一失败同时通过 `error` notification 和 `turn/completed.failed` 出现时，应按 `threadId + turnId + message + codexErrorInfo` 去重或合并。
-- 如果 `error` notification 没有 `turnId`，但有当前 `threadId`，应优先作为 notice；只有能可靠关联 active turn 时才进入 timeline failure。
-- JSON-RPC error response 只表示 request 被拒绝，不天然等于 timeline failure。
+#### `item/agentMessage/delta`
 
-## Recovering / retry feedback
+Payload：
 
-功能目标：
+- `threadId`
+- `turnId`
+- `itemId`
+- `delta`
 
-用户需要知道 Codex 遇到了问题但仍可能自动恢复，不应误判为最终失败。
+用途：
 
-需要接收的 Codex 信息：
+- 追加到对应 `agentMessage` 的临时文本 buffer。
+- `item/completed` 到达后，以最终 `agentMessage.text` 覆盖临时 buffer。
 
-- `error` notification with `willRetry = true`
-  - 用于展示临时恢复或重试状态。
-- 后续同一 `threadId + turnId` 的正常 notification
-  - 用于让恢复提示消失或降级。
-- 后续 `error` notification with `willRetry = false`
-  - 用于转入失败候选。
-- 后续 `turn/completed.status = failed`
-  - 用于转入 terminal failure。
-- 后续 `turn/completed.status = completed` 或 `interrupted`
-  - 用于结束恢复提示。
+### Work progress streaming
 
-后续正常 notification 包括：
+#### `turn/plan/updated`
 
-- `item/started`
-- `item/completed`
-- item delta/progress notification
-- `turn/plan/updated`
-- `turn/diff/updated`
-- `thread/tokenUsage/updated`
+Payload：
 
-投影规则：
+- `threadId`
+- `turnId`
+- `explanation?`
+- `plan`
 
-- Recovering / retry feedback 是 Failure reading 和 Live update 的辅助状态，不是独立 timeline 内容类型。
-- 多个连续 `willRetry = true` error 应保留最新状态，避免重复干扰用户。
+用途：
 
-## Conversation View notice
+- 展示结构化 plan。
+- `plan[].status` 是步骤状态来源。
 
-功能目标：
+#### `turn/diff/updated`
 
-用户需要看到不能放进主阅读流、也不能明确归属到当前工作位置的提示、错误或警告。
+Payload：
 
-需要接收的 Codex 信息：
+- `threadId`
+- `turnId`
+- `diff`
 
-- 当前 Conversation View 发出的 request 对应的 JSON-RPC error response。
-  - 包括历史读取失败、发送失败、追加失败、中断失败。
-- `warning` notification
-  - shape：`{ threadId?, message }`。
-- 无法归属到具体 `turnId` 的 `error` notification。
-- `thread/status/changed`
-  - 当 status 表达 `systemError` 或影响当前页面可操作状态时。
-- `model/rerouted`
-  - 可作为非阻塞提示或工作过程信息。
-- `model/verification`
-  - 用于提示账户需要额外 verification。
+用途：
 
-投影规则：
+- 展示当前 turn 聚合 unified diff 的最新快照。
 
-- 只有当前 Conversation View 发出的 request error 才进入当前页面反馈。
-- 带当前 `threadId` 但缺少 `turnId` 的 runtime 信息优先作为 thread-level notice。
-- 不带当前 `threadId` 的信息不进入当前 Conversation View，除非它是当前连接级别且直接影响当前页面。
-- notice 是页面反馈，不进入普通 message timeline。
+#### `item/reasoning/summaryPartAdded`
 
-## Conversation state
+Payload：
 
-功能目标：
+- `threadId`
+- `turnId`
+- `itemId`
+- `summaryIndex`
 
-用户需要知道当前内容是否正在恢复、是否为空、是否失败、是否可能不是最新。
+用途：
 
-需要接收的 Codex 信息：
+- 为 reasoning summary 创建新的 section。
 
-- `thread/resume` / `thread/read` / `thread/turns/list` request lifecycle
-  - 用于判断历史恢复或分页读取是否进行中。
-- 当前选中的 `Thread`
-  - 用于判断是否有选中 thread。
-- 历史读取 request 的 response / error
-  - 用于判断恢复成功或失败。
-- `Thread.turns` 或 `thread/turns/list.data`
-  - 用于判断是否存在可展示内容。
-- `thread/status/changed`
-  - 用于判断 thread 是否 idle、active、systemError。
-- `turn/started`
-  - 用于判断有 live active turn。
-- `turn/completed`
-  - 用于判断 active turn 结束。
+#### `item/reasoning/summaryTextDelta`
 
-My-Code-X runtime 状态：
+Payload：
 
-- 恢复开始。
-- 同步中。
-- 重新连接。
-- 连接不可用。
-- 内容可能不是最新。
+- `threadId`
+- `turnId`
+- `itemId`
+- `summaryIndex`
+- `delta`
 
-这些状态不是 Codex 原生 projection input，但 Conversation View 需要消费 My-Code-X 自身状态来决定页面提示和 Composer 禁用状态。
+用途：
 
-可展示内容判断：
+- 追加 reasoning summary 文本。
 
-- `userMessage` 和 `agentMessage` 是普通对话内容。
-- work progress item、failure item、unknown item 也是可展示内容。
-- 空 turn 不应单独让页面变成“有内容”，除非它包含可展示状态或错误。
+#### `item/reasoning/textDelta`
 
-## Live update
+Payload：
 
-功能目标：
+- `threadId`
+- `turnId`
+- `itemId`
+- `contentIndex`
+- `delta`
 
-用户需要在 Codex 工作进行中持续看到新内容和内容变化。
+用途：
 
-需要接收的 Codex 信息：
+- 追加 raw reasoning 文本。
 
-- `thread/started`
-  - 用于确认当前连接已订阅 thread 事件。
-- `thread/status/changed`
-  - 用于更新 thread active / idle / waiting / systemError 状态。
-- `turn/started`
-  - 用于创建或补全 live turn。
-- `item/started`
-  - 用于创建或 upsert item。
-- item delta/progress notification
-  - 用于更新 item 临时内容或进度。
-- `item/completed`
-  - 用于覆盖 item 最终权威对象。
-- `turn/completed`
-  - 用于设置 turn terminal state。
-- `thread/tokenUsage/updated`
-  - 可用于附加状态或详情展示。
-- `serverRequest/resolved`
-  - 用于解除对应服务端反向 request 的等待状态。
+#### `item/commandExecution/outputDelta`
 
-合并规则：
+Payload：
 
-- 用 `threadId` 分区维护 conversation state。
+- `threadId`
+- `turnId`
+- `itemId`
+- `delta`
+
+用途：
+
+- 追加命令输出。
+
+#### `item/commandExecution/terminalInteraction`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `itemId`
+- `processId`
+- `stdin`
+
+用途：
+
+- 展示 terminal interaction 记录。
+
+#### `item/fileChange/outputDelta`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `itemId`
+- `delta`
+
+用途：
+
+- 追加 file change 工具输出。
+
+#### `item/fileChange/patchUpdated`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `itemId`
+- `changes`
+
+用途：
+
+- 更新 streaming patch snapshot。
+
+#### `item/mcpToolCall/progress`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `itemId`
+- `message`
+
+用途：
+
+- 展示 MCP tool progress。
+
+#### `item/autoApprovalReview/started`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `reviewId`
+- `targetItemId?`
+- `review`
+- `action`
+
+用途：
+
+- 展示 approval auto-review 开始状态。
+
+#### `item/autoApprovalReview/completed`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `reviewId`
+- `targetItemId?`
+- `decisionSource`
+- `review`
+- `action`
+
+用途：
+
+- 展示 approval auto-review 完成状态。
+
+### Hooks
+
+#### `hook/started`
+
+Payload：
+
+- `threadId`
+- `turnId?`
+- `run`
+
+用途：
+
+- 展示 hook 运行中状态。
+- `run.status` 是状态来源。
+- 没有 `turnId` 时，作为 thread-level work progress 展示。
+
+#### `hook/completed`
+
+Payload：
+
+- `threadId`
+- `turnId?`
+- `run`
+
+用途：
+
+- 展示 hook 完成、失败、blocked 或 stopped 状态。
+- `run.entries[]` 中的 `kind` 和 `text` 进入工作过程详情。
+- 没有 `turnId` 时，作为 thread-level work progress 展示。
+
+### Failure and notice
+
+#### `error`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `willRetry`
+- `error`
+
+用途：
+
+- `willRetry = true`：展示恢复中或重试中提示，不作为最终失败。
+- `willRetry = false`：作为当前 turn 的失败候选。
+- 最终失败以 `turn/completed.turn.status = failed` 为权威。
+
+`error` 字段：
+
+- `message`
+- `codexErrorInfo`
+- `additionalDetails`
+
+#### `warning`
+
+Payload：
+
+- `threadId?`
+- `message`
+
+用途：
+
+- 带当前 `threadId` 时作为页面 notice。
+- 不带 `threadId` 时，只有它影响当前连接可用性才展示。
+
+#### `guardianWarning`
+
+Payload：
+
+- `threadId`
+- `message`
+
+用途：
+
+- 作为当前 thread 的高优先级 notice。
+
+#### `configWarning`
+
+Payload：
+
+- `summary`
+- `details?`
+- `path?`
+- `range?`
+
+用途：
+
+- 作为连接级或配置级 notice 展示。
+- 不进入 timeline。
+
+#### `model/rerouted`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `fromModel`
+- `toModel`
+- `reason`
+
+用途：
+
+- 作为非阻塞 notice 或 work progress detail。
+
+#### `model/verification`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `verifications`
+
+用途：
+
+- 提示当前 turn 需要额外账户 verification。
+
+#### `serverRequest/resolved`
+
+Payload：
+
+- `threadId`
+- `requestId`
+
+用途：
+
+- 清除对应 server request 的等待状态。
+
+## Server Requests
+
+完整 Pending interaction UI 和 response action 不在本 feature scope 内。Conversation View 仍需要接收当前 thread 相关 server request，用于展示 Codex 正在等待什么，并避免用户误判为卡死。
+
+### `item/commandExecution/requestApproval`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `itemId`
+- `approvalId?`
+- `reason?`
+- `networkApprovalContext?`
+- `command?`
+- `cwd?`
+- `commandActions?`
+- `additionalPermissions?`
+- `proposedExecpolicyAmendment?`
+- `proposedNetworkPolicyAmendments?`
+- `availableDecisions?`
+
+Projection：
+
+- 归属到对应 `commandExecution` item 的等待状态。
+
+### `item/fileChange/requestApproval`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `itemId`
+- `reason?`
+- `grantRoot?`
+
+Projection：
+
+- 归属到对应 `fileChange` item 的等待状态。
+
+### `item/tool/requestUserInput`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `itemId`
+- `questions`
+
+Projection：
+
+- 归属到对应 tool item 的等待用户输入状态。
+
+### `mcpServer/elicitation/request`
+
+Payload：
+
+- `threadId`
+- `turnId?`
+- `serverName`
+- request body
+
+Projection：
+
+- 有 `turnId` 时归属到当前 turn。
+- 没有 `turnId` 时作为 thread-level pending 状态。
+
+### `item/permissions/requestApproval`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `itemId`
+- `cwd`
+- `reason?`
+- `permissions`
+
+Projection：
+
+- 归属到对应 item 的权限等待状态。
+
+### `item/tool/call`
+
+Payload：
+
+- `threadId`
+- `turnId`
+- `callId`
+- `namespace?`
+- `tool`
+- `arguments`
+
+Projection：
+
+- 作为 dynamic tool call 等待状态展示。
+
+## 合并规则
+
+- 用 `threadId` 分区维护 Conversation View state。
 - 用 `turnId` 维护 turn。
 - 用 `item.id` / `itemId` 维护每个 turn 内的 item。
 - `item/started` 创建或 upsert item。
-- item-specific delta 只追加到对应 item 的临时 buffer。
+- item-specific delta 只更新对应 item 的临时 buffer。
 - `item/completed` 覆盖该 item 的最终对象。
-- `turn/completed` 只作为 turn terminal 状态，不依赖其中 `items` 完整。
-- 对所有 enum 和 method 保持前向兼容，未知值进入 unknown fallback。
+- `turn/completed` 只设置 turn terminal state，不依赖其中 `items` 完整。
+- 同一失败同时通过 `error` 和 `turn/completed.failed` 出现时，按 `threadId + turnId + message + codexErrorInfo` 去重或合并。
+- 所有未知 enum、未知 `ThreadItem.type`、未知 notification method 和未知字段都保留原始 payload 或安全通用字段，进入 unknown fallback 或 notice。
 
-## Composer related feedback
+## 可展示内容判断
 
-说明：
+- `userMessage` 和 `agentMessage` 是普通对话内容。
+- work progress item、failure item、unknown item 也是可展示内容。
+- 空 turn 不单独让页面变成“有内容”，除非它包含可展示 item、pending 状态或 error。
 
-Composer 需要发送 `turn/start`、`turn/steer`、`turn/interrupt`，并接收 Codex 对这些 action 的反馈，用于决定草稿、错误提示和后续 timeline 更新。
+## Composer 可用性
 
-需要发送给 Codex 的信息：
-
-- `turn/start` request
-  - Codex 空闲时，发送普通输入并开始新 turn。
-  - 请求体必须包含目标 `threadId` 和原始 `UserInput[]`。
-- `turn/steer` request
-  - Codex 工作中且用户有输入内容时，发送补充指令。
-  - 请求体必须包含 `threadId`、`expectedTurnId` 和原始 `UserInput[]`。
-- `turn/interrupt` request
-  - Codex 工作中且用户无输入内容时，请求中断。
-  - 请求体必须包含 `threadId` 和 `turnId`。
-
-需要接收的 Codex 反馈：
-
-- `turn/start` success response
-  - 表示服务端接受请求并创建初始 `Turn`。
-  - response 中 `turn.items` 通常为空。
-- `turn/start` JSON-RPC error response
-  - 表示发送失败，Composer 应保留草稿并提示。
-- `turn/steer` success response
-  - response 返回 `{ turnId }`。
-  - 不会产生新的 `turn/started`。
-- `turn/steer` JSON-RPC error response
-  - 例如没有 active turn、`expectedTurnId` 不匹配、active turn 不可 steer。
-- `turn/interrupt` success response
-  - 只表示 cancellation request 被接受。
-- `turn/interrupt` JSON-RPC error response
-  - 表示中断请求失败。
-- 后续 `turn/completed.status = interrupted`
-  - 表示 turn 真正完成中断。
-- 后续标准 live notification
-  - 用于展示请求被接受后真正进入 timeline 的内容。
-
-投影规则：
-
-- 请求被接受后，Composer 可以清空已发送草稿。
-- 请求失败时，Composer 保留原草稿。
-- 未被 Codex 确认的输入不应伪装成正式 timeline 内容。
-- action error 可以进入 Composer-local feedback 或 Conversation View notice，具体由 UI/feature detail 决定。
-
-## 服务端反向 request
-
-功能目标：
-
-完整 Pending interaction 处理流程不在 Conversation View feature scope 内，但 Conversation View 需要知道这些 request 会影响当前 thread 的可操作状态和工作过程理解。
-
-需要接收的 Codex 信息：
-
-- `item/commandExecution/requestApproval`
-  - 命令执行审批。
-- `item/fileChange/requestApproval`
-  - 文件修改审批。
-- `item/tool/requestUserInput`
-  - 工具调用请求用户输入。
-- `mcpServer/elicitation/request`
-  - MCP elicitation。
-- `item/permissions/requestApproval`
-  - 权限请求审批。
-- `item/tool/call`
-  - 请求客户端执行 dynamic tool call。
-
-需要发送给 Codex 的信息：
-
-- `item/commandExecution/requestApproval` response
-  - 返回 `{ decision }`。
-- `item/fileChange/requestApproval` response
-  - 返回 `{ decision }`。
-- `item/tool/requestUserInput` response
-  - 返回 `{ answers }`。
-- `mcpServer/elicitation/request` response
-  - 返回 `{ action, content?, _meta? }`。
-- `item/permissions/requestApproval` response
-  - 返回 `{ permissions, scope, strictAutoReview? }`。
-- `item/tool/call` response
-  - 返回 `{ contentItems, success }`。
-
-需要接收的后续 Codex 信息：
-
-- `serverRequest/resolved`
-  - 服务端反向 request 已被客户端响应并在 thread listener 顺序中 resolved。
-- `thread/status/changed`
-  - `activeFlags` 可能包含 `waitingOnApproval` 或 `waitingOnUserInput`。
-
-投影规则：
-
-- 能归属到当前 `threadId + turnId + itemId` 的 request 可作为对应 work progress 的等待状态。
-- 不能归属到具体 item 的 request 应作为 thread-level pending 状态。
-- 具体审批 UI 和响应 action 不在本文定义。
-
-## Realtime events
-
-当前 Conversation View feature description 没有要求支持 Realtime API。
-
-默认不接收以下事件作为 Conversation View timeline 输入：
-
-- `thread/realtime/started`
-- `thread/realtime/itemAdded`
-- `thread/realtime/transcript/delta`
-- `thread/realtime/transcript/done`
-- `thread/realtime/outputAudio/delta`
-- `thread/realtime/sdp`
-- `thread/realtime/error`
-- `thread/realtime/closed`
-
-原因：
-
-- 协议说明 `thread/realtime/*` 是 ephemeral transport events。
-- 它们不是 `ThreadItem`。
-- 它们不会通过 `thread/read`、`thread/resume`、`thread/fork` 恢复。
-
-如果后续 feature 明确支持 realtime transcript，需要单独设计 live session 内状态。
+- 没有当前 `threadId`：禁用发送、追加和中断。
+- `thread.status = idle`：允许 `turn/start`。
+- `thread.status = active` 且有 active regular `turnId`：允许 `turn/steer` 或 `turn/interrupt`。
+- `thread.status = systemError`：禁用 Composer action。
+- 历史恢复中、连接不可用或当前状态不明确：禁用 Composer action，但保留草稿。
