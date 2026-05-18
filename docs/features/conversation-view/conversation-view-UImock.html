@@ -51,12 +51,16 @@
       min-height: 100vh;
       padding: 16px 10px;
       display: flex;
+      flex-wrap: wrap;
+      gap: 18px;
+      align-items: flex-start;
       justify-content: center;
     }
 
     .phone {
       position: relative;
       width: min(100%, 430px);
+      flex: 0 1 430px;
       min-height: calc(100vh - 32px);
       max-height: 900px;
       background: var(--paper);
@@ -373,6 +377,10 @@
       background: var(--red);
     }
 
+    .event-row--thread-error .event-head {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+
     .event-content {
       min-width: 0;
     }
@@ -422,18 +430,6 @@
 
     .status-chip--error {
       color: var(--red);
-    }
-
-    .event-row--recovering {
-      background: #f7fbff;
-    }
-
-    .event-row--recovering .event-rule {
-      background: var(--blue);
-    }
-
-    .status-chip--recovering {
-      color: var(--blue);
     }
 
     .disclosure {
@@ -583,6 +579,10 @@
       box-shadow: 0 12px 30px rgba(23, 32, 51, 0.22);
     }
 
+    .toast--visible {
+      display: grid;
+    }
+
     .toast p {
       margin: 0;
       min-width: 0;
@@ -636,8 +636,8 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
         </button>
         <div class="title-group">
-          <h1 class="title">My-Code-X</h1>
-          <p class="kicker">Local Codex</p>
+          <h1 class="title">Add dry-run CLI flag</h1>
+          <p class="kicker">D:\workspaces\AI-Tools\My-Code-X-C</p>
         </div>
         <button class="icon-button" aria-label="更多操作">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
@@ -806,15 +806,37 @@
             </article>
           </li>
 
-          <li class="transcript-row event-row event-row--recovering" role="status">
+          <li class="transcript-row event-row event-row--error event-row--thread-error">
             <span class="event-rule" aria-hidden="true"></span>
-            <div class="event-content" aria-label="Recovering error">
+            <article class="event-content" aria-label="Codex Thread failure item" role="alert">
               <div class="event-head">
                 <p class="event-type">connection_retry</p>
-                <span class="status-chip status-chip--recovering">2/5</span>
+                <span class="status-chip status-chip--error">failed</span>
               </div>
-              <p class="event-note">Reconnecting...</p>
-            </div>
+              <p class="error-title">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5"></path><path d="M12 17h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
+                Connection interrupted
+              </p>
+              <p class="error-message">Reconnecting...</p>
+              <dl class="field-list">
+                <div class="field-row">
+                  <dt class="field-name">source</dt>
+                  <dd class="field-value">codex-app-server</dd>
+                </div>
+                <div class="field-row">
+                  <dt class="field-name">threadId</dt>
+                  <dd class="field-value">thread_dry_run_cli_flag</dd>
+                </div>
+                <div class="field-row">
+                  <dt class="field-name">turnId</dt>
+                  <dd class="field-value">turn_20260515_0943</dd>
+                </div>
+                <div class="field-row">
+                  <dt class="field-name">code</dt>
+                  <dd class="field-value">connection_retry</dd>
+                </div>
+              </dl>
+            </article>
           </li>
         </ol>
       </div>
@@ -829,6 +851,82 @@
       </form>
 
       <div class="toast" role="status">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4"></path><path d="M12 16h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
+        <p>JSON-RPC request rejected: thread is not ready.</p>
+      </div>
+    </section>
+
+    <section class="phone phone--notice-demo" aria-label="Conversation View page notice toast demo">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="system-icons">
+          <span class="signal"><span></span><span></span><span></span></span>
+          <svg viewBox="0 0 24 24"><path d="M5 12.6a10.5 10.5 0 0 1 14 0"></path><path d="M8.5 16a5.5 5.5 0 0 1 7 0"></path><path d="M12 19h.01"></path></svg>
+          <span class="battery"></span>
+        </span>
+      </div>
+
+      <header class="appbar">
+        <button class="icon-button" aria-label="打开侧边栏">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <div class="title-group">
+          <h1 class="title">Add dry-run CLI flag</h1>
+          <p class="kicker">D:\workspaces\AI-Tools\My-Code-X-C</p>
+        </div>
+        <button class="icon-button" aria-label="更多操作">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
+        </button>
+      </header>
+
+      <div class="conversation-timeline" aria-label="Conversation timeline with page notice">
+        <ol class="timeline-list">
+          <li class="transcript-row message-row user-message-row">
+            <article aria-label="User message">
+              <div class="message-text message-text--user">
+                <p>Keep the implementation small and leave unrelated cleanup alone.</p>
+              </div>
+            </article>
+          </li>
+
+          <li class="toolbar-row user-toolbar-row" aria-label="User message toolbar">
+            <div class="copy-wrap copy-wrap--user">
+              <time class="message-time" datetime="2026-05-15T09:43:00">09:43</time>
+              <button class="copy-inline" type="button" aria-label="复制用户消息">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+            </div>
+          </li>
+
+          <li class="transcript-row message-row">
+            <article aria-label="Assistant message">
+              <div class="message-text">
+                <p>Understood. I'll keep the change focused and report only the files touched.</p>
+              </div>
+            </article>
+          </li>
+
+          <li class="toolbar-row toolbar-row--before-user" aria-label="Assistant message toolbar">
+            <div class="copy-wrap">
+              <button class="copy-inline" type="button" aria-label="复制 Codex 消息">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+              </button>
+              <time class="message-time" datetime="2026-05-15T09:44:00">09:44</time>
+            </div>
+          </li>
+        </ol>
+      </div>
+
+      <form class="composer" aria-label="Reply composer">
+        <div class="composer-box">
+          <textarea aria-label="输入" placeholder="补充指令或继续当前 Thread"></textarea>
+          <button class="send-button" type="button" aria-label="中断当前 Turn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"></rect></svg>
+          </button>
+        </div>
+      </form>
+
+      <div class="toast toast--visible" role="status">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4"></path><path d="M12 16h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
         <p>JSON-RPC request rejected: thread is not ready.</p>
       </div>

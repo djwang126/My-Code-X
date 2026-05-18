@@ -1,247 +1,233 @@
 # Feature-Conversation View
 
-## Summary
+Conversation View 是 My-Code-X 的核心移动端工作界面。它让用户在手机上阅读当前 Codex 工作现场，理解 Codex 正在做什么，并继续输入、纠偏或处理中断后的状态。
 
-Conversation View 是 My-Code-X 的核心主界面，围绕当前选中 Codex `Thread` 展示只读 `Conversation` timeline，并通过 `Composer` 发送输入以继续当前 `Thread`。
+Conversation View 不重新设计 Codex agent 能力。它的目标是把 Codex 的对话内容、工作过程、失败信息和其他可见信息，以适合手机阅读和操作的方式呈现出来。
 
 ## Feature Capabilities
 
 ### Conversation View shell
 
-Conversation View shell 是承载当前 `Conversation`、`Composer` 和页面状态的移动端主界面框架。它让用户阅读当前 Codex `Thread` 的 timeline 投影，并在同一界面继续当前 `Thread`。
+Conversation View shell 是承载当前工作现场的主界面。它包含阅读区域、当前上下文提示、页面状态和底部输入区域。
 
 Functional Requirements:
 
-- 页面展示当前 `Conversation` timeline。
-- `Conversation item` 按发生顺序展示。
-- 页面支持 `message`、`work-trace`、`unknown`、`error` 四类 `Conversation item`。
-- 页面可以在当前 active `Turn` 附近展示 `Recovering error` 临时 overlay。
-- 页面展示 `Conversation timeline state`。
-- 页面在 timeline 外展示 `Conversation View notice`。
-- 无 Codex `Thread` 选中时，页面展示无 `Thread` 选中状态。
+- 页面展示当前选中 Codex `Thread` 的可读内容。
+- 页面按发生顺序展示用户和 Codex 之间产生的信息。
+- 页面支持没有选中 `Thread` 的状态。
+- 页面支持内容恢复中、内容为空、读取失败和内容可能不是最新的状态。
+- 页面支持在已有内容上继续接收新信息。
+- 页面在阅读区域外展示不适合插入 timeline 的提示或错误。
 
 UX Decisions:
 
-- 页面主体采用单列垂直 timeline。
-- `Conversation item` 采用按类型差异化的视觉呈现。
-- 页面顶部保留当前 `Conversation` 的轻量上下文区域。
-- 页面底部为输入区域。
+- 页面主体采用单列垂直布局，适合手机阅读。
+- 顶部保留轻量上下文区域，让用户知道当前正在看哪个工作现场。
+- 顶部区域显示当前选中 Codex `Thread`的标题与所在目录。
+- 顶部区域两侧显示两个按钮（不实现实际意义，后续功能需要，UI提前设计）。
+- 底部保留输入区域，让用户可以随时继续当前工作。
+- 页面状态不应让用户误以为 Codex 已经失败，除非确实需要用户处理失败。
+- 已有内容可读时，新的同步、重连或状态提示应非阻塞展示。
+- 每轮对话的第一条用户消息和最后一条Codex消息下方都有工具栏，用于放置时间信息，复制按钮以及未来的扩展功能按钮。
+- 用户可以复制对应的第一条用户输入原文。
+- 用户可以复制对应的的最后一条 Codex 回复原文。
+- 正在恢复且没有可读内容时，页面展示恢复中相关提示。
+- 恢复成功但没有可展示内容时，页面展示无可展示内容相关提示。
+- 恢复失败且没有可读内容时，页面展示恢复失败相关提示。
+- 已有内容可读但正在同步、重连或无法确认最新时，页面保留原有内容并展示非阻塞提示。
+- 没有选中 Codex `Thread` 时，页面展示无选中相关提示（即app首屏信息）。
+- 页面状态帮助用户判断自己能否继续阅读、是否需要等待、是否可以重试。
+- my-code-x自身的同步中、重新连接或内容可能过期等提示使用toast或弹窗等形式的轻提示。
+- 所有用户输入信息与Codex信息，My-code-x不额外添加自创文案。一切解释性内容，如类型标签，错误message等，全部沿用Codex已有信息。
 
-### Message item
+### Typed conversation information
 
-Message item 展示 Codex `userMessage` 和 `agentMessage` 的文本内容。它负责让主对话内容在手机端清晰可读、易复制、易区分。
+Conversation View 需要把用户接收到的信息分类型展示。不同信息对用户的意义不同：普通对话内容用于阅读，工作过程用于理解 Codex 正在做什么，失败信息用于排查和决策，未知信息用于保证新类型内容不丢失。
 
 Functional Requirements:
 
-- Codex `userMessage` 作为 `message` 类型的 `Conversation item` 展示。
-- Codex `agentMessage` 作为 `message` 类型的 `Conversation item` 展示。
-- Codex `agentMessage` 实时 delta 可以更新当前 `Message item`。
-- Codex `item/completed` 中的最终 `agentMessage.text` 作为 `Message item` 的最终内容。
-- 普通文本内容支持 Markdown 阅读。
-- 代码块、表格在消息中可正常展示。
-- 可解析 md 格式的网址链接，并可点击跳转。
-- 可解析 md 格式的文件/图片引用，并可点击跳转（需要文件功能支持，暂时不做）。
-- 用户可以复制md渲染后的单独代码块内容。
+- 页面至少区分以下四类信息：
+  - 普通对话内容：用户输入和 Codex 回复。
+  - 工作过程信息：计划、工具调用、工具结果、文件变更、网页搜索等 Codex 工作痕迹。
+  - 失败信息：当前工作中发生，来自Codex的明确失败。
+  - 未识别信息：My-Code-X 暂时不能专门理解，但仍应让用户看到的内容。
+- 不同类型的信息有清晰的视觉区分。
+- 信息类型不应只依赖文本内容猜测；用户看到的分类稳定、可解释。
+- 未识别信息不能被静默丢弃。
+- 失败信息比普通信息更醒目。
 
 UX Decisions:
 
-- Message item 使用文本块布局。
-- 用户输入和 Codex 输出使用差异化样式。
-- 用户消息和 Codex 输出需要视觉上可区分；具体背景、边框、间距和强调方式由 UI 设计决定。
-- Message item 不展示调试字段；复制入口弱化为次要操作，避免干扰正文阅读。
-- 代码块使用适合窄屏阅读的排版。
-- 代码块右上角有复制按钮。
+- 普通对话内容是 timeline 的最高阅读优先级。
+- 工作过程与未知信息默认紧凑展示，可展开查看细节。
+- 未识别信息使用轻微提醒样式，表达“可排查但不一定是错误”。
+- 普通对话内容和失败信息直接展开展示，不具备折叠能力。
+- 类型样式应帮助用户快速扫读，而不是增加调试噪音。
+- 类型标签、边框、颜色、间距和图标由 UI 设计决定，但保持四类信息的可区分性。
+
+### Message reading
+
+Message reading 负责展示用户输入和 Codex 回复，让主对话内容在手机端清晰、可读、可复制。
+
+Functional Requirements:
+
+- 用户的文字输入作为普通对话内容展示。
+- Codex 的文字回复作为普通对话内容展示。
+- Codex 正在输出时，页面可以更新当前回复内容。
+- Codex 最终回复完成后，页面展示最终内容。
+- 普通文本内容支持 Markdown阅读。
+- 代码块可以正常展示。
+- 表格可以正常展示。
+- Markdown 链接可以点击打开。
+- 用户可以复制单个代码块内容。
+
+UX Decisions:
+
+- 用户输入和 Codex 回复需要视觉上可区分。
+- Message 使用文本块布局，优先保证阅读舒适度。
+- Message 不展示调试字段。
+- 复制入口是次要操作，不应干扰正文阅读。
+- 代码块使用适合窄屏阅读的排版，使用横向滚动容器。
+- 代码块右上角提供复制按钮。
 - 宽表格使用横向滚动容器。
-- 一个 `Turn` 中第一条 `userMessage`（即 Codex `turn/start`）下方有横向工具栏，包含复制按钮，可复制此条 `userMessage` 的原始文本。
-- 一个 `Turn` 中最后一条 `agentMessage`（即 Codex `turn/completed`）下方有横向工具栏，包含复制按钮，可复制此条 `agentMessage` 的原始文本。
 
-### Work trace item
+### Work progress reading
 
-Work trace item 展示 Codex 工作过程中的计划、工具调用、工具结果、文件变更、网页搜索等工作痕迹。它由 My-Code-X 已明确归类为工作过程痕迹的 Codex `ThreadItem` 或可归属到当前 `Turn` 的 typed `Codex runtime event` 投影而来，让用户理解 Codex 正在做什么，并在需要时查看细节证据。
+Work progress reading 让用户理解 Codex 正在做什么。它覆盖计划、工具调用、工具结果、文件变更、网页搜索等工作过程信息。
 
 Functional Requirements:
 
-- Codex 已知工作痕迹作为 `work-trace` 类型的 `Conversation item` 展示。
-- Work trace item 保留 Codex 原生 type。
-- Work trace item 如果存在 status 字段，则保留 status。
-- Work trace item 基于 Codex 结构化 `ThreadItem` 和 typed `Codex runtime event` 投影，不从普通文本输出中解析。
-- Work trace item 当前不按 Codex 原生 type 做专门摘要或专门详情渲染。
-- 是否存在专门渲染不改变 Work trace item 和 `Unknown item` 的分类边界。
-- 复杂字段值以安全、可读的文本形式展示。
+- Codex 工作过程中的重要痕迹可以展示。
+- 工作过程信息能表达来源或大致类型，例如计划、命令、工具、搜索、文件变更等。
+- 工作过程信息可以显示状态，例如进行中、完成、失败或其他上游提供的状态。
+- 复杂内容以安全、可读的形式展示。
+- 工作过程信息默认不需要为每种来源设计专门 UI。
+- 用户可以展开查看更详细内容。
+- 展开细节后，用户的浏览位置不应突然跳动。
 
 UX Decisions:
 
-- Work trace item 样式与 `Message item` 有所区别。
-- Work trace item 默认以摘要形态呈现，摘要只显示来源 type 和可选 status。
-- Work trace item 使用低视觉重量的紧凑卡片，适合连续出现，不抢占 `Message item` 的阅读层级。
-- Work trace item 的来源 type 使用 monospace；status 使用小型状态标记。
-- Work trace item 不显示额外的分类文案，例如 `Work trace`。
-- 用户可以展开查看详情。
-- 展开详情后使用通用字段列表，以字段名和值的形式分别显示。
-- 展开详情后不改变用户浏览位置
+- 摘要优先显示Codex 传递的类型和状态。
+- 详情区域使用通用字段或结构化内容展示。
 
+### Unknown information fallback
 
-### Unknown item
-
-Unknown item 展示 My-Code-X 当前尚未专门分类的 Codex `ThreadItem` 或可归属到当前 `Turn` 的 `Codex runtime event`。它用于保证 Codex 新增内容类型时，用户仍然可以看到来源信息和原始细节。
+Unknown information fallback 用于处理 My-Code-X 暂时不能专门理解的信息。目标是不丢内容，并让用户有能力排查。
 
 Functional Requirements:
 
-- 未识别的 Codex `ThreadItem` 或可归属到当前 `Turn` 的 `Codex runtime event` 作为 `unknown` 类型的 `Conversation item` 展示。
-- Unknown item 保留来源 type 或可识别来源信息。
-- Unknown item 如果存在 status 字段，则保留 status。
-- Unknown item 不按来源 type 做专门摘要或专门详情渲染。
-- 复杂字段值以安全、可读的文本形式展示。
+- My-Code-X 遇到暂时不能专门理解的信息时，仍然展示。
+- 未识别信息保留可理解的来源提示。
+- 未识别信息如果有状态，应展示状态。
+- 未识别信息不应被当作失败信息展示。
+- 未识别信息不应阻断用户继续阅读或继续输入。
+- 用户可以展开查看通用字段内容。
 
 UX Decisions:
 
-- Unknown item 使用独立于 Work trace 的视觉样式。
-- Unknown item 默认以摘要形态呈现，摘要只显示来源 type 和可选 status。
-- Unknown item 使用轻微警示但非错误的样式，例如虚线边框或 caution 色左侧标记。
-- Unknown item 的设计目标是可排查和不丢信息，不应暗示当前 Codex 工作已经失败。
-- Unknown item 不显示额外的分类文案，例如 `Unknown item`。
-- Unknown item 仍使用通用字段渲染，不把完整 raw payload 作为专门内容区展示。
-- 用户可以展开查看详情。
-- 展开详情后使用通用字段列表，以字段名和值的形式分别显示。
+- 未识别信息使用轻微警示但非错误的视觉样式。
+- 未识别信息的设计目标是“不丢信息”和“可排查”。
+- 未识别信息默认紧凑展示。
 
+### Failure reading
 
-### Error item
-
-Error item 展示可归属到当前 Codex `Thread` 和 `Turn` 的 failure。它帮助用户理解当前 timeline 中哪里出现失败，以及失败的原始信息。
+Failure reading 让用户理解Codex在当前工作中哪里失败了、失败原因是什么。
 
 Functional Requirements:
 
-- Codex `error` notification with `willRetry = false` 作为 `error` 类型的 `Conversation item` 展示。
-- Codex `turn/completed` with `status = failed` 中的 `TurnError` 作为 `error` 类型的 `Conversation item` 展示。
-- 当同一个 `Turn` 先收到 `willRetry = false` 的 Codex `error` notification，后收到 `turn/completed` with `status = failed` 时，如果两者的 `turnId` 相同且 `error.message` 相同，则不重复显示第二个 `Error item`。
-- 除 `turnId + error.message` 与 Codex TUI 一致的重复显示抑制外，Conversation View 不设计额外的错误去重规则。
-- Error item 保留对应来源里的错误字段，例如 `source`、`threadId`、`turnId`、`willRetry`、`status`、`message`、`codexErrorInfo`、`additionalDetails`。
-- Error item 不区分摘要和详情，不提供收缩展开逻辑。
+- Codex 工作过程中归属于Codex Thread的异常信息，展示为失败信息。
+- 这类失败信息保留在 timeline 中，以表达它发生在当前工作过程里的具体位置。
+- 失败信息展示用户可理解的失败原因。
+- 如果同一个失败被上游重复报告，页面不应明显重复干扰用户。
+- 失败信息不应伪装成 Codex 普通回复。
+- 失败信息不默认折叠。
+- 失败信息不需要为每种错误类型设计专门 UI。
 
 UX Decisions:
 
-- Error item 使用明确错误样式。
-- Error item 使用左侧错误标记和红色系文本，优先展示 `message` 字段。
-- Error item 使用通用字段渲染，以字段名和值的形式展示对应来源里的错误信息。
-- Error item 不为不同 `codexErrorInfo` 做专门视觉或内容渲染。
-- Error item 不使用折叠摘要；用户应直接看到失败原因和可排查字段。
-- Error item 与普通 Codex 输出形成明显视觉区分。
-
-### Recovering error
-
-Recovering error 展示当前 active Codex `Turn` 中 Codex 仍会继续尝试恢复的错误。它用于让用户知道当前 `Turn` 没有卡死，而是正在由 Codex app-server 自动恢复。
-
-Functional Requirements:
-
-- Codex `error` notification with `willRetry = true` 表示当前 `Turn` 的 `Recovering error`，不作为 `Error item`。
-- Recovering error 绑定当前 active `Turn`，可以在 timeline 区域靠近当前 active `Turn` 展示，但不属于 `Conversation item`，也不进入 `Conversation` timeline 排序。
-- 同一个 active `Turn` 再次收到 `willRetry = true` 的 Codex `error` notification 时，覆盖前一个 `Recovering error`。
-- 收到同一个 active `Turn` 的后续正常 `Codex runtime event`，例如 Codex `item/*` delta、progress 或 completed notification 时，清除 `Recovering error`。
-- 收到同一个 active `Turn` 的 Codex `turn/completed` notification 时，清除 `Recovering error`。
-- 如果后续收到 Codex `error` notification with `willRetry = false` 或 `turn/completed` with `status = failed`，按 `Error item` 规则展示 failure。
-- Recovering error 保留对应来源里的错误字段，例如 `source`、`threadId`、`turnId`、`willRetry`、`message`、`codexErrorInfo`、`additionalDetails`。
-- Recovering error 不参与 `Conversation item` 排序，不作为恢复历史中的正式 timeline 内容。
-
-UX Decisions:
-
-- Codex `error` notification with `willRetry = true` 在当前进行中的 `Turn` 区域作为临时 overlay 展示。
-- 临时提示使用覆盖式显示，例如 `Reconnecting... 1/5` 被后续 `Reconnecting... 2/5` 替换。
+- 失败信息使用明确错误样式。
+- 失败信息优先展示错误 message。
+- 失败信息可以使用通用字段展示排查信息。
+- 失败信息与普通 Codex 输出明显区分。
 
 ### Conversation View notice
 
-Conversation View notice 展示不应该投影为 `Conversation item`，也不属于 `Recovering error` 的提示、错误或警告。本功能范围内，只涉及上游 Codex 可能出现的提示、错误或警告。
+Conversation View notice 用于展示不适合放入 timeline 的提示、错误或警告。
 
 Functional Requirements:
 
-- JSON-RPC error response 表示某个 app-server request 被拒绝，不作为 `Error item`，以 `Conversation View notice` 展示。
-- 系统级 warning 和无法归属到当前 `Turn` 的错误不作为 `Error item`，以 `Conversation View notice` 展示。
-- Conversation View notice 不参与 `Conversation item` 排序，不占用 timeline 位置。
-- Conversation View notice 可以投影为 Web client 全局 `Client notice`。
+- 无法归属到具体Thread的Codex错误，或My-Code-X自身错误，作为页面提示展示。
 
 UX Decisions:
 
-- JSON-RPC error response 默认以 toast 展示。
-- 系统级 warning 和无法归属到当前 `Turn` 的错误默认以 toast 展示。
-- Toast 在屏幕中部以横条形式展示，并在短时间后自动消失。
-- Toast 内容使用通用字段渲染，不为不同错误类型设计专门样式。
+- 页面提示默认使用 toast 轻提示。
+- Toast 在短时间后自动消失。
+- Toast 内容使用通用样式，不为每种错误类型设计专门视觉。
 
-### Conversation timeline state
+### Live update
 
-Conversation timeline state 是当前 `Conversation` timeline 的可读性状态。它帮助用户判断当前 timeline 是否正在恢复、是否为空、是否读取失败，以及当前显示内容是否可能不是最新；它不属于 `Conversation item`，不进入 timeline，也不表达 Codex `Thread` 或 `Turn` 的运行状态。
+Live update 让用户在 Codex 工作进行中持续看到新内容，并保持手机端阅读稳定。
 
 Functional Requirements:
 
-- 正在恢复当前 `Conversation`，且还没有可读 timeline 时，页面展示恢复中状态。
-- 当前 `Conversation` 恢复成功但没有可展示 `Conversation item` 时，页面展示空状态。
-- 当前 `Conversation` 恢复失败，且没有可读 timeline 时，页面展示失败状态。
-- 页面已有可读 timeline，但正在同步、重新连接或无法确认内容是否最新时，页面保留 timeline，并展示非阻塞提示。
-- 无 Codex `Thread` 选中状态不属于 `Conversation timeline state`。
-- Codex `Turn` 的 running、completed、failed、interrupted 状态不由 `Conversation timeline state` 表达。
-- Conversation timeline state 不作为 `Conversation item` 展示，不参与 timeline 排序。
+- Codex 工作期间，页面持续接收并展示新的信息。
+- 已有信息可以被后续进展更新。
+- 更新过程中，已有信息的顺序应保持稳定。
+- 正在生成的内容应能表现为进行中状态。
+- 内容完成后，页面展示最终内容。
+- 弱网、切后台或重连后，页面应尽量恢复到当前最新内容与状态，并继续接收后续更新。
+- Live update 需要保持弱网下的良好性能，保持体验的同时尽可能优化性能。
 
 UX Decisions:
 
-- 无 Codex `Thread` 选中状态使用页面主体空状态，引导用户新建 `Thread`（需要其他 feature 支持，先不做，只给一个空状态即可）。
-- 恢复中状态使用页面主体 loading，不展示空 timeline。
-- 空状态使用轻量 empty state，说明当前 `Conversation` 暂无内容。
-- 失败状态使用页面主体错误状态，并提供重试入口。
-- 已有 timeline 时，同步中、重新连接或内容可能过期使用顶部轻提示，不使用全屏覆盖。
-- Conversation timeline state 文案应直接说明用户当前能否继续阅读、是否需要等待或重试。
-
-### Conversation live update
-
-Conversation live update 让用户在 Codex 工作进行中持续看到新的 `Conversation item`。My-Code-X 后端消费 Codex notification stream，并按固定节奏聚合推送给前端，强调移动端的现场感和连续性。
-
-Functional Requirements:
-
-- Codex 工作期间，后端接收 Codex `item/*`、`turn/*` 等 runtime notification，并投影为 timeline 新增或更新。
-- 已有 `Conversation item` 可以根据后续 delta、progress 或 completed notification 更新。
-- 更新过程保持 `Conversation item` 顺序稳定。
-- live `Turn` 的 `Conversation item` 以 Codex `item/completed` 或对应 final event 为最终权威内容。
-- 恢复历史得到的 timeline 以 Codex 可重建的 `ThreadItem` 为准，不保证包含所有 live 中间态。
-- 恢复进行中的 Codex `Thread` 后，页面继续接收后续更新。
-- My-Code-X 后端初步每 500ms 聚合一次 timeline 更新并推送给前端，使弱网状态下表现更稳定。
-
-UX Decisions:
-
-- 新内容进入 timeline 时保持阅读位置稳定。
-- 当前进行中的 `Conversation item` 使用轻量动态状态。
-- live timeline 和 `Conversation item` 以 Codex 最终事件为准。
-
+- 新内容进入 timeline 时，应尽量保持用户当前阅读位置稳定。
+- 如果用户正在查看旧内容，新内容不应强制把用户拉到底部。
+- 如果用户已经在底部阅读，页面可以自然跟随新内容。
+- 当前进行中的信息可以使用轻量动态状态。
+- live 更新应强调连续性，不应制造过多闪烁或跳动。
 
 ### Composer
 
-Composer 是 Conversation View 底部的用户输入控制台，用于向当前选中 Codex `Thread` 发送普通用户输入。它根据当前 `Thread` 是否存在已知 active `Turn`，将用户输入映射为 Codex `turn/start` 或 `turn/steer`。
+Composer 是 Conversation View 底部的用户输入区域。它让用户继续当前 Codex 工作、补充上下文、或在需要时中断当前工作。
 
 Functional Requirements:
 
-- Composer 绑定当前选中 Codex `Thread`。
-- Composer 为当前用户输入保存本地草稿。
+- Composer 绑定当前选中的 Codex `Thread`。
+- Composer 保存当前输入草稿。
 - 用户可以输入多行文本。
 - 空文本不能发送。
-- 当前 `Thread` 已知没有 active `Turn` 时，发送输入触发 Codex `turn/start`。
-- 当前 `Thread` 有已知 active `Turn` 时，发送输入触发 Codex `turn/steer`。
-- `turn/steer` 必须携带当前已知 active `Turn` 的 `expectedTurnId`。
-- My-Code-X 不预判 Codex 是否会接受 `turn/steer`；如果 Codex 拒绝 `turn/steer`，Composer 保留草稿并展示非阻塞错误提示。
-- 发送请求被 Codex 接受后，Composer 清空已发送草稿。
-- 发送请求失败时，Composer 恢复原草稿，并展示非阻塞错误提示。
-- 发送请求被 Codex 接受后，timeline 以后续 Codex `ThreadItem` 和 `Codex runtime event` 投影为准；Composer 不自行伪造 committed `Conversation item`。
-- 当前没有选中 Codex `Thread`、`Conversation` 正在恢复、连接不可用或目标 active/idle 状态不明确时，Composer 保留草稿但禁用发送。
-- 当前存在已知 active `Turn` 时，Composer 的主操作可以切换为中断当前 `Turn`，触发 Codex `turn/interrupt`。
-- 中断当前 `Turn` 不使用并列的额外主按钮。
+- 当前可以继续输入时，用户可以发送普通输入
+- 不对用户原始输入进行任何删改。
+- 当前 Codex 正在工作时，用户可以发送补充指令信息。
+- 当前 Codex 正在工作时，用户可以中断当前工作。
+- 发送请求被接受后，Composer 清空已发送草稿。
+- 发送请求失败时，Composer 保持原草稿不变。
+- 发送失败、连接异常或输入暂时不可用时，页面展示非阻塞错误提示。
+- 当前没有选中 `Thread`、内容正在恢复、连接不可用或目标状态不明确时，Composer 保留草稿但禁用发送。
+- Composer 不把未被确认的输入伪装成已经进入 timeline 的正式内容。
+- 中断当前工作是高影响动作，需要防误触处理。
 
 UX Decisions:
 
-- Composer 固定在页面底部，并适配移动端 safe area 和软键盘。
+- Composer 适配移动端 safe area 和软键盘。
 - Composer 使用移动端友好的多行输入框。
-- 输入框默认低高度，随内容增长到最大高度；超过最大高度后输入框内部滚动。
-- 主操作按钮固定在 Composer 右侧或右下角，保持单手可达。
-- active `Turn` 中的主操作按钮应根据当前动作切换 icon 或可访问名称，例如 steer 或 interrupt。
-- 高影响动作，例如 `turn/interrupt`，需要防误触处理。
-- 草稿内容停留在输入区域，不进入 timeline。
-- 发送失败、steer rejected 或连接异常时，用户输入不能丢失。
-
+- 输入框默认低高度，随内容增长到最大高度。
+- 超过最大高度后，输入框内部滚动。
+- 主操作按钮固定在 Composer 右侧，保持单手可达。
+- 根据当前 Codex 空闲或正在工作的状态切换，以及用户的输入内容的，主操作按钮功能与按钮样式切换。
+- 具体来说，Codex空闲时，按钮为发送；Codex工作时，若用户无输入内容，则按钮为中断，Codex工作时，若用户有输入内容，则按钮为追加。
 
 ## Out of Scope
-- Codex agent 能力重设计
-- `Pending interaction` 的一切功能
+
+- Codex agent 能力重设计。
+- `Pending interaction` 的完整处理流程。
+- 历史恢复的数据权威来源设计。
+- 文件引用点击后的完整文件浏览能力。
+
+## Future Plans
+
+- 文件引用链接
+
+## Reference
+
+[conversation-view-UImock.html](./conversation-view-UImock.html)  UImock只体现界面样式与布局，不代表任何代码设计，领域定义，以及实现细节。
