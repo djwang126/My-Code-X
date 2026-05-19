@@ -180,7 +180,7 @@ Then 优先展示错误 message
 
 ### Scenario: 展示用户文字输入
 
-Given 用户发送了文字输入  
+Given 用户发送了文字输入，发送请求被接受后  
 When timeline 渲染  
 Then 该输入作为普通对话内容展示
 
@@ -259,11 +259,11 @@ Given timeline 中已有 timeline item
 When 后续进展更新该 timeline item  
 Then 页面更新已有 timeline item
 
-### Scenario: 更新保持顺序稳定
+### Scenario: 更新保持顺序权威
 
 Given 页面正在接收更新  
 When 已有 timeline item 被更新或新 timeline item 进入  
-Then 已有 timeline item 顺序保持稳定
+Then 已有 timeline item 顺序根据发生顺序依次排序
 
 ### Scenario: 生成中状态
 
@@ -457,7 +457,7 @@ And 主操作按钮样式表达中断状态
 
 Given 当前没有选中 `Thread`、内容恢复中、连接不可用或目标状态不明确
 When Composer 渲染主操作按钮
-Then 主操作按钮不可触发发送或中断
+Then 主操作按钮不可交互
 And 主操作按钮样式表达不可用状态
 
 ## Codex Mapping Appendix
