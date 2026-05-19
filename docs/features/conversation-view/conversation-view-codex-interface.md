@@ -97,7 +97,7 @@ Params：
 | --- | --- |
 | `threadId` | 必填。目标 `Thread.id`。 |
 | `persistExtendedHistory` | `true`。让本次及后续会话尽量持久化更完整的 history。需要 `experimentalApi: true`。 |
-| `excludeTurns` | 默认不传或 `false`。传 `true` 时只恢复 thread metadata 和 live 状态，不在 `thread/resume` response 中返回完整 turn history。 |
+| `excludeTurns` | 默认不传或 `false`。一般来说不使用。传 `true` 时只恢复 thread metadata 和 live 状态，不在 `thread/resume` response 中返回完整 turn history。 |
 | `cwd` | 默认不传。只有用户明确要求用当前 workspace 覆盖 thread 工作目录时才传。 |
 | `model` | 默认不传。只有调用方明确选择模型覆盖时传。 |
 | `modelProvider` | 默认不传。只有用户明确选择 provider 覆盖时传。 |
@@ -142,6 +142,7 @@ Note：
 
 - 在不重新 resume thread 的情况下分页读取 stored thread 的 turn history。
 - 可读取 `thread/resume.excludeTurns = true` 时未随 resume response 返回的 stored turn history。
+- 一般来说不使用
 
 Params：
 

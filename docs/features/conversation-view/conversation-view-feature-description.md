@@ -37,7 +37,7 @@ UX Decisions:
 - 已有内容可读但正在同步、重连或无法确认最新时，页面保留原有内容并展示非阻塞提示。
 - 没有选中 Codex `Thread` 时，页面展示无选中相关提示（即app首屏信息）。
 - 页面状态帮助用户判断自己能否继续阅读、是否需要等待、是否可以重试。
-- my-code-x自身的同步中、重新连接或内容可能过期等提示使用toast或弹窗等形式的轻提示。
+- my-code-x自身的同步中、重新连接或内容可能过期等提示使用banner形式的轻提示。
 - 所有用户输入信息与Codex信息，My-code-x不额外添加自创文案。一切解释性内容，如类型标签，错误message等，全部沿用Codex已有信息。
 
 ### Typed conversation information
@@ -93,12 +93,12 @@ UX Decisions:
 
 ### Work progress reading
 
-Work progress reading 让用户理解 Codex 正在做什么。它覆盖计划、工具调用、工具结果、文件变更、网页搜索等工作过程信息。
+Work progress reading 让用户理解 Codex 正在做什么。它覆盖工具调用、工具结果、文件变更、网页搜索等工作过程信息。
 
 Functional Requirements:
 
 - Codex 工作过程中的重要痕迹可以展示。
-- 工作过程信息能表达来源或大致类型，例如计划、命令、工具、搜索、文件变更等。
+- 工作过程信息能表达来源或大致类型，例如命令、工具、搜索、文件变更等。
 - 工作过程信息可以显示状态，例如进行中、完成、失败或其他上游提供的状态。
 - 复杂内容以安全、可读的形式展示。
 - 工作过程信息默认不为每种来源设计专门 UI。
@@ -223,6 +223,7 @@ UX Decisions:
 
 - Codex agent 能力重设计。
 - `Pending interaction` 的完整处理流程。
+- codex `plan` 的处理逻辑。
 - 历史恢复的数据权威来源设计。
 - 文件引用点击后的完整文件浏览能力。
 
