@@ -44,8 +44,6 @@ Given 收到重复失败信息
 When 页面渲染  
 Then 不将重复的失败信息重复展示
 
-note：重复的失败信息指codex中同一turn且message一致
-
 ### Scenario: 未确认发送成功的输入不进入 timeline
 
 Given 用户点击发送  
