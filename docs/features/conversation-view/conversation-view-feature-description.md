@@ -160,9 +160,9 @@ Functional Requirements:
 
 UX Decisions:
 
-- 页面提示默认使用 toast 轻提示。
-- Toast 在短时间后自动消失。
-- Toast 内容使用通用样式，不为每种错误类型设计专门视觉。
+- 页面提示默认使用 banner 轻提示。
+-  banner在短时间后自动收起消失。
+-  banner内容使用通用样式，不为每种错误类型设计专门视觉。
 
 ### Live update
 
