@@ -101,9 +101,11 @@ Functional Requirements:
 - 工作过程信息能表达来源或大致类型，例如计划、命令、工具、搜索、文件变更等。
 - 工作过程信息可以显示状态，例如进行中、完成、失败或其他上游提供的状态。
 - 复杂内容以安全、可读的形式展示。
-- 工作过程信息默认不需要为每种来源设计专门 UI。
+- 工作过程信息默认不为每种来源设计专门 UI。
 - 用户可以展开查看更详细内容。
 - 展开细节后，用户的浏览位置不应突然跳动。
+- 当前已知类型，并识别为Work progress reading的thread item[hookPrompt, reasoning, commandExecution, fileChange, mcpToolCall, dynamicToolCall, collabAgentToolCall, webSearch, imageView, imageGeneration, enteredReviewMode, exitedReviewMode, contextCompaction]
+- 当前已知类型，不作为Work progress reading的thread item[plan]
 
 UX Decisions:
 
@@ -117,7 +119,7 @@ Unknown information fallback 用于处理 My-Code-X 暂时不能专门理解的�
 Functional Requirements:
 
 - My-Code-X 遇到暂时不能专门理解的信息时，仍然展示。
-- 未识别信息保留可理解的来源提示。
+- 未识别信息用通用方法渲染其字段。
 - 未识别信息如果有状态，应展示状态。
 - 未识别信息不应被当作失败信息展示。
 - 未识别信息不应阻断用户继续阅读或继续输入。
