@@ -27,7 +27,7 @@ Then 不额外添加自创解释性文案
 
 ### Scenario: 未识别信息不被静默丢弃
 
-Given My-Code-X 收到暂时不能专门理解的 thread item、notification、enum 或字段  
+Given My-Code-X 收到暂时不能专门理解的未识别信息
 When 页面分类该信息  
 Then 该信息仍被展示  
 And 不被静默丢弃
@@ -42,7 +42,9 @@ Then 不将失败信息伪装成 Codex 普通回复
 
 Given 收到重复失败信息  
 When 页面渲染  
-Then 不将同一turn且message一致的失败信息重复展示
+Then 不将重复的失败信息重复展示
+
+note：重复的失败信息指codex中同一turn且message一致
 
 ### Scenario: 未确认发送成功的输入不进入 timeline
 
@@ -62,7 +64,7 @@ Then 不把该输入伪装成已经进入 timeline 的正式内容
 | 恢复成功但无内容 | 内容恢复成功，且当前没有可展示内容 | Conversation View 渲染 | 页面展示无可展示内容提示 |
 | 恢复失败且无内容 | 内容恢复失败，且当前没有可展示内容 | Conversation View 渲染 | 页面展示恢复失败提示 |
 | 已有内容且同步中 | 页面已有可展示内容，新的同步、重连或状态确认正在进行 | Conversation View 渲染 | 页面保留原有内容，并以页面提示展示当前状态 |
-| 已有内容但可能过期 | 页面已有可展示内容，且 My-Code-X 无法确认内容是否最新 | Conversation View 渲染 | 页面保留原有内容，并展示内容可能不是最新的 banner 轻提示 |
+| 已有内容但可能过期 | 页面已有可展示内容，且 My-Code-X 无法确认内容是否最新 | Conversation View 渲染 | 页面保留原有内容，并展示内容可能不是最新的 轻提示并持续重试加载 |
 
 ### Scenario: 顶部上下文展示
 
@@ -166,8 +168,7 @@ Then 将其识别为工作过程信息
 
 Given Codex 工作过程中发生归属于当前 `Thread` 的失败信息  
 When 页面渲染  
-Then 该失败信息展示为 timeline 内的失败信息  
-And 保留在其发生的工作过程位置
+Then 该失败信息展示为 timeline 内的失败信息
 
 ### Scenario: 展示失败原因
 
@@ -243,12 +244,6 @@ Then 链接可以被打开
 Given timeline 中同时存在用户输入与 Codex 回复  
 When 页面渲染  
 Then 二者视觉上可区分
-
-### Scenario: 不展示调试字段
-
-Given 普通对话内容存在内部调试字段  
-When Message 渲染  
-Then 不展示调试字段
 
 ## Live Timeline Update
 
@@ -484,11 +479,10 @@ And 主操作按钮样式表达不可用状态
 | 工作过程信息 | `commandExecution`、`fileChange`、`mcpToolCall`、`dynamicToolCall`、`collabAgentToolCall`、`webSearch` 等工作过程类 `ThreadItem.type` |
 | 工作过程状态 | item 自带字段，例如 `commandExecution.status`、`fileChange.status`、`mcpToolCall.status`、`dynamicToolCall.status` |
 | 工作过程详情 | `arguments`、`result`、`error`、`aggregatedOutput`、`changes[].diff` 等结构化字段 |
-| 未识别信息 | 未知 `ThreadItem.type`、未知 notification method、未知 enum 或未知字段原始 payload |
+| 未识别信息 | 未知 `ThreadItem.type`|
 | Thread 内失败 | `turn/completed` 中 `turn.status = failed` 与 `turn.error` |
 | 失败原因 | `turn.error.message` 或 `error.message` |
 | 失败排查字段 | `codexErrorInfo` 或 `additionalDetails` |
-| 失败去重线索 | `threadId + turnId + message + codexErrorInfo` |
 | 页面提示来源 | `warning`、`guardianWarning`、`configWarning`、无 `threadId` 的 JSON-RPC error response 或 My-Code-X 本地错误 |
 | 空闲发送 | `Thread.status = idle` 时通过 `turn/start` 发送 |
 | 工作中追加 | `Thread.status = active` 时通过 `turn/steer` 发送，并需要 `expectedTurnId` |
