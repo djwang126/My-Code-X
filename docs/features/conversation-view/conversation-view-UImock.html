@@ -459,7 +459,7 @@
       background: var(--red);
     }
 
-    .event-row--thread-error .event-head {
+    .event-row--error .event-head {
       grid-template-columns: minmax(0, 1fr) auto;
     }
 
@@ -587,17 +587,6 @@
       color: var(--quiet);
       font-size: 11px;
       line-height: 1.35;
-    }
-
-    .error-title {
-      display: flex;
-      align-items: center;
-      gap: 7px;
-      margin: 7px 0 4px;
-      color: var(--red);
-      font-size: 13px;
-      line-height: 1.35;
-      font-weight: 730;
     }
 
     .error-message {
@@ -1018,7 +1007,7 @@
             <!-- Expanded details example; the note below is rendered only while details are expanded. -->
             <article class="event-content" aria-label="Work trace item">
               <div class="event-head">
-                <p class="event-type">command_execution</p>
+                <p class="event-type">commandExecution</p>
                 <span class="status-chip status-chip--work">completed</span>
                 <button class="disclosure" type="button" aria-label="收起工作痕迹详情">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
@@ -1027,33 +1016,12 @@
               <p class="event-note">cargo check --workspace --quiet</p>
               <dl class="field-list">
                 <div class="field-row">
-                  <dt class="field-name">exitCode</dt>
-                  <dd class="field-value">0</dd>
-                </div>
-              </dl>
-            </article>
-          </li>
-
-          <li class="transcript-row event-row event-row--unknown">
-            <span class="event-rule" aria-hidden="true"></span>
-            <!-- Expanded details example; the note below is rendered only while details are expanded. -->
-            <article class="event-content" aria-label="Unknown item">
-              <div class="event-head">
-                <p class="event-type">thread_realtime_item_added</p>
-                <span class="status-chip status-chip--unknown">received</span>
-                <button class="disclosure" type="button" aria-label="收起未知条目详情">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
-                </button>
-              </div>
-              <p class="event-note">Realtime event from Codex runtime.</p>
-              <dl class="field-list">
-                <div class="field-row">
-                  <dt class="field-name">source</dt>
-                  <dd class="field-value">codex-runtime-event</dd>
+                  <dt class="field-name">cwd</dt>
+                  <dd class="field-value">D:\workspaces\AI-Tools\My-Code-X-C</dd>
                 </div>
                 <div class="field-row">
-                  <dt class="field-name">itemId</dt>
-                  <dd class="field-value">rt_42</dd>
+                  <dt class="field-name">durationMs</dt>
+                  <dd class="field-value">1842</dd>
                 </div>
               </dl>
             </article>
@@ -1063,26 +1031,17 @@
             <span class="event-rule" aria-hidden="true"></span>
             <article class="event-content" aria-label="Error item" role="alert">
               <div class="event-head">
-                <p class="event-type">usage_exceeded</p>
+                <p class="error-message">Your usage is used up. Try again after the quota resets.</p>
                 <span class="status-chip status-chip--error">failed</span>
               </div>
-              <p class="error-title">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5"></path><path d="M12 17h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
-                Usage limit reached
-              </p>
-              <p class="error-message">Your usage is used up. Try again after the quota resets.</p>
               <dl class="field-list">
                 <div class="field-row">
-                  <dt class="field-name">source</dt>
-                  <dd class="field-value">codex-app-server</dd>
+                  <dt class="field-name">codexErrorInfo</dt>
+                  <dd class="field-value">usageLimitExceeded</dd>
                 </div>
                 <div class="field-row">
-                  <dt class="field-name">code</dt>
-                  <dd class="field-value">usage_exceeded</dd>
-                </div>
-                <div class="field-row">
-                  <dt class="field-name">resetAt</dt>
-                  <dd class="field-value">2026-05-15T18:00:00+08:00</dd>
+                  <dt class="field-name">additionalDetails</dt>
+                  <dd class="field-value">null</dd>
                 </div>
               </dl>
             </article>
@@ -1122,34 +1081,21 @@
             </article>
           </li>
 
-          <li class="transcript-row event-row event-row--error event-row--thread-error">
+          <li class="transcript-row event-row event-row--error">
             <span class="event-rule" aria-hidden="true"></span>
             <article class="event-content" aria-label="Codex Thread failure item" role="alert">
               <div class="event-head">
-                <p class="event-type">connection_retry</p>
-                <span class="status-chip status-chip--error">failed</span>
+                <p class="error-message">Connection lost while reading the response stream.</p>
+                <span class="status-chip status-chip--error">retrying</span>
               </div>
-              <p class="error-title">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v5"></path><path d="M12 17h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
-                Connection interrupted
-              </p>
-              <p class="error-message">Reconnecting...</p>
               <dl class="field-list">
                 <div class="field-row">
-                  <dt class="field-name">source</dt>
-                  <dd class="field-value">codex-app-server</dd>
+                  <dt class="field-name">codexErrorInfo</dt>
+                  <dd class="field-value">responseStreamDisconnected</dd>
                 </div>
                 <div class="field-row">
-                  <dt class="field-name">threadId</dt>
-                  <dd class="field-value">thread_dry_run_cli_flag</dd>
-                </div>
-                <div class="field-row">
-                  <dt class="field-name">turnId</dt>
-                  <dd class="field-value">turn_20260515_0943</dd>
-                </div>
-                <div class="field-row">
-                  <dt class="field-name">code</dt>
-                  <dd class="field-value">connection_retry</dd>
+                  <dt class="field-name">additionalDetails</dt>
+                  <dd class="field-value">Reconnecting...</dd>
                 </div>
               </dl>
             </article>
@@ -1246,48 +1192,6 @@
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 8v4"></path><path d="M12 16h.01"></path><circle cx="12" cy="12" r="10"></circle></svg>
         <p>JSON-RPC request rejected: thread is not ready.</p>
       </div>
-    </section>
-
-    <section class="phone" aria-label="Conversation View no thread selected state">
-      <div class="statusbar" aria-hidden="true">
-        <span>9:41</span>
-        <span class="system-icons">
-          <span class="signal"><span></span><span></span><span></span></span>
-          <svg viewBox="0 0 24 24"><path d="M5 12.6a10.5 10.5 0 0 1 14 0"></path><path d="M8.5 16a5.5 5.5 0 0 1 7 0"></path><path d="M12 19h.01"></path></svg>
-          <span class="battery"></span>
-        </span>
-      </div>
-
-      <header class="appbar">
-        <button class="icon-button" aria-label="打开侧边栏">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
-        </button>
-        <div class="title-group">
-          <h1 class="title">My-Code-X</h1>
-          <p class="kicker">移动端 Codex 工作台</p>
-        </div>
-        <button class="icon-button" aria-label="更多操作">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
-        </button>
-      </header>
-
-      <div class="state-view">
-        <section class="state-card" aria-label="No thread selected">
-          <div class="state-icon state-icon--quiet">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path></svg>
-          </div>
-          <h2 class="state-title">打开一个 Codex Thread</h2>
-        </section>
-      </div>
-
-      <form class="composer composer--safe" aria-label="Reply composer disabled because no thread">
-        <div class="composer-box">
-          <textarea aria-label="输入" placeholder="选择 Thread 后可以输入" disabled></textarea>
-          <button class="send-button send-button--disabled" type="button" aria-label="发送不可用" disabled>
-            <img class="send-icon" src="send-button-icon-reference.png" alt="" aria-hidden="true">
-          </button>
-        </div>
-      </form>
     </section>
 
     <section class="phone" aria-label="Conversation View restoring state">
@@ -1450,20 +1354,6 @@
         <ol class="timeline-list">
           <li class="transcript-row event-row">
             <span class="event-rule" aria-hidden="true"></span>
-            <article class="event-content" aria-label="Collapsed work trace item">
-              <div class="event-head">
-                <p class="event-type">plan_update</p>
-                <span class="status-chip status-chip--work">in_progress</span>
-                <button class="disclosure" type="button" aria-label="展开工作痕迹详情">
-                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg>
-                </button>
-              </div>
-              <p class="collapsed-hint">3 steps</p>
-            </article>
-          </li>
-
-          <li class="transcript-row event-row">
-            <span class="event-rule" aria-hidden="true"></span>
             <article class="event-content" aria-label="Web search trace item">
               <div class="event-head">
                 <p class="event-type">web_search</p>
@@ -1480,21 +1370,24 @@
             <span class="event-rule" aria-hidden="true"></span>
             <article class="event-content" aria-label="Failed file change trace item">
               <div class="event-head">
-                <p class="event-type">file_change</p>
+                <p class="event-type">fileChange</p>
                 <span class="status-chip status-chip--error">failed</span>
                 <button class="disclosure" type="button" aria-label="收起工作痕迹详情">
                   <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m18 15-6-6-6 6"></path></svg>
                 </button>
               </div>
-              <p class="event-note">apply_patch rejected</p>
               <dl class="field-list">
                 <div class="field-row">
-                  <dt class="field-name">path</dt>
+                  <dt class="field-name">changes[0].path</dt>
                   <dd class="field-value">src/ui/ConversationView.tsx</dd>
                 </div>
                 <div class="field-row">
-                  <dt class="field-name">reason</dt>
-                  <dd class="field-value field-value--danger">context mismatch</dd>
+                  <dt class="field-name">changes[0].kind.type</dt>
+                  <dd class="field-value">update</dd>
+                </div>
+                <div class="field-row">
+                  <dt class="field-name">changes[0].diff</dt>
+                  <dd class="field-value">@@ -42,7 +42,7 @@</dd>
                 </div>
               </dl>
             </article>
@@ -1696,6 +1589,48 @@
           <span class="keyboard-key"></span><span class="keyboard-key"></span><span class="keyboard-key"></span>
         </div>
       </div>
+    </section>
+
+    <section class="phone" aria-label="Conversation View no thread selected state">
+      <div class="statusbar" aria-hidden="true">
+        <span>9:41</span>
+        <span class="system-icons">
+          <span class="signal"><span></span><span></span><span></span></span>
+          <svg viewBox="0 0 24 24"><path d="M5 12.6a10.5 10.5 0 0 1 14 0"></path><path d="M8.5 16a5.5 5.5 0 0 1 7 0"></path><path d="M12 19h.01"></path></svg>
+          <span class="battery"></span>
+        </span>
+      </div>
+
+      <header class="appbar">
+        <button class="icon-button" aria-label="打开侧边栏">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16"></path><path d="M4 12h16"></path><path d="M4 18h16"></path></svg>
+        </button>
+        <div class="title-group">
+          <h1 class="title">My-Code-X</h1>
+          <p class="kicker">移动端 Codex 工作台</p>
+        </div>
+        <button class="icon-button" aria-label="更多操作">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6h.01"></path><path d="M12 12h.01"></path><path d="M12 18h.01"></path></svg>
+        </button>
+      </header>
+
+      <div class="state-view">
+        <section class="state-card" aria-label="No thread selected">
+          <div class="state-icon state-icon--quiet">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path></svg>
+          </div>
+          <h2 class="state-title">打开一个 Codex Thread</h2>
+        </section>
+      </div>
+
+      <form class="composer composer--safe" aria-label="Reply composer disabled because no thread">
+        <div class="composer-box">
+          <textarea aria-label="输入" placeholder="选择 Thread 后可以输入" disabled></textarea>
+          <button class="send-button send-button--disabled" type="button" aria-label="发送不可用" disabled>
+            <img class="send-icon" src="send-button-icon-reference.png" alt="" aria-hidden="true">
+          </button>
+        </div>
+      </form>
     </section>
   </main>
 </body>
