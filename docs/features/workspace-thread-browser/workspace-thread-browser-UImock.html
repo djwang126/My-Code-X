@@ -3,25 +3,29 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>My-Code-X Workspace Thread Browser UI Mock</title>
+  <title>My-Code-X Workspace Thread Browser UI Mock v2</title>
   <style>
     :root {
-      color-scheme: dark;
-      --bg: #0b1018;
-      --panel: #111827;
-      --panel-2: #151f2f;
-      --panel-3: #0f1724;
-      --line: #263244;
-      --line-soft: #1f2937;
-      --text: #f8fafc;
-      --muted: #9aa8bb;
-      --dim: #718096;
-      --green: #22c55e;
-      --blue: #38bdf8;
-      --amber: #f59e0b;
-      --red: #ef4444;
-      --violet: #a78bfa;
-      --shadow: 0 18px 60px rgb(0 0 0 / 35%);
+      color-scheme: light;
+      --bg: #e9eef5;
+      --panel: #ffffff;
+      --panel-2: #f8fafc;
+      --panel-3: #f4f7fb;
+      --line: #d9e0ea;
+      --line-soft: #e7edf5;
+      --line-strong: #bdc8d7;
+      --text: #172033;
+      --muted: #5f6d7e;
+      --dim: #8490a0;
+      --green: #168252;
+      --green-soft: #dff7eb;
+      --blue: #206bc4;
+      --blue-soft: #dbeafe;
+      --amber: #99640d;
+      --amber-soft: #fff3d7;
+      --red: #b42318;
+      --red-soft: #ffe4e1;
+      --shadow: 0 18px 46px rgba(23, 32, 51, 0.14);
       --radius: 8px;
       font-family:
         Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
@@ -39,8 +43,7 @@
 
     body {
       margin: 0;
-      background:
-        linear-gradient(180deg, #0d1420 0%, var(--bg) 42%, #070a10 100%);
+      background: var(--bg);
       color: var(--text);
       overscroll-behavior: contain;
       overflow: hidden;
@@ -58,10 +61,7 @@
     .page {
       min-height: 100vh;
       padding: 0;
-      background:
-        radial-gradient(circle at 84% 16%, rgb(56 189 248 / 12%), transparent 32%),
-        radial-gradient(circle at 74% 76%, rgb(34 197 94 / 7%), transparent 30%),
-        #070b12;
+      background: var(--bg);
     }
 
     .device {
@@ -76,7 +76,7 @@
       position: absolute;
       inset: 0;
       z-index: 1;
-      background: rgb(2 6 12 / 64%);
+      background: rgba(23, 32, 51, 0.22);
       backdrop-filter: blur(2px);
       content: "";
     }
@@ -84,7 +84,7 @@
     .phone-panel,
     .conversation {
       min-height: 100vh;
-      background: rgb(17 24 39 / 92%);
+      background: var(--panel);
       overflow: hidden;
     }
 
@@ -96,8 +96,8 @@
       width: min(390px, calc(100vw - 44px));
       max-height: 100vh;
       border-right: 1px solid var(--line);
-      background: rgb(17 24 39 / 97%);
-      box-shadow: 20px 0 60px rgb(0 0 0 / 34%);
+      background: var(--panel);
+      box-shadow: var(--shadow);
       z-index: 2;
     }
 
@@ -106,9 +106,10 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 14px 14px 12px;
+      padding: 8px 14px;
       border-bottom: 1px solid var(--line-soft);
-      background: rgb(15 23 36 / 96%);
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(14px);
     }
 
     .title-block {
@@ -149,25 +150,29 @@
       flex: 0 0 auto;
       width: 44px;
       height: 44px;
-      border: 1px solid var(--line);
+      border: 0;
       border-radius: var(--radius);
-      background: #0f1724;
-      color: var(--muted);
+      background: transparent;
+      color: var(--text);
       transition: border-color 180ms ease, color 180ms ease, background 180ms ease;
     }
 
     .icon-button:hover,
     .icon-button:focus-visible {
-      border-color: #3b82f6;
-      background: #132033;
+      background: rgba(23, 32, 51, 0.06);
       color: var(--text);
       outline: none;
     }
 
     .icon-button.selected {
-      border-color: #3b82f6;
-      background: #122037;
-      color: var(--text);
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
+
+    .topbar .icon-button,
+    .workspace-actions .icon-button {
+      width: 36px;
+      height: 36px;
     }
 
     .icon {
@@ -183,8 +188,9 @@
     .workspace-strip {
       display: flex;
       gap: 8px;
-      padding: 12px 14px;
+      padding: 8px 14px;
       border-bottom: 1px solid var(--line-soft);
+      background: var(--panel);
       overflow-x: auto;
       scrollbar-width: none;
     }
@@ -198,11 +204,11 @@
       align-items: center;
       justify-content: center;
       gap: 8px;
-      min-height: 40px;
+      min-height: 34px;
       padding: 0 12px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--line-strong);
       border-radius: 999px;
-      background: #0d1421;
+      background: var(--panel);
       color: var(--muted);
       white-space: nowrap;
       transition: border-color 180ms ease, color 180ms ease, background 180ms ease;
@@ -210,9 +216,9 @@
 
     .workspace-pill:hover,
     .workspace-pill.active {
-      border-color: #3b82f6;
-      background: #122037;
-      color: var(--text);
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      color: #174a88;
     }
 
     .workspace-dot {
@@ -224,12 +230,12 @@
 
     .workspace-dot.attention {
       background: var(--amber);
-      box-shadow: 0 0 0 3px rgb(245 158 11 / 14%);
+      box-shadow: 0 0 0 3px rgba(153, 100, 13, 0.14);
     }
 
     .workspace-dot.running {
       background: var(--green);
-      box-shadow: 0 0 0 3px rgb(34 197 94 / 14%);
+      box-shadow: 0 0 0 3px rgba(22, 130, 82, 0.14);
     }
 
     .workspace-body {
@@ -247,8 +253,9 @@
     }
 
     .workspace-head {
-      padding: 14px;
+      padding: 9px 14px;
       border-bottom: 1px solid var(--line-soft);
+      background: var(--panel);
     }
 
     .workspace-name {
@@ -282,7 +289,7 @@
       flex: 1;
       min-height: 0;
       overflow-y: auto;
-      padding: 8px 0 12px;
+      padding: 0 0 12px;
     }
 
     .browser-page {
@@ -302,7 +309,8 @@
       gap: 8px;
       padding: 10px 14px calc(10px + env(safe-area-inset-bottom));
       border-top: 1px solid var(--line-soft);
-      background: rgb(15 23 36 / 98%);
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(14px);
     }
 
     .panel-action {
@@ -311,9 +319,9 @@
       justify-content: center;
       gap: 8px;
       min-height: 44px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--line-strong);
       border-radius: var(--radius);
-      background: #0d1421;
+      background: var(--panel);
       color: var(--muted);
       font-size: 12px;
       font-weight: 700;
@@ -322,9 +330,9 @@
 
     .panel-action:hover,
     .panel-action:focus-visible {
-      border-color: #3b82f6;
-      background: #122037;
-      color: var(--text);
+      border-color: var(--blue);
+      background: var(--blue-soft);
+      color: #174a88;
       outline: none;
     }
 
@@ -333,12 +341,63 @@
       top: 0;
       z-index: 1;
       padding: 13px 14px 7px;
-      background: rgb(17 24 39 / 96%);
+      background: rgba(255, 255, 255, 0.98);
       color: var(--dim);
       font-size: 11px;
       font-weight: 800;
       letter-spacing: .07em;
       text-transform: uppercase;
+    }
+
+    .section-tabs {
+      --tab-index: 0;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 8px;
+      padding: 2px 14px 0;
+      border-bottom: 1px solid var(--line-soft);
+      background: rgba(255, 255, 255, 0.98);
+    }
+
+    .section-tabs::after {
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      width: 50%;
+      height: 3px;
+      border-radius: 999px 999px 0 0;
+      background: var(--blue);
+      content: "";
+      transform: translateX(calc(var(--tab-index) * 100%));
+      transition: transform 180ms ease;
+    }
+
+    .section-tab {
+      position: relative;
+      min-height: 25px;
+      padding: 0 0 7px;
+      border: 0;
+      background: transparent;
+      color: #a3adba;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: .07em;
+      text-transform: uppercase;
+      transition: color 180ms ease;
+    }
+
+    .section-tab:hover,
+    .section-tab:focus-visible {
+      color: var(--text);
+      outline: none;
+    }
+
+    .section-tab.active {
+      color: #6b7685;
     }
 
     .thread-row {
@@ -357,11 +416,11 @@
     .thread-row:hover,
     .thread-row:focus-within,
     .thread-row.active {
-      background: #121d2e;
+      background: var(--panel-3);
     }
 
     .thread-row.active {
-      border-left-color: #3b82f6;
+      border-left-color: var(--blue);
     }
 
     .thread-primary {
@@ -377,7 +436,8 @@
       outline: none;
     }
 
-    .thread-more {
+    .thread-more,
+    .thread-restore {
       display: grid;
       place-items: center;
       align-self: start;
@@ -393,38 +453,15 @@
     }
 
     .thread-row:hover .thread-more,
+    .thread-row:hover .thread-restore,
     .thread-row.active .thread-more,
-    .thread-more:focus-visible {
-      background: #172235;
-      color: var(--muted);
+    .thread-row.active .thread-restore,
+    .thread-more:focus-visible,
+    .thread-restore:focus-visible {
+      background: rgba(23, 32, 51, 0.06);
+      color: var(--text);
       opacity: 1;
       outline: none;
-    }
-
-    .restore-button {
-      align-self: start;
-      min-height: 34px;
-      padding: 0 10px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: #0d1421;
-      color: var(--muted);
-      font-size: 12px;
-      font-weight: 800;
-      transition: border-color 180ms ease, color 180ms ease, background 180ms ease;
-    }
-
-    .restore-button:hover,
-    .restore-button:focus-visible {
-      border-color: #3b82f6;
-      background: #122037;
-      color: var(--text);
-      outline: none;
-    }
-
-    .thread-row.archived-row {
-      grid-template-columns: 11px minmax(0, 1fr) auto;
-      padding-right: 14px;
     }
 
     .status-dot {
@@ -503,12 +540,17 @@
       padding: 6px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: #0f1724;
+      background: var(--panel);
       box-shadow: var(--shadow);
     }
 
     .row-menu.open {
       display: block;
+    }
+
+    .workspace-action-menu {
+      z-index: 6;
+      width: 184px;
     }
 
     .row-menu-action {
@@ -530,17 +572,27 @@
 
     .row-menu-action:hover,
     .row-menu-action:focus-visible {
-      background: #172235;
+      background: rgba(23, 32, 51, 0.06);
       outline: none;
     }
 
     .row-menu-action.danger {
-      color: #fecaca;
+      color: var(--red);
     }
 
     .row-menu-action.danger:hover,
     .row-menu-action.danger:focus-visible {
-      background: rgb(127 29 29 / 28%);
+      background: var(--red-soft);
+    }
+
+    .row-menu-action.confirming {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .row-menu-action.confirming:hover,
+    .row-menu-action.confirming:focus-visible {
+      background: #9f2118;
     }
 
     .rename-popover {
@@ -551,7 +603,7 @@
       padding: 12px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: #0f1724;
+      background: var(--panel);
       box-shadow: var(--shadow);
     }
 
@@ -569,16 +621,17 @@
       width: 100%;
       min-height: 42px;
       padding: 0 10px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--line-strong);
       border-radius: var(--radius);
-      background: #0d1421;
+      background: var(--panel);
       color: var(--text);
       font: inherit;
       outline: none;
     }
 
     .rename-input:focus {
-      border-color: #3b82f6;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(32, 107, 196, 0.14);
     }
 
     .rename-actions {
@@ -594,7 +647,7 @@
       border: 0;
       border-radius: var(--radius);
       background: var(--green);
-      color: #06220f;
+      color: #fff;
       font-size: 12px;
       font-weight: 800;
     }
@@ -602,7 +655,7 @@
     .rename-save:hover,
     .rename-save:focus-visible {
       filter: brightness(1.06);
-      outline: 2px solid rgb(34 197 94 / 35%);
+      outline: 2px solid rgba(22, 130, 82, 0.18);
       outline-offset: 2px;
     }
 
@@ -614,7 +667,7 @@
       align-items: center;
       justify-content: center;
       padding: 16px;
-      background: rgb(2 6 12 / 68%);
+      background: rgba(23, 32, 51, 0.22);
       backdrop-filter: blur(2px);
     }
 
@@ -628,7 +681,7 @@
       overflow: auto;
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: #0f1724;
+      background: var(--panel);
       box-shadow: var(--shadow);
     }
 
@@ -657,8 +710,7 @@
       gap: 7px;
     }
 
-    .field label,
-    .remove-title {
+    .field label {
       color: var(--dim);
       font-size: 11px;
       font-weight: 800;
@@ -670,16 +722,17 @@
       width: 100%;
       min-height: 42px;
       padding: 0 10px;
-      border: 1px solid var(--line);
+      border: 1px solid var(--line-strong);
       border-radius: var(--radius);
-      background: #0d1421;
+      background: var(--panel);
       color: var(--text);
       font: inherit;
       outline: none;
     }
 
     .field input:focus {
-      border-color: #3b82f6;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 3px rgba(32, 107, 196, 0.14);
     }
 
     .save-workspace {
@@ -687,86 +740,9 @@
       border: 0;
       border-radius: var(--radius);
       background: var(--green);
-      color: #06220f;
+      color: #fff;
       font-size: 13px;
       font-weight: 800;
-    }
-
-    .remove-section {
-      display: grid;
-      gap: 10px;
-      margin-top: 8px;
-      padding-top: 14px;
-      border-top: 1px solid var(--line-soft);
-    }
-
-    .remove-workspace {
-      min-height: 42px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: #0d1421;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .remove-workspace:hover,
-    .remove-workspace:focus-visible {
-      border-color: rgb(239 68 68 / 55%);
-      color: #fecaca;
-      outline: none;
-    }
-
-    .remove-confirm {
-      display: none;
-      gap: 9px;
-      padding: 11px;
-      border: 1px solid rgb(239 68 68 / 42%);
-      border-radius: var(--radius);
-      background: rgb(127 29 29 / 16%);
-    }
-
-    .remove-confirm.open {
-      display: grid;
-    }
-
-    .remove-copy {
-      color: #fecaca;
-      font-size: 13px;
-      font-weight: 800;
-    }
-
-    .remove-note {
-      color: var(--muted);
-      font-size: 12px;
-      line-height: 1.45;
-    }
-
-    .remove-actions {
-      display: flex;
-      gap: 8px;
-      justify-content: flex-end;
-    }
-
-    .confirm-muted,
-    .confirm-danger {
-      min-height: 36px;
-      padding: 0 12px;
-      border-radius: var(--radius);
-      font-size: 12px;
-      font-weight: 800;
-    }
-
-    .confirm-muted {
-      border: 1px solid var(--line);
-      background: #0d1421;
-      color: var(--muted);
-    }
-
-    .confirm-danger {
-      border: 0;
-      background: #ef4444;
-      color: #fff7f7;
     }
 
     .conversation {
@@ -775,11 +751,9 @@
       display: flex;
       flex-direction: column;
       min-width: 0;
-      background:
-        linear-gradient(180deg, rgb(13 20 32 / 82%), rgb(9 13 22 / 88%)),
-        #0d1420;
-      opacity: .86;
-      filter: saturate(.82);
+      background: var(--panel);
+      opacity: .72;
+      filter: saturate(.9);
       z-index: 0;
     }
 
@@ -790,7 +764,8 @@
       gap: 14px;
       padding: 14px 16px;
       border-bottom: 1px solid var(--line-soft);
-      background: rgb(15 23 36 / 96%);
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(14px);
     }
 
     .crumbs {
@@ -831,15 +806,15 @@
       max-width: 760px;
       margin-bottom: 14px;
       padding: 13px 14px;
-      border: 1px solid var(--line-soft);
+      border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: #111827;
+      background: var(--panel);
     }
 
     .message.user {
       margin-left: auto;
-      background: #132033;
-      border-color: #263a57;
+      background: #e8f2ff;
+      border-color: #d6e8ff;
     }
 
     .message-head {
@@ -856,7 +831,7 @@
     }
 
     .message p {
-      color: #dbe5f1;
+      color: var(--text);
       font-size: 13px;
       line-height: 1.55;
     }
@@ -871,7 +846,7 @@
       padding: 10px;
       border: 1px solid var(--line);
       border-radius: 14px;
-      background: rgb(15 23 36 / 94%);
+      background: rgba(255, 255, 255, 0.98);
       box-shadow: var(--shadow);
       backdrop-filter: blur(18px);
     }
@@ -895,14 +870,14 @@
       border: 0;
       border-radius: var(--radius);
       background: var(--green);
-      color: #06220f;
+      color: #fff;
       transition: filter 180ms ease;
     }
 
     .send-button:hover,
     .send-button:focus-visible {
       filter: brightness(1.06);
-      outline: 2px solid rgb(34 197 94 / 35%);
+      outline: 2px solid rgba(22, 130, 82, 0.18);
       outline-offset: 2px;
     }
 
@@ -987,13 +962,6 @@
                   <p class="cwd">D:\workspaces\AI-Tools\My-Code-X-C</p>
                 </div>
                 <div class="workspace-actions">
-                  <button class="icon-button" id="openArchived" type="button" aria-label="Archived threads">
-                    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
-                      <path d="M3 7h18"></path>
-                      <path d="M5 7v13h14V7"></path>
-                      <path d="M9 11h6"></path>
-                    </svg>
-                  </button>
                   <button class="icon-button" type="button" aria-label="New thread">
                     <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
                       <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h7"></path>
@@ -1006,10 +974,14 @@
 
             </div>
 
+            <div class="section-tabs" role="tablist" aria-label="Thread list views">
+              <button class="section-tab active" type="button" role="tab" data-target-page="threadsPage" aria-controls="threadsPage" aria-selected="true">Recent</button>
+              <button class="section-tab" type="button" role="tab" data-target-page="archivedPage" aria-controls="archivedPage" aria-selected="false">Archived</button>
+            </div>
+
             <div class="browser-page active" id="threadsPage">
               <div class="thread-list" id="threadList">
                 <div class="section">
-                  <div class="section-title">Recent</div>
                 <div class="thread-row active">
                   <span class="status-dot waiting"></span>
                   <button class="thread-primary" type="button">
@@ -1172,32 +1144,51 @@
             <div class="browser-page" id="archivedPage">
               <div class="thread-list">
                 <div class="section">
-                  <div class="section-title">Archived</div>
-                  <div class="thread-row archived-row">
+                  <div class="thread-row">
                     <span class="status-dot"></span>
-                    <span class="thread-main">
-                      <span class="thread-line">
-                        <span class="thread-title">Workspace panel refactor</span>
-                        <span class="thread-side">
-                          <span class="time">May 8</span>
+                    <button class="thread-primary" type="button">
+                      <span class="thread-main">
+                        <span class="thread-line">
+                          <span class="thread-title">Workspace panel refactor</span>
+                          <span class="thread-side">
+                            <span class="time">May 8</span>
+                          </span>
                         </span>
+                        <span class="preview">Archived after the new Workspace browser direction replaced the old flow.</span>
                       </span>
-                      <span class="preview">Archived after the new Workspace browser direction replaced the old flow.</span>
-                    </span>
-                    <button class="restore-button" type="button">Restore</button>
+                    </button>
+                    <button class="thread-restore" type="button" aria-label="Restore thread">
+                      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                        <path d="M4 8v11a2 2 0 0 0 2 2h2"></path>
+                        <path d="M20 8v11a2 2 0 0 1-2 2h-2"></path>
+                        <path d="m9 15 3-3 3 3"></path>
+                        <path d="M12 12v9"></path>
+                      </svg>
+                    </button>
                   </div>
-                  <div class="thread-row archived-row">
+                  <div class="thread-row">
                     <span class="status-dot"></span>
-                    <span class="thread-main">
-                      <span class="thread-line">
-                        <span class="thread-title">Old workspace action notes</span>
-                        <span class="thread-side">
-                          <span class="time">May 6</span>
+                    <button class="thread-primary" type="button">
+                      <span class="thread-main">
+                        <span class="thread-line">
+                          <span class="thread-title">Old workspace action notes</span>
+                          <span class="thread-side">
+                            <span class="time">May 6</span>
+                          </span>
                         </span>
+                        <span class="preview">Earlier archive, rename, and restore behavior notes.</span>
                       </span>
-                      <span class="preview">Earlier archive, rename, and restore behavior notes.</span>
-                    </span>
-                    <button class="restore-button" type="button">Restore</button>
+                    </button>
+                    <button class="thread-restore" type="button" aria-label="Restore thread">
+                      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                        <rect width="20" height="5" x="2" y="3" rx="1"></rect>
+                        <path d="M4 8v11a2 2 0 0 0 2 2h2"></path>
+                        <path d="M20 8v11a2 2 0 0 1-2 2h-2"></path>
+                        <path d="m9 15 3-3 3 3"></path>
+                        <path d="M12 12v9"></path>
+                      </svg>
+                    </button>
                   </div>
                 </div>
               </div>
@@ -1205,7 +1196,7 @@
           </div>
         </div>
         <div class="panel-actions" aria-label="Workspace actions">
-          <button class="panel-action" type="button" aria-label="Add workspace">
+          <button class="panel-action" id="openAddWorkspace" type="button" aria-label="Add workspace">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M12 5v14"></path>
               <path d="M5 12h14"></path>
@@ -1230,11 +1221,28 @@
           </button>
           <button class="row-menu-action danger" id="archiveThreadAction" type="button">
             <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 7h18"></path>
+              <path d="M5 7v13h14V7"></path>
+              <path d="M9 11h6"></path>
+            </svg>
+            <span class="archive-action-label">Archive</span>
+          </button>
+        </div>
+        <div class="row-menu workspace-action-menu" id="workspaceActionMenu" aria-hidden="true">
+          <button class="row-menu-action" id="renameWorkspaceAction" type="button">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 20h9"></path>
+              <path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path>
+            </svg>
+            Rename
+          </button>
+          <button class="row-menu-action danger" id="removeWorkspaceAction" type="button">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
               <path d="M3 6h18"></path>
               <path d="M8 6V4h8v2"></path>
               <path d="M19 6v14H5V6"></path>
             </svg>
-            Archive
+            <span class="remove-action-label">Remove</span>
           </button>
         </div>
         <div class="rename-popover" id="renamePopover" aria-hidden="true">
@@ -1299,6 +1307,31 @@
         </form>
       </section>
 
+      <div class="workspace-modal-backdrop" id="addWorkspaceModal" aria-hidden="true">
+        <div class="workspace-modal" role="dialog" aria-modal="true" aria-labelledby="addWorkspaceTitle">
+          <div class="modal-head">
+            <div class="modal-title" id="addWorkspaceTitle">Add workspace</div>
+            <button class="icon-button" id="closeAddWorkspace" type="button" aria-label="Close add workspace">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M18 6 6 18"></path>
+                <path d="m6 6 12 12"></path>
+              </svg>
+            </button>
+          </div>
+          <div class="workspace-form">
+            <div class="field">
+              <label for="newWorkspaceName">Name</label>
+              <input id="newWorkspaceName" placeholder="New workspace">
+            </div>
+            <div class="field">
+              <label for="newWorkspacePath">Path</label>
+              <input id="newWorkspacePath" placeholder="D:\workspaces\AI-Tools\new-workspace">
+            </div>
+            <button class="save-workspace" id="saveAddWorkspace" type="button">Add workspace</button>
+          </div>
+        </div>
+      </div>
+
       <div class="workspace-modal-backdrop" id="editWorkspaceModal" aria-hidden="true">
         <div class="workspace-modal" role="dialog" aria-modal="true" aria-labelledby="editWorkspaceTitle">
           <div class="modal-head">
@@ -1320,18 +1353,6 @@
               <input id="workspacePath" value="D:\workspaces\AI-Tools\My-Code-X-C">
             </div>
             <button class="save-workspace" type="button">Save changes</button>
-            <div class="remove-section">
-              <div class="remove-title">Remove from My-Code-X</div>
-              <button class="remove-workspace" id="removeWorkspace" type="button">Remove workspace</button>
-              <div class="remove-confirm" id="removeConfirm">
-                <div class="remove-copy">Remove this workspace?</div>
-                <div class="remove-note">Local files and Codex threads are kept.</div>
-                <div class="remove-actions">
-                  <button class="confirm-muted" id="keepWorkspace" type="button">Keep</button>
-                  <button class="confirm-danger" type="button">Remove</button>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -1342,29 +1363,58 @@
     const rows = Array.from(document.querySelectorAll(".thread-row"));
     const primaryButtons = Array.from(document.querySelectorAll(".thread-primary"));
     const moreButtons = Array.from(document.querySelectorAll(".thread-more"));
+    const restoreButtons = Array.from(document.querySelectorAll(".thread-restore"));
     const rowMenu = document.querySelector("#threadRowMenu");
     const renameAction = document.querySelector("#renameThreadAction");
     const archiveAction = document.querySelector("#archiveThreadAction");
+    const archiveActionLabel = archiveAction.querySelector(".archive-action-label");
+    const workspaceActionMenu = document.querySelector("#workspaceActionMenu");
+    const renameWorkspaceAction = document.querySelector("#renameWorkspaceAction");
+    const removeWorkspaceAction = document.querySelector("#removeWorkspaceAction");
+    const removeActionLabel = removeWorkspaceAction.querySelector(".remove-action-label");
     const renamePopover = document.querySelector("#renamePopover");
     const renameInput = document.querySelector("#renameInput");
     const pages = Array.from(document.querySelectorAll(".browser-page"));
-    const openArchived = document.querySelector("#openArchived");
+    const sectionTabLists = Array.from(document.querySelectorAll(".section-tabs"));
+    const sectionTabs = Array.from(document.querySelectorAll(".section-tab"));
+    const openAddWorkspace = document.querySelector("#openAddWorkspace");
+    const addWorkspaceModal = document.querySelector("#addWorkspaceModal");
+    const closeAddWorkspace = document.querySelector("#closeAddWorkspace");
+    const saveAddWorkspace = document.querySelector("#saveAddWorkspace");
+    const newWorkspaceName = document.querySelector("#newWorkspaceName");
     const openEditWorkspace = document.querySelector("#openEditWorkspace");
     const editWorkspaceModal = document.querySelector("#editWorkspaceModal");
     const closeEditWorkspace = document.querySelector("#closeEditWorkspace");
-    const removeWorkspace = document.querySelector("#removeWorkspace");
-    const removeConfirm = document.querySelector("#removeConfirm");
-    const keepWorkspace = document.querySelector("#keepWorkspace");
 
     let selectedThreadTitle = "Thread action migration review";
     let selectedThreadAnchor = null;
     let selectedThreadRow = null;
+    let archiveConfirming = false;
+    let workspaceRemoveConfirming = false;
+
+    function resetArchiveConfirm() {
+      archiveConfirming = false;
+      archiveAction.classList.remove("confirming");
+      archiveAction.setAttribute("aria-label", "Archive thread");
+      archiveActionLabel.textContent = "Archive";
+    }
+
+    function resetWorkspaceRemoveConfirm() {
+      workspaceRemoveConfirming = false;
+      removeWorkspaceAction.classList.remove("confirming");
+      removeWorkspaceAction.setAttribute("aria-label", "Remove workspace");
+      removeActionLabel.textContent = "Remove";
+    }
 
     function closeThreadOverlays() {
       rowMenu.classList.remove("open");
       rowMenu.setAttribute("aria-hidden", "true");
+      workspaceActionMenu.classList.remove("open");
+      workspaceActionMenu.setAttribute("aria-hidden", "true");
       renamePopover.classList.remove("open");
       renamePopover.setAttribute("aria-hidden", "true");
+      resetArchiveConfirm();
+      resetWorkspaceRemoveConfirm();
     }
 
     function positionOverlay(overlay, anchor, offsetY = 4) {
@@ -1377,10 +1427,39 @@
       overlay.style.top = `${top}px`;
     }
 
+    function syncSectionTabIndicators() {
+      document.querySelectorAll(".section-tabs").forEach((tablist) => {
+        const activeTab = tablist.querySelector(".section-tab.active");
+        if (!activeTab) {
+          return;
+        }
+
+        const tabs = Array.from(tablist.querySelectorAll(".section-tab"));
+        tablist.style.setProperty("--tab-index", tabs.indexOf(activeTab));
+      });
+    }
+
     function showPage(pageId) {
       closeThreadOverlays();
       pages.forEach((page) => page.classList.toggle("active", page.id === pageId));
-      openArchived.classList.toggle("selected", pageId === "archivedPage");
+      sectionTabs.forEach((tab) => {
+        const selected = tab.dataset.targetPage === pageId;
+        tab.classList.toggle("active", selected);
+        tab.setAttribute("aria-selected", selected ? "true" : "false");
+      });
+      syncSectionTabIndicators();
+    }
+
+    function openAddModal() {
+      closeThreadOverlays();
+      addWorkspaceModal.classList.add("open");
+      addWorkspaceModal.setAttribute("aria-hidden", "false");
+      newWorkspaceName.focus();
+    }
+
+    function closeAddModal() {
+      addWorkspaceModal.classList.remove("open");
+      addWorkspaceModal.setAttribute("aria-hidden", "true");
     }
 
     function openEditModal() {
@@ -1389,10 +1468,46 @@
       editWorkspaceModal.setAttribute("aria-hidden", "false");
     }
 
+    function openWorkspaceActionMenu() {
+      closeThreadOverlays();
+      workspaceActionMenu.classList.add("open");
+      workspaceActionMenu.setAttribute("aria-hidden", "false");
+      positionOverlay(workspaceActionMenu, openEditWorkspace, -126);
+    }
+
     function closeEditModal() {
       editWorkspaceModal.classList.remove("open");
       editWorkspaceModal.setAttribute("aria-hidden", "true");
-      removeConfirm.classList.remove("open");
+    }
+
+    function setActiveWorkspace(workspace) {
+      if (!workspace) {
+        return;
+      }
+
+      document.querySelectorAll(".workspace-pill").forEach((pill) => pill.classList.remove("active"));
+      workspace.classList.add("active");
+
+      const name = Array.from(workspace.childNodes)
+        .filter((node) => node.nodeType === Node.TEXT_NODE)
+        .map((node) => node.textContent)
+        .join("")
+        .trim();
+      const paths = {
+        codex: "D:\\workspaces\\AI-Tools\\codex",
+        "docs-lab": "D:\\workspaces\\AI-Tools\\docs-lab"
+      };
+
+      document.querySelector(".workspace-title h2").textContent = name;
+      document.querySelector(".workspace-title .cwd").textContent = paths[name] || `D:\\workspaces\\AI-Tools\\${name}`;
+    }
+
+    function removeActiveWorkspace() {
+      const activeWorkspace = document.querySelector(".workspace-pill.active");
+      const nextWorkspace = activeWorkspace?.nextElementSibling || activeWorkspace?.previousElementSibling;
+      activeWorkspace?.remove();
+      setActiveWorkspace(nextWorkspace);
+      closeThreadOverlays();
     }
 
     primaryButtons.forEach((button) => {
@@ -1406,6 +1521,10 @@
 
     moreButtons.forEach((button) => {
       button.addEventListener("click", () => {
+        resetArchiveConfirm();
+        resetWorkspaceRemoveConfirm();
+        workspaceActionMenu.classList.remove("open");
+        workspaceActionMenu.setAttribute("aria-hidden", "true");
         selectedThreadTitle = button.dataset.threadTitle;
         selectedThreadAnchor = button;
         selectedThreadRow = button.closest(".thread-row");
@@ -1417,7 +1536,14 @@
       });
     });
 
+    restoreButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        button.closest(".thread-row").remove();
+      });
+    });
+
     renameAction.addEventListener("click", () => {
+      resetArchiveConfirm();
       renameInput.value = selectedThreadTitle;
       rowMenu.classList.remove("open");
       rowMenu.setAttribute("aria-hidden", "true");
@@ -1429,18 +1555,56 @@
     });
 
     archiveAction.addEventListener("click", () => {
+      if (!archiveConfirming) {
+        archiveConfirming = true;
+        archiveAction.classList.add("confirming");
+        archiveAction.setAttribute("aria-label", "Confirm");
+        archiveActionLabel.textContent = "Confirm";
+        return;
+      }
+
       if (selectedThreadRow) {
         selectedThreadRow.remove();
       }
       closeThreadOverlays();
     });
 
-    openArchived.addEventListener("click", () => {
-      const isArchived = document.querySelector("#archivedPage").classList.contains("active");
-      showPage(isArchived ? "threadsPage" : "archivedPage");
+    sectionTabLists.forEach((tablist) => {
+      tablist.addEventListener("click", (event) => {
+        const tabs = Array.from(tablist.querySelectorAll(".section-tab"));
+        const clickedTab = event.target instanceof Element ? event.target.closest(".section-tab") : null;
+        const targetTab = clickedTab || tabs[event.clientX - tablist.getBoundingClientRect().left < tablist.offsetWidth / 2 ? 0 : 1];
+
+        if (targetTab) {
+          showPage(targetTab.dataset.targetPage);
+        }
+      });
     });
 
-    openEditWorkspace.addEventListener("click", openEditModal);
+    syncSectionTabIndicators();
+    window.addEventListener("resize", syncSectionTabIndicators);
+
+    openAddWorkspace.addEventListener("click", openAddModal);
+    closeAddWorkspace.addEventListener("click", closeAddModal);
+    saveAddWorkspace.addEventListener("click", closeAddModal);
+    addWorkspaceModal.addEventListener("click", (event) => {
+      if (event.target === addWorkspaceModal) {
+        closeAddModal();
+      }
+    });
+    openEditWorkspace.addEventListener("click", openWorkspaceActionMenu);
+    renameWorkspaceAction.addEventListener("click", openEditModal);
+    removeWorkspaceAction.addEventListener("click", () => {
+      if (!workspaceRemoveConfirming) {
+        workspaceRemoveConfirming = true;
+        removeWorkspaceAction.classList.add("confirming");
+        removeWorkspaceAction.setAttribute("aria-label", "Confirm");
+        removeActionLabel.textContent = "Confirm";
+        return;
+      }
+
+      removeActiveWorkspace();
+    });
     closeEditWorkspace.addEventListener("click", closeEditModal);
     editWorkspaceModal.addEventListener("click", (event) => {
       if (event.target === editWorkspaceModal) {
@@ -1448,25 +1612,14 @@
       }
     });
 
-    document.querySelectorAll(".restore-button").forEach((button) => {
-      button.addEventListener("click", () => {
-        button.closest(".thread-row").remove();
-      });
-    });
-
-    removeWorkspace.addEventListener("click", () => {
-      removeConfirm.classList.add("open");
-    });
-
-    keepWorkspace.addEventListener("click", () => {
-      removeConfirm.classList.remove("open");
-    });
-
     document.addEventListener("click", (event) => {
       if (
         !rowMenu.contains(event.target) &&
+        !workspaceActionMenu.contains(event.target) &&
         !renamePopover.contains(event.target) &&
-        !event.target.closest(".thread-more")
+        !event.target.closest(".thread-more") &&
+        event.target !== openEditWorkspace &&
+        !openEditWorkspace.contains(event.target)
       ) {
         closeThreadOverlays();
       }
@@ -1475,6 +1628,7 @@
     window.addEventListener("keydown", (event) => {
       if (event.key === "Escape") {
         closeThreadOverlays();
+        closeAddModal();
         closeEditModal();
       }
     });
