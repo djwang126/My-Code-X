@@ -1,409 +1,500 @@
 # Conversation View Domain Model
 
-本文档基于 Conversation View feature description 与 BDD statement，定义 Conversation View 的领域模型。
+本文档描述 Conversation View 的领域模型。模型从 feature description 与 BDD statement 中反推，目标是保持实现简单、边界清楚，并避免把 UI 状态或 Codex protocol shape 泄漏进领域层。
 
-本文档不定义 Codex agent 能力，不定义 API contract，不定义 UI 视觉细节。
+## Modeling Principles
 
-## Event Storming Summary
+- Conversation View 不拥有 Codex `Thread`，只维护 My-Code-X 侧的可读投影。
+- 核心领域只保留一个 `Conversation` aggregate。
+- Codex app-server 是外部系统，所有 protocol payload 必须先经过 ACL 解析。
+- 未确认被 Codex 接受的用户输入不能进入正式 timeline。
+- 未识别信息不能静默丢弃。
+- 失败信息不能伪装成普通 Codex 回复。
+- 页面恢复、同步、连接、banner、滚动、布局、Markdown 渲染属于 application/UI concern，不进入 core domain aggregate。
 
-Conversation View 的核心事件流分为六组：
+## Domain Events
 
-- Thread context / recovery：用户选择 `Thread`，页面恢复内容，确认内容是否最新。
-- Timeline ingestion and rendering：历史内容与 live event 进入 timeline，按类型分类并展示。
-- Thread scoped error normalization：将 Codex retrying error、最终失败规范化为 My-Code-X 派生 timeline item。
-- Live update：持续接收新内容与工作过程增量，更新已有 item，并保持阅读位置稳定。
-- Composer：维护输入草稿，决定主操作，并发送 start / steer / interrupt 请求。
-- Page notice：展示不适合插入 timeline 的页面级提示。
+### Thread Selection
 
-## Aggregates
-
-| Aggregate | 责任 | 不负责 |
-| --- | --- | --- |
-| `ConversationViewSession` | 当前选中 `Thread`、恢复状态、连接状态、内容新鲜度、页面是否可读 | 不保存具体 timeline item 细节 |
-| `Timeline` | 维护当前 `Thread` 的可展示 timeline、顺序、item 更新、turn 分段、消息锚点、分类、retrying error、失败派生 item、失败去重 | 不决定 Composer 能否发送 |
-| `Composer` | 当前草稿、绑定 `Thread`、主动作状态、发送成功清空、发送失败保留 | 不把未确认输入写入 timeline |
-| `NoticeQueue` | 非 timeline 的页面提示、自动收起 | 不展示 Thread 内 error、retrying error 或失败 |
-
-`LiveUpdateSession` 暂不作为独立 Aggregate。当前它更适合作为 `ConversationViewSession` 的连接子状态。
-
-`TurnTimelineSegment` 暂不作为独立 Aggregate。它是 `Timeline` 内由 Codex `Turn` 派生的分段模型，用于表达同一 turn 内 item 的归属、turn lifecycle 与消息锚点。
-
-## Entities
-
-| Entity | Identity | 说明 |
-| --- | --- | --- |
-| `ConversationViewSession` | 当前页面实例或 selected `threadId` | 表达用户正在看的工作现场 |
-| `Timeline` | `threadId` | 一个 `Thread` 对应一条 timeline |
-| `TurnTimelineSegment` | `threadId + turnId` | `Timeline` 内的 turn 级分段，引用该 turn 的 timeline item |
-| `TimelineItem` | discriminated union | My-Code-X 的 canonical display model，不等同于 Codex `ThreadItem` |
-| `CodexThreadTimelineItem` | Codex `ThreadItem.id` | 从 Codex 原生 `ThreadItem` 映射而来 |
-| `RetryingErrorTimelineItem` | `threadId + turnId + error fingerprint` | 从 `ErrorNotification(willRetry = true)` 派生，表达 Codex 正在自动恢复 |
-| `ThreadScopedFailureTimelineItem` | `threadId + turnId + error fingerprint` | 从 `ErrorNotification(willRetry = false)` 或 failed `Turn.error` 派生 |
-| `Composer` | selected `threadId` 或全局 composer id | 草稿全局保存，但发送动作绑定当前 `Thread` |
-| `PageNotice` | notice id | 页面 banner 提示 |
-
-## Value Objects
-
-| Value Object | 字段 / 形态 | 说明 |
-| --- | --- | --- |
-| `ThreadRef` | `threadId`, `title`, `cwd` | 顶部上下文展示所需的当前 `Thread` 引用 |
-| `TurnRef` | `threadId`, `turnId` | active turn、失败 item、steer / interrupt 的目标 |
-| `TimelineItemKind` | `message`, `workProgress`, `failure`, `unknown` | 用户可感知的四类信息 |
-| `TimelineItemStatus` | `raw`, `phase`, `source` | 保留上游原始状态；`phase` 只服务内部行为判断 |
-| `TimelineItemPhase` | `notStarted`, `running`, `finished`, `unknown` | My-Code-X 派生的粗粒度阶段，不替代上游状态 |
-| `DisplayMode` | `expanded`, `compact` | 普通消息和失败默认 expanded；工作过程和未知默认 compact |
-| `TurnLifecycle` | discriminated union | 保留 Codex turn 原始状态，并表达 My-Code-X 的 turn 阶段 |
-| `TurnMessageAnchors` | `firstUserMessageItemId?`, `lastAgentMessageItemId?` | turn 内第一条用户消息与最后一条 Codex 回复的锚点 |
-| `CodexTimestamp` | stable timestamp string | 来自 Codex 的权威时间字段，不由 My-Code-X 推测生成 |
-| `ComposerDraft` | 原始文本 | 不删改用户输入 |
-| `ComposerMainAction` | `startTurn`, `steerTurn`, `interruptTurn`, `disabled` | 用 union 表达可执行动作 |
-| `RecoveryState` | `notStarted`, `recovering`, `restored`, `failed` | 页面恢复状态 |
-| `FreshnessState` | `fresh`, `syncing`, `possiblyStale` | 内容是否可认为最新 |
-| `ConnectionState` | `available`, `unavailable`, `reconnecting` | 影响 Composer 可用性和页面提示 |
-| `TurnErrorInfo` | `message`, `codexErrorInfo`, `additionalDetails` | 保留 Codex 错误语义 |
-| `ThreadErrorSignal` | `threadId`, `turnId`, `error`, `willRetry` | ACL 解析后的 Codex thread 内错误信号 |
-| `ErrorFingerprint` | stable string | 由 `message` 与稳定的 `codexErrorInfo` 语义组成，用于 error item 合并 |
-| `ErrorTimelineDisposition` | `retrying`, `recovered`, `finalFailure`, `ignored` | `ErrorTimelinePolicy` 对错误信号的分类结果 |
-| `WorkProgressLiveUpdate` | `itemId`, `turnId`, `updateKind`, `payload`, `status?` | 工作过程 item 的后续增量或状态更新 |
-
-## Timeline Item Model
-
-`TimelineItem` 是 Conversation View 中可展示内容的 canonical display model：
-
-```ts
-type TimelineItem =
-  | CodexMessageTimelineItem
-  | CodexWorkProgressTimelineItem
-  | RetryingErrorTimelineItem
-  | UnknownCodexTimelineItem
-  | ThreadScopedFailureTimelineItem;
-```
-
-Codex 原生 `ThreadItem` 映射为 `CodexMessageTimelineItem`、`CodexWorkProgressTimelineItem` 或 `UnknownCodexTimelineItem`，使用 Codex `ThreadItem.id` 作为 identity。`RetryingErrorTimelineItem` 与 `ThreadScopedFailureTimelineItem` 是 My-Code-X 派生 item，不是 Codex `ThreadItem` variant。
-
-```ts
-type TimelineItemStatus = {
-  raw: string | null;
-  phase: "notStarted" | "running" | "finished" | "unknown";
-  source: "codexItem" | "codexTurn" | "notification" | "derived" | "missing";
-};
-```
-
-`raw` 是用户可见与排查时使用的权威状态。`phase` 是 My-Code-X 为了判断是否仍在生成、是否进入终态而派生的内部状态，不替代 `raw`。
-
-### Turn Segments
-
-`TurnTimelineSegment` 是 `Timeline` 内的 turn 级分段模型。它不复制 item 内容，只引用同一 turn 下已经进入 timeline 的 item，并集中表达 turn lifecycle 与消息锚点。
-
-```ts
-type TurnTimelineSegment = {
-  threadId: ThreadId;
-  turnId: TurnId;
-  itemIds: TimelineItemId[];
-  lifecycle: TurnLifecycle;
-  messageAnchors: TurnMessageAnchors;
-};
-
-type TurnLifecycle =
-  | {
-      phase: "running";
-      rawStatus: string | null;
-      startedAt?: CodexTimestamp;
-    }
-  | {
-      phase: "completed";
-      rawStatus: string;
-      startedAt?: CodexTimestamp;
-      completedAt?: CodexTimestamp;
-      durationMs?: number;
-    }
-  | {
-      phase: "failed";
-      rawStatus: string;
-      startedAt?: CodexTimestamp;
-      completedAt?: CodexTimestamp;
-      durationMs?: number;
-      failureItemId?: FailureTimelineItemId;
-    }
-  | {
-      phase: "interrupted";
-      rawStatus: string;
-      startedAt?: CodexTimestamp;
-      completedAt?: CodexTimestamp;
-      durationMs?: number;
-    }
-  | {
-      phase: "unknown";
-      rawStatus: string | null;
-    };
-
-type TurnMessageAnchors = {
-  firstUserMessageItemId?: TimelineItemId;
-  lastAgentMessageItemId?: TimelineItemId;
-};
-```
-
-`firstUserMessageItemId` 是该 turn 中第一条 `kind = "message" && role = "user"` 的 item。`lastAgentMessageItemId` 是该 turn 中最后一条 `kind = "message" && role = "agent"` 的 item。复制、时间展示和工具栏渲染由应用层或 UI 通过锚点读取对应 `TimelineItem` 与 `TurnLifecycle`，domain 不缓存 `copyText`，也不定义 toolbar 视觉模型。
-
-### Message Items
-
-```ts
-type CodexMessageTimelineItem = {
-  kind: "message";
-  id: ThreadItemId;
-  threadId: ThreadId;
-  turnId: TurnId;
-  role: "user" | "agent";
-  content: unknown;
-  text: string;
-  rawItem: unknown;
-  status: TimelineItemStatus;
-  displayMode: "expanded";
-};
-```
-
-`role = "user"` 时，`content` 保留 Codex `UserInput[]` 原始语义，`text` 是可复制和展示的用户原文。`role = "agent"` 时，`text` 来自 `agentMessage.text`，按 Markdown 文本展示。message delta 通过 `threadId + turnId + itemId` 更新已有 `agentMessage` item；`item/completed` 到达后，最终权威文本来自 completed item。
-
-### Work Progress Items
-
-```ts
-type CodexWorkProgressTimelineItem = {
-  kind: "workProgress";
-  id: ThreadItemId;
-  threadId: ThreadId;
-  turnId: TurnId;
-  type: string;
-  status: TimelineItemStatus;
-  summaryFields: Record<string, unknown>;
-  detail: WorkProgressDetail;
-  displayMode: "compact" | "expanded";
-};
-
-type WorkProgressDetail = {
-  rawItem: unknown;
-  output?: string;
-  patch?: unknown;
-  progressMessages?: string[];
-  terminalInteractions?: unknown[];
-  structuredFields?: Record<string, unknown>;
-};
-```
-
-工作过程 live update 包括文本输出增量、结构化进度、patch snapshot、terminal interaction、summary delta 和最终 item 状态。更新必须通过 `threadId + turnId + itemId` 命中已有 item，只改变内容、状态或详情，不改变该 item 在 timeline 中的初始位置。
-
-### Unknown Items
-
-```ts
-type UnknownCodexTimelineItem = {
-  kind: "unknown";
-  id: ThreadItemId;
-  threadId: ThreadId;
-  turnId: TurnId;
-  type: string;
-  status: TimelineItemStatus;
-  rawItem: unknown;
-  displayMode: "compact" | "expanded";
-};
-```
-
-未识别 `ThreadItem.type` 不被静默丢弃，不当作失败，不阻断阅读或输入。它使用通用字段展示，默认 compact，可展开排查。
-
-### Error Items
-
-```ts
-type RetryingErrorTimelineItem = {
-  kind: "workProgress";
-  subtype: "retryingError";
-  id: RetryingErrorTimelineItemId;
-  threadId: ThreadId;
-  turnId: TurnId;
-  message: string;
-  details: TurnErrorInfo;
-  retryCount: number;
-  disposition: "retrying" | "recovered" | "ignored";
-  status: TimelineItemStatus;
-  displayMode: "compact";
-};
-
-type ThreadScopedFailureTimelineItem = {
-  kind: "failure";
-  id: FailureTimelineItemId;
-  threadId: ThreadId;
-  turnId: TurnId;
-  message: string;
-  details: {
-    codexErrorInfo?: unknown;
-    additionalDetails?: unknown;
-  };
-  source: "errorNotification" | "failedTurn" | "retrySuperseded" | "merged";
-  confirmation: "pendingTurnCompleted" | "confirmed";
-  displayMode: "expanded";
-};
-```
-
-`RetryingErrorTimelineItem.id` 与 `ThreadScopedFailureTimelineItem.id` 都由 `threadId + turnId + error fingerprint` 组成。`error fingerprint` 使用 `message` 与稳定的 `codexErrorInfo` 语义；`additionalDetails` 只进入 details，不参与 identity。
-
-## Timeline Policies
-
-| Policy | 决策 |
+| Event | 含义 |
 | --- | --- |
-| `TimelineClassificationPolicy` | 根据已解析的 Codex item type 分类，不能靠文本猜测。已知 message 类型进入 `message`；已知工作过程类型进入 `workProgress`；未识别 `ThreadItem.type` 进入 `unknown`。 |
-| `TimelineStatusPolicy` | 保留上游 raw status，并派生内部 `phase`。只要 Codex 提供原始状态，domain object 必须保留该状态。 |
-| `TurnSegmentPolicy` | 从 recovered turn 与 live turn lifecycle 维护 `TurnTimelineSegment`，关联 item，并计算 first user / last agent 消息锚点。 |
-| `WorkProgressLiveUpdatePolicy` | 将工作过程增量合并到已有 item，保持顺序不变，不新建重复 item。 |
-| `ErrorTimelinePolicy` | 处理 `error.willRetry`、failed `turn/completed`、history resume 中的失败合成、retry 成功恢复、retry 失败顶替或合并。 |
-| `ComposerActionPolicy` | 基于 `Thread` state、draft、connection、recovery、`expectedTurnId`、active `turnId` 产出主动作。 |
-| `PageNoticePolicy` | 无法归属到当前 `Thread` 的错误进入 banner；Thread 内 error 交给 `ErrorTimelinePolicy`。 |
-| `ReadingPositionPolicy` | 用户看旧内容时不强制到底部；在底部时自然跟随。 |
+| `ThreadSelected` | 用户选中了一个 Codex `Thread` |
+| `ThreadCleared` | 当前选中 Thread 被清除 |
 
-`ErrorTimelinePolicy` 的结算规则：
+### Restore and Sync
 
-- 收到 `error.willRetry = true` 后，upsert `RetryingErrorTimelineItem`。
-- 如果后续 `turn/completed.status = completed`，对应 retrying item 标记为 `recovered`，不升级为失败。
-- 如果后续收到 `error.willRetry = false`，或 `turn/completed.status = failed` 且 `turn.error != null`，按相同 identity 将 retrying item 顶替或合并为 `ThreadScopedFailureTimelineItem`，不重复展示。
-- 收到 `error.willRetry = false` 时，可以 upsert `ThreadScopedFailureTimelineItem`，但 `confirmation = pendingTurnCompleted`。
-- 随后收到 failed `turn/completed` 时，按相同 identity merge，并标记 `confirmation = confirmed`。
-- history resume 时，从 failed `Turn.error` 合成 `ThreadScopedFailureTimelineItem`。该 item 的位置放在该 turn 的 items 之后，表达这个 turn 以失败结束。
+| Event | 含义 |
+| --- | --- |
+| `ConversationRestoreStarted` | Conversation 内容恢复开始 |
+| `ConversationRestoreSucceeded` | Conversation 内容恢复成功 |
+| `ConversationRestoreFailed` | Conversation 内容恢复失败 |
+| `ConversationRestoreProducedNoDisplayableContent` | 恢复成功但没有可展示内容 |
+| `ConversationContentMarkedStale` | 已有内容被标记为可能不是最新 |
+| `ConversationSyncStarted` | Conversation 同步开始 |
+| `ConversationSyncFailed` | Conversation 同步失败 |
+| `ConversationConnectionRestored` | 连接恢复，后续可继续接收更新 |
 
-`TurnSegmentPolicy` 的维护规则：
+### Timeline
 
-- history resume 时，为每个 recovered `Turn` upsert `TurnTimelineSegment`，保存 `Turn.id`、`startedAt`、`completedAt`、`durationMs` 与原始 `status`。
-- live `turn/started` 到达时，upsert 对应 `TurnTimelineSegment`，将 lifecycle 置为 `running` 或从 Codex 原始状态派生的阶段。
-- `item/started` 或 `item/completed` 到达时，将该 item identity 关联到同一 `turnId` 的 `itemIds`；如果 segment 尚不存在，创建 `phase = "unknown"` 的 segment。
-- `turn/completed` 到达时，更新 lifecycle；`status = failed` 时可关联对应 `ThreadScopedFailureTimelineItem`。
-- 每次 turn 内 message item 集合变化后，重新计算 `firstUserMessageItemId` 与 `lastAgentMessageItemId`。
+| Event | 含义 |
+| --- | --- |
+| `DisplayableTimelineItemReceived` | 收到新的可展示 timeline item |
+| `TimelineItemClassifiedAsMessage` | timeline item 被分类为普通对话内容 |
+| `TimelineItemClassifiedAsWorkProgress` | timeline item 被分类为工作过程信息 |
+| `TimelineItemClassifiedAsFailure` | timeline item 被分类为失败信息 |
+| `TimelineItemClassifiedAsUnknown` | timeline item 被分类为未识别信息 |
+| `UnknownTimelineItemPreserved` | 未识别信息被保留 |
+| `AgentMessageDeltaReceived` | 收到 Codex 回复增量 |
+| `AgentMessageCompleted` | Codex 回复完成 |
+| `WorkProgressStatusChanged` | 工作过程信息状态变化 |
+| `ThreadFailureReported` | 当前 Thread 内失败被报告 |
+| `RepeatedFailureSuppressed` | 重复失败被抑制展示 |
 
-## Composer Model
+### Notice
 
-`Composer` 绑定当前 selected `Thread`，但草稿全局保存。发送动作只由 `ComposerMainAction` 表达：
+| Event | 含义 |
+| --- | --- |
+| `PageNoticeRaised` | 页面级提示被产生 |
+| `PageNoticeDismissed` | 页面级提示被关闭 |
 
-| Action | 条件 | 请求 |
-| --- | --- | --- |
-| `startTurn` | 当前 `Thread` idle，draft 为非空原文，且 `threadId` 可靠 | `turn/start` |
-| `steerTurn` | 当前 `Thread` active，draft 为非空原文，且 `threadId` 与 `expectedTurnId` 可靠 | `turn/steer` |
-| `interruptTurn` | 当前 `Thread` active，draft 为空，且 active `turnId` 可靠 | `turn/interrupt`，先经过 app 层确认 |
-| `disabled` | 无选中 `Thread`、恢复中、连接不可用、目标状态不明确或输入为空且不能中断 | none |
+### Composer
 
-发送请求被接受后，清空对应已发送草稿。发送失败、连接不可用、恢复中或目标状态不明确时，草稿保持不变。`turn/start` 或 `turn/steer` success response 前，Composer 输入不能进入正式 timeline。
+| Event | 含义 |
+| --- | --- |
+| `ComposerDraftChanged` | 当前 Thread 的草稿发生变化 |
+| `ComposerDraftPreserved` | 当前 Thread 的草稿被保留 |
+| `ComposerDraftCleared` | 当前 Thread 的草稿被清空 |
+| `UserInputAccepted` | 普通输入请求被接受 |
+| `UserInputRejected` | 普通输入请求被拒绝 |
+| `SteerInputAccepted` | 追加输入请求被接受 |
+| `SteerInputRejected` | 追加输入请求被拒绝 |
+| `TurnInterruptConfirmed` | 用户确认中断当前工作 |
+| `TurnInterruptAccepted` | 中断请求被接受 |
+| `TurnInterruptRejected` | 中断请求被拒绝 |
+
+## Commands
+
+### Thread Selection
+
+| Command | 产生的 Domain Events |
+| --- | --- |
+| `SelectThread` | `ThreadSelected` |
+| `ClearSelectedThread` | `ThreadCleared` |
+
+### Restore and Sync
+
+| Command | 产生的 Domain Events |
+| --- | --- |
+| `RestoreConversation` | `ConversationRestoreStarted` |
+| `AcceptConversationRestore` | `ConversationRestoreSucceeded` |
+| `RejectConversationRestore` | `ConversationRestoreFailed` |
+| `RecordNoDisplayableContent` | `ConversationRestoreProducedNoDisplayableContent` |
+| `MarkConversationContentStale` | `ConversationContentMarkedStale` |
+| `SyncConversation` | `ConversationSyncStarted` |
+| `RejectConversationSync` | `ConversationSyncFailed` |
+| `RecordConnectionRestored` | `ConversationConnectionRestored` |
+
+### Timeline
+
+| Command | 产生的 Domain Events |
+| --- | --- |
+| `ReceiveTimelineItem` | `DisplayableTimelineItemReceived` |
+| `ClassifyTimelineItem` | `TimelineItemClassifiedAsMessage` / `TimelineItemClassifiedAsWorkProgress` / `TimelineItemClassifiedAsFailure` / `TimelineItemClassifiedAsUnknown` |
+| `PreserveUnknownTimelineItem` | `UnknownTimelineItemPreserved` |
+| `ApplyAgentMessageDelta` | `AgentMessageDeltaReceived` |
+| `CompleteAgentMessage` | `AgentMessageCompleted` |
+| `ChangeWorkProgressStatus` | `WorkProgressStatusChanged` |
+| `ReportThreadFailure` | `ThreadFailureReported` |
+| `SuppressRepeatedFailure` | `RepeatedFailureSuppressed` |
+
+### Notice
+
+| Command | 产生的 Domain Events |
+| --- | --- |
+| `RaisePageNotice` | `PageNoticeRaised` |
+| `DismissPageNotice` | `PageNoticeDismissed` |
+
+### Composer
+
+| Command | 产生的 Domain Events |
+| --- | --- |
+| `ChangeComposerDraft` | `ComposerDraftChanged` |
+| `PreserveComposerDraft` | `ComposerDraftPreserved` |
+| `ClearComposerDraft` | `ComposerDraftCleared` |
+| `SendUserInput` | `UserInputAccepted` / `UserInputRejected` |
+| `SendSteerInput` | `SteerInputAccepted` / `SteerInputRejected` |
+| `ConfirmTurnInterrupt` | `TurnInterruptConfirmed` |
+| `InterruptTurn` | `TurnInterruptAccepted` / `TurnInterruptRejected` |
+
+## Actors
+
+| Actor | 触发 Commands |
+| --- | --- |
+| `User` | `SelectThread`, `ClearSelectedThread`, `ChangeComposerDraft`, `SendUserInput`, `SendSteerInput`, `ConfirmTurnInterrupt`, `InterruptTurn`, `DismissPageNotice` |
+| `ConversationView` | `RestoreConversation`, `SyncConversation`, `MarkConversationContentStale`, `RecordNoDisplayableContent`, `PreserveComposerDraft`, `ClearComposerDraft`, `RaisePageNotice` |
+| `CodexAppServer` | `AcceptConversationRestore`, `RejectConversationRestore`, `RejectConversationSync`, `RecordConnectionRestored`, `ReceiveTimelineItem`, `ApplyAgentMessageDelta`, `CompleteAgentMessage`, `ChangeWorkProgressStatus`, `ReportThreadFailure` |
+| `TimelineClassifier` | `ClassifyTimelineItem`, `PreserveUnknownTimelineItem` |
+| `FailureDeduper` | `SuppressRepeatedFailure` |
+| `ComposerPolicy` | `SendUserInput`, `SendSteerInput`, `InterruptTurn` |
 
 ## Invariants
 
 | Invariant | 规则 |
 | --- | --- |
-| 当前 Thread 隔离 | `Timeline` 只包含当前 selected `threadId` 的内容 |
-| 顺序权威 | timeline item 按 Codex history / live event 的发生顺序排列；已有 item 更新不改变其初始位置 |
-| 原生 item identity | Codex 原生 item 更新必须通过 `ThreadItem.id` / `item_id` 命中已有 item |
-| 状态保真 | 上游提供的原始 status 必须保留；My-Code-X 派生的 `phase` 不得覆盖 `raw` |
-| 工作过程增量更新 | 工作过程 live update 更新已有 item，不新建重复 item |
-| error 派生 identity | Thread 内 retrying error 与失败使用 `threadId + turnId + error fingerprint` 去重 |
-| retrying error 不等于失败 | `error.willRetry = true` 只能产生或更新 `RetryingErrorTimelineItem`，不得直接生成失败 item |
-| retrying error 需结算 | 同一 turn 完成后，retrying item 必须进入 `recovered`、被失败顶替，或被明确忽略 |
-| retry 成功不污染失败 | `turn/completed.status = completed` 后，相关 retrying item 不得升级为失败 |
-| retry 失败不重复展示 | retrying item 被失败顶替或合并后，不得同时展示重复的 retrying error 与失败 item |
-| 失败不伪装 | `ThreadScopedFailureTimelineItem` 不得被渲染为普通 Codex 回复 |
-| 未知不丢弃 | 未识别 `ThreadItem.type` 必须进入 `UnknownCodexTimelineItem` |
-| 未确认输入不入 timeline | `turn/start` 或 `turn/steer` success response 前，Composer 输入不能进入正式 timeline |
-| Turn 分段保真 | `TurnTimelineSegment` 只由 Codex `Turn` 与其 `ThreadItem` 派生，不创建新的对话内容 |
-| item 顺序不分叉 | `TurnTimelineSegment.itemIds` 引用 timeline item，不复制 item 内容，不改变 timeline item 初始顺序 |
-| 消息锚点权威 | 第一条用户消息与最后一条 agent 消息由同一 turn 内 message item 顺序计算 |
-| 复制文本不缓存 | 复制操作通过锚点读取对应 `TimelineItem.text`，不在 `TurnTimelineSegment` 中缓存文本副本 |
-| 时间不推测 | turn 级时间只使用 Codex `startedAt`、`completedAt`、`durationMs` 等权威字段；缺失则不展示 |
-| 草稿保留 | 发送失败、连接不可用、恢复中、目标状态不明确时，草稿保持不变 |
-| 成功后清空 | 只有发送请求被接受后，清空对应已发送草稿 |
-| 空文本不可发送 | `startTurn` / `steerTurn` 要求非空原文 |
-| interrupt 需确认 | active + 空输入触发中断前必须经过 app 层确认 |
-| 页面提示不污染 timeline | 无法归属 `Thread` 的错误、My-Code-X 本地错误、warning、发送失败不插入 timeline |
+| `CurrentThreadOnly` | Conversation 只展示当前 `ThreadId` 对应内容，不混入其他 Thread |
+| `AcceptedInputOnly` | 未被 app-server 接受的用户输入不能进入正式 timeline |
+| `OriginalInputPreserved` | 发送给 Codex 的用户原文不能被删改 |
+| `DisplayableItemNeverDropped` | 可展示信息不能被静默丢弃；未知类型也必须保留 |
+| `TimelineOrderIsAuthoritative` | timeline 顺序以 Codex 历史或 live event 的发生顺序为准 |
+| `ClassificationIsStable` | item 分类不能只依赖文本猜测，必须基于可靠类型或明确来源 |
+| `FailureIsNotMessage` | 失败信息不能伪装成 Codex 普通回复 |
+| `UnknownIsNotFailure` | 未识别信息不能被当作失败信息 |
+| `ThreadFailureStaysInTimeline` | 归属于当前 Thread 的失败必须保留在 timeline 中对应位置 |
+| `UnscopedFailureStaysOutOfTimeline` | 无法归属到具体 Thread 的错误不能插入 timeline |
+| `DraftBelongsToThread` | 草稿必须归属于一个明确的 `ThreadId` |
+| `ThreadSwitchKeepsDrafts` | 切换 Thread 不清空其他 Thread 的草稿 |
+| `DraftClearsOnlyAfterAcceptedForSameThread` | 只有当前 Thread 的发送请求被接受后，才清空该 Thread 草稿 |
+| `DraftPreservedAfterFailureForSameThread` | 当前 Thread 的发送失败时，保留该 Thread 草稿 |
+| `ReliableTargetRequired` | 发送、追加、中断必须有可靠目标标识 |
+| `NoInventedCodexCopy` | 用户输入、Codex 回复、类型标签、错误 message 不添加 My-Code-X 自创解释文案 |
 
-## Commands
+## Policies
 
-| Command | 输入 | 产出事件 |
-| --- | --- | --- |
-| `SelectThread` | `ThreadRef` | `ThreadSelected` |
-| `ClearThreadSelection` | none | `ThreadSelectionCleared` |
-| `StartConversationRecovery` | `threadId` | `ConversationRecoveryStarted` |
-| `ApplyRecoveredTurns` | `threadId`, `Turn[]` | `ConversationContentRestored`, `TurnTimelineSegmentUpserted`, maybe `ThreadScopedFailureTimelineItemCreated` |
-| `ApplyLiveThreadItemStarted` | `threadId`, `turnId`, `ThreadItem` | `TimelineItemInserted`, `TurnTimelineSegmentUpdated`, maybe `TurnMessageAnchorsChanged` |
-| `ApplyAgentMessageDelta` | `threadId`, `turnId`, `itemId`, `delta` | `TimelineItemUpdated` |
-| `ApplyWorkProgressLiveUpdate` | `threadId`, `turnId`, `itemId`, `WorkProgressLiveUpdate` | `TimelineItemUpdated` |
-| `ApplyThreadItemCompleted` | `threadId`, `turnId`, `ThreadItem` | `TimelineItemCompleted`, `TimelineItemStatusChanged`, `TurnTimelineSegmentUpdated`, maybe `TurnMessageAnchorsChanged` |
-| `ApplyErrorNotification` | `threadId`, `turnId`, `TurnError`, `willRetry` | `RetryingErrorTimelineItemUpserted` / `ThreadScopedFailureTimelineItemUpserted` |
-| `ApplyTurnCompleted` | `Turn` | `TurnCompleted`, `TurnTimelineSegmentUpdated`, maybe `RetryingErrorTimelineItemRecovered`, maybe `RetryingErrorTimelineItemSupersededByFailure`, maybe `ThreadScopedFailureTimelineItemMerged` |
-| `ChangeComposerDraft` | raw text | `ComposerDraftChanged` |
-| `SubmitComposerMainAction` | current action | `TurnStartRequested` / `TurnSteerRequested` / `InterruptConfirmationRequested` |
-| `ConfirmInterrupt` | `TurnRef` | `TurnInterruptRequested` |
-| `AcceptTurnRequest` | request id | `TurnRequestAccepted`, `ComposerDraftCleared` |
-| `RejectTurnRequest` | request id, error | `TurnRequestFailed`, `PageNoticeRaised` |
-| `RaisePageNotice` | notice payload | `PageNoticeRaised` |
-| `DismissPageNotice` | notice id | `PageNoticeAutoDismissed` |
-
-## Domain Events
-
-| Domain Event | 说明 |
+| Policy | 规则 |
 | --- | --- |
-| `ThreadSelected` | 用户选中了一个 Codex `Thread` |
-| `ThreadSelectionCleared` | 当前没有选中 `Thread` |
-| `ConversationRecoveryStarted` | 页面开始恢复当前 `Thread` 内容 |
-| `ConversationContentRestored` | 当前 `Thread` 内容恢复成功 |
-| `ConversationRecoveryFailed` | 当前 `Thread` 内容恢复失败 |
-| `ConversationContentMarkedPossiblyStale` | 现有内容可能不是最新 |
-| `TimelineItemInserted` | 新 timeline item 进入 timeline |
-| `TimelineItemUpdated` | 已有 timeline item 被后续进展更新 |
-| `TimelineItemCompleted` | timeline item 完成 |
-| `TimelineItemStatusChanged` | timeline item 的上游状态或派生阶段变化 |
-| `TimelineItemClassified` | raw input 被分类为用户可见 timeline kind |
-| `TurnTimelineSegmentUpserted` | turn 级分段被创建或用 recovered/live turn 数据更新 |
-| `TurnTimelineSegmentUpdated` | turn lifecycle 或 turn 内 item 引用发生变化 |
-| `TurnMessageAnchorsChanged` | turn 内第一条用户消息或最后一条 Codex 回复锚点发生变化 |
-| `RetryingErrorTimelineItemUpserted` | Codex 报告可重试错误，timeline 展示自动恢复中的工作过程 item |
-| `RetryingErrorTimelineItemRecovered` | retrying error 所属 turn 后续完成，retrying item 被标记为已恢复 |
-| `RetryingErrorTimelineItemSupersededByFailure` | retrying item 被同一错误语义的失败 item 顶替或合并 |
-| `ThreadScopedFailureTimelineItemCreated` | Thread 内失败被合成为派生 timeline item |
-| `ThreadScopedFailureTimelineItemMerged` | live error 与 failed turn 被合并为同一个失败 item |
-| `ThreadScopedFailureTimelineItemConfirmed` | failed `turn/completed` 确认失败 item 是该 turn 的最终失败 |
-| `DuplicateFailureSuppressed` | 同一 turn 且 error fingerprint 一致的重复失败被抑制 |
-| `ComposerDraftChanged` | Composer 草稿变化 |
-| `ComposerMainActionChanged` | Composer 主动作变化 |
-| `TurnStartRequested` | 用户请求启动普通输入 |
-| `TurnSteerRequested` | 用户请求追加输入 |
-| `TurnInterruptRequested` | 用户确认中断当前工作 |
-| `TurnRequestAccepted` | app-server 接受 start / steer 请求 |
-| `TurnRequestFailed` | start / steer 请求失败 |
-| `PageNoticeRaised` | 页面级提示被创建 |
-| `PageNoticeAutoDismissed` | 页面级提示自动消失 |
+| `ConversationRestorePolicy` | 打开或切换 Thread 后恢复内容；无内容是正常状态，不等同失败 |
+| `ConversationFreshnessPolicy` | 已有内容可读但无法确认最新时，保留已有内容，标记为可能过期并继续尝试同步 |
+| `TimelineClassificationPolicy` | `userMessage` / `agentMessage` 归为普通对话；已知工作痕迹类型归为工作过程；明确 Codex failure 归为失败；未知类型归为未知 |
+| `UnknownPreservationPolicy` | 未知 item 使用通用结构保留，不阻断阅读或输入 |
+| `FailureDedupPolicy` | 同一个失败被重复报告时，只保留一个对用户有意义的失败呈现 |
+| `PageNoticePolicy` | My-Code-X 自身错误、连接级 warning、无 `threadId` 的 JSON-RPC error、发送失败等作为页面提示，不进入 timeline |
+| `ComposerActionPolicy` | `idle + 有文本` 发送普通输入；`active + 有文本` 发送追加输入；`active + 无文本` 中断当前工作；其他不可靠状态禁用 |
+| `InterruptGuardPolicy` | 中断当前工作是高影响动作，必须先确认再发送 interrupt |
+| `RequestAcceptancePolicy` | `turn/start` 或 `turn/steer` success response 才代表输入被接受 |
+| `WorkProgressStatusPolicy` | 工作过程状态只表达上游提供的状态，不自行推断完成、失败或进行中 |
+| `ErrorMessagePolicy` | 失败优先展示上游 `error.message` 或 `turn.error.message`，不重写语义 |
+
+## Failure Conditions
+
+| Failure Condition | 结果 |
+| --- | --- |
+| `NoSelectedThread` | 不能恢复目标内容，不能发送输入，进入无选中状态 |
+| `RestoreRequestFailed` | 如果无可读内容，进入恢复失败；如果已有内容，保留内容并提示 |
+| `SyncRequestFailed` | 保留已有内容，标记同步失败或可能过期 |
+| `ConnectionUnavailable` | 禁用发送；草稿保留；产生页面提示 |
+| `UnreliableThreadId` | 禁止 `turn/start` / `turn/steer` |
+| `MissingExpectedTurnId` | 禁止 active 状态下追加输入 |
+| `MissingActiveTurnId` | 禁止中断当前工作 |
+| `EmptyInputForSendOrSteer` | 禁止发送普通输入或追加输入 |
+| `UserInputRejected` | 草稿保留；输入不进入 timeline；产生页面提示 |
+| `SteerInputRejected` | 草稿保留；追加内容不进入 timeline；产生页面提示 |
+| `TurnInterruptRejected` | 当前工作不视为已中断；产生页面提示 |
+| `ThreadFailureReported` | 作为当前 Thread timeline 内失败信息处理 |
+| `UnscopedCodexErrorReported` | 作为页面提示处理，不进入 timeline |
+| `UnknownTimelineItemReceived` | 不是失败；进入未知信息保留流程 |
+
+## Entities
+
+| Entity | Identity | 说明 |
+| --- | --- | --- |
+| `Conversation` | `ThreadId` | 当前 Thread 的 Conversation View 领域投影 |
+| `TimelineItem` | `ItemId` | 一条可展示内容，可被更新、完成、分类 |
+| `ComposerDraft` | `ThreadId` | 每个 Thread 一份草稿；切换 Thread 后恢复对应 Thread 的草稿 |
+
+## Value Objects
+
+| Value Object | 说明 |
+| --- | --- |
+| `ThreadId` | Codex Thread id |
+| `TurnId` | Codex turn id |
+| `ItemId` | Codex item id |
+| `ThreadRef` | `threadId`, `title`, `cwd` |
+| `TimelineKind` | `message`, `workProgress`, `failure`, `unknown` |
+| `TimelineStatus` | `running`, `completed`, `failed`, `unknown` |
+| `TimelineContent` | message / work progress / failure / unknown 的 discriminated union |
+| `DraftText` | 用户输入原文 |
+| `FailureSignature` | 重复失败识别用的稳定签名 |
+
+## Aggregate
+
+| Aggregate Root | 包含 | 负责的业务一致性 |
+| --- | --- | --- |
+| `Conversation` | `ThreadRef`, `TimelineItem[]`, `ComposerDraft` | 当前只对应一个 Thread；可展示 item 不丢；未知 item 保留；失败不伪装成普通回复；未接受输入不进 timeline；当前 Thread 的草稿按接受/失败规则处理 |
+
+## Application State Outside Domain Aggregate
+
+| 状态 | 原因 |
+| --- | --- |
+| restore / loading / empty / error | 页面恢复流程状态 |
+| syncing / reconnecting / stale | 同步和连接体验状态 |
+| banner notice lifecycle | UI/application concern |
+| scroll follow / reading position | 纯交互状态 |
+| button style / safe area / markdown rendering | 纯 UI concern |
+
+## Domain Errors
+
+| Error | 触发条件 | 语义 |
+| --- | --- | --- |
+| `NoThreadSelected` | 需要当前 `ThreadId`，但当前没有选中 Thread | 当前操作没有明确目标 |
+| `ThreadMismatch` | 命令目标 `ThreadId` 与当前 `Conversation.threadId` 不一致 | 禁止把其他 Thread 的内容或结果写入当前 Conversation |
+| `TimelineItemNotFound` | 增量、完成、状态更新指向不存在的 `ItemId` | 上游事件无法应用到当前 timeline |
+| `UnknownTimelineItemRejected` | 未知 item 缺少可保留的原始 payload | 无法满足“未知信息不丢失” |
+| `InvalidTimelineTransition` | item 状态转换不合法，例如已 completed 后继续被标记 running | timeline lifecycle 被破坏 |
+| `DuplicateFailureSuppressed` | 重复失败被识别 | 不是系统错误；用于显式表达重复失败被抑制 |
+| `EmptyComposerDraft` | 尝试 send / steer，但当前 `DraftText` 为空 | 空文本不能发送 |
+| `NoReliableThreadTarget` | 发送普通输入时缺少可靠 `ThreadId` | 禁止向不明确目标发送 |
+| `NoReliableSteerTarget` | 追加输入时缺少可靠 `ThreadId` 或 `ExpectedTurnId` | 禁止向不明确 active turn 追加 |
+| `NoReliableInterruptTarget` | 中断时缺少可靠 active `TurnId` | 禁止中断不明确目标 |
+| `InterruptNotConfirmed` | 尝试 interrupt，但尚未通过确认 | 高影响动作未确认 |
+| `InputNotAccepted` | app-server 拒绝 `turn/start` 或 `turn/steer` | 输入未进入正式 timeline，草稿必须保留 |
+| `InterruptNotAccepted` | app-server 拒绝 `turn/interrupt` | 当前工作不能视为已中断 |
 
 ## Repository Interfaces
 
-| Repository Interface | 方法 |
-| --- | --- |
-| `ConversationGateway` | `resumeThread(threadId)`, `listThreadTurns(threadId)`, `startTurn(threadId, input)`, `steerTurn(threadId, expectedTurnId, input)`, `interruptTurn(threadId, turnId)` |
-| `LiveConversationSubscription` | `subscribe(threadId)`, `unsubscribe(threadId)` |
-| `ComposerDraftRepository` | `getDraft(scope)`, `saveDraft(scope, draft)`, `clearDraft(scope)` |
-| `ClipboardPort` | `copyText(text)` |
-| `ExternalLinkPort` | `openMarkdownLink(url)` |
+```ts
+interface ConversationRepository {
+  get(threadId: ThreadId): Promise<Conversation | null>;
+  save(conversation: Conversation): Promise<void>;
+}
+```
 
-`ConversationGateway` 是对 Codex app-server 的 outbound port。UI 不直接依赖 JSON-RPC 细节。
+```ts
+interface ComposerDraftRepository {
+  get(threadId: ThreadId): Promise<ComposerDraft | null>;
+  save(draft: ComposerDraft): Promise<void>;
+  delete(threadId: ThreadId): Promise<void>;
+}
+```
+
+| Repository | 负责 | 不负责 |
+| --- | --- | --- |
+| `ConversationRepository` | 保存 My-Code-X 对某个 Thread 的 Conversation 领域投影 | 不调用 Codex app-server；不负责恢复、同步、live subscription |
+| `ComposerDraftRepository` | 按 `ThreadId` 保存 per-thread 草稿 | 不判断能否发送；不清空非目标 Thread 草稿 |
+
+不单独建立 `ThreadRepository`、`TimelineItemRepository`、`PageNoticeRepository`、`ConnectionRepository`。
 
 ## Application Services
 
-| Application Service | 责任 |
+| Service | 负责 |
 | --- | --- |
-| `ConversationViewService` | 选择 `Thread`、恢复内容、维护 `ConversationViewSession` |
-| `TimelineIngestionService` | 接收 history / live event，调用 timeline policy，转换为 canonical `TimelineItem` |
-| `ComposerService` | 计算主动作，发送 start / steer / interrupt，处理成功失败 |
-| `NoticeService` | 管理 banner 提示 |
-| `ClipboardService` | 复制用户输入、Codex 回复、代码块 |
+| `ConversationQueryService` | 加载当前 Thread 的 Conversation View 数据 |
+| `ConversationIngestService` | 接收 Codex 历史或 live item，写入 `Conversation` |
+| `ComposerService` | 处理 send / steer / interrupt，维护 per-thread 草稿 |
+| `ConversationRecoveryService` | 编排恢复、同步、stale 状态和 page notice |
 
-## Anti-Corruption Layer
+### ConversationQueryService
 
-`CodexProtocolACL` 负责把 Codex protocol 输入解析成 My-Code-X 领域对象。外部 protocol 只在 ACL 层解析一次；进入 domain 后，内部逻辑使用 My-Code-X canonical domain object。
+```ts
+interface ConversationQueryService {
+  getConversation(threadId: ThreadId): Promise<ConversationView>;
+}
+```
 
-| Codex protocol input | My-Code-X domain object |
+流程：
+
+1. 从 `ConversationRepository.get(threadId)` 读取 `Conversation`
+2. 从 `ComposerDraftRepository.get(threadId)` 读取 per-thread draft
+3. 组合为 `ConversationView`
+4. 不发起 Codex 请求
+5. 不修改领域状态
+
+### ConversationIngestService
+
+```ts
+interface ConversationIngestService {
+  ingestThreadItems(thread: ThreadRef, items: CodexThreadItem[]): Promise<void>;
+  ingestLiveEvent(threadId: ThreadId, event: CodexLiveEvent): Promise<void>;
+}
+```
+
+流程：
+
+1. parse Codex payload
+2. load `Conversation`，不存在则创建
+3. 对每个 item 调用 `Conversation.receiveItem(...)`
+4. 对 delta / completed / status 调用对应 aggregate 方法
+5. domain 内执行分类、未知保留、失败去重、状态转换校验
+6. save `Conversation`
+7. domain error 显式返回或抛出 typed error
+
+### ComposerService
+
+```ts
+interface ComposerService {
+  changeDraft(threadId: ThreadId, text: DraftText): Promise<void>;
+  send(threadId: ThreadId): Promise<void>;
+  steer(threadId: ThreadId, expectedTurnId: TurnId): Promise<void>;
+  interrupt(turnId: TurnId, confirmed: boolean): Promise<void>;
+}
+```
+
+`changeDraft` 流程：
+
+1. load or create `ComposerDraft(threadId)`
+2. 设置 `DraftText`
+3. save draft
+
+`send` 流程：
+
+1. load draft by `threadId`
+2. validate non-empty
+3. 调用 Codex app-server `turn/start`
+4. success 后只清空该 `threadId` draft
+5. failure 保留 draft，并 raise page notice
+
+`steer` 流程：
+
+1. load draft by `threadId`
+2. validate non-empty
+3. validate `expectedTurnId`
+4. 调用 Codex app-server `turn/steer`
+5. success 后只清空该 `threadId` draft
+6. failure 保留 draft，并 raise page notice
+
+`interrupt` 流程：
+
+1. validate `confirmed`
+2. validate active `turnId`
+3. 调用 Codex app-server `turn/interrupt`
+4. failure raise page notice
+5. 不修改 draft
+
+### ConversationRecoveryService
+
+```ts
+interface ConversationRecoveryService {
+  restore(thread: ThreadRef): Promise<void>;
+  sync(thread: ThreadRef): Promise<void>;
+  markStale(threadId: ThreadId): Promise<void>;
+}
+```
+
+`restore` 流程：
+
+1. 标记 application restore state 为 `restoring`
+2. 调用 Codex app-server `thread/resume` 或 `thread/turns/list`
+3. 成功后交给 `ConversationIngestService.ingestThreadItems`
+4. 无可展示内容时记录 empty application state
+5. 失败时记录 restore failed application state
+6. 已有内容存在时不清空旧内容
+
+`sync` 流程：
+
+1. 标记 application sync state
+2. 拉取或恢复当前内容
+3. 成功后 ingest
+4. 失败时保留旧 conversation，标记 stale 或 raise page notice
+
+`markStale` 流程：
+
+1. 只更新 application state
+2. 不修改 `Conversation` aggregate
+
+## Domain Services
+
+| Service | 负责 | 输入 | 输出 |
+| --- | --- | --- | --- |
+| `TimelineClassifier` | 把已解析的 Codex item 归类为 My-Code-X 的 `TimelineContent` | `CodexItem` | `TimelineContent` |
+| `FailureDeduper` | 判断当前失败是否已经存在 | `FailureSignature`, existing signatures | `duplicate` / `new` |
+| `ComposerPolicy` | 判断当前 Composer 可执行动作 | `ThreadStatus`, `DraftText`, target ids | `ComposerAction` |
+| `NoticeClassifier` | 判断错误进入 timeline 还是 page notice | parsed error with thread scope | `timelineFailure` / `pageNotice` |
+
+### TimelineClassifier
+
+| 输入条件 | 输出 |
 | --- | --- |
-| Codex `ThreadItem` | `CodexThreadTimelineItem` |
-| work progress live notification | `WorkProgressLiveUpdate` |
-| `ErrorNotification` | `ThreadErrorSignal` |
-| `Turn(status = Failed, error != null)` | `ThreadScopedFailureTimelineItem` |
-| `warning`, `guardianWarning`, `configWarning` | `PageNotice` |
-| JSON-RPC error without `threadId` | `PageNotice` |
+| `userMessage` | `TimelineContent.message(role=user)` |
+| `agentMessage` | `TimelineContent.message(role=agent)` |
+| 已知工作过程类型 | `TimelineContent.workProgress(...)` |
+| Thread 内明确失败 | `TimelineContent.failure(...)` |
+| 未知 item type | `TimelineContent.unknown(...)` |
 
-`ThreadErrorSignal` 进入 domain 后由 `ErrorTimelinePolicy` 分类，不由 UI 直接判断 `willRetry`。
+约束：
+
+- 不根据 message 文本内容推断类型。
+- 未知 item 必须输出 `unknown`，除非 payload 无法保留。
+- message、type label、error message 保留上游语义。
+
+### FailureDeduper
+
+| 输入条件 | 输出 |
+| --- | --- |
+| signature 已存在 | `duplicate` |
+| signature 不存在 | `new` |
+
+约束：
+
+- 去重只影响展示。
+- signature 必须稳定。
+- 不做模糊匹配。
+
+### ComposerPolicy
+
+| 条件 | 输出 |
+| --- | --- |
+| `idle` + 非空 `DraftText` + 可靠 `ThreadId` | `send` |
+| `active` + 非空 `DraftText` + 可靠 `ThreadId` + `ExpectedTurnId` | `steer` |
+| `active` + 空 `DraftText` + reliable active `TurnId` + confirmed | `interrupt` |
+| 其他 | `disabled(reason)` |
+
+约束：
+
+- 空文本不能 send / steer。
+- 不修改草稿。
+- 不调用 app-server。
+
+### NoticeClassifier
+
+| 输入条件 | 输出 |
+| --- | --- |
+| 错误归属于当前 Thread | `timelineFailure` |
+| 错误无 `threadId` | `pageNotice` |
+| My-Code-X 本地错误 | `pageNotice` |
+| connection / config warning | `pageNotice` |
+| composer request failure | `pageNotice` |
+
+约束：
+
+- Thread 内失败进 timeline。
+- 无归属错误不进 timeline。
+- 保留原始 message 和可排查字段。
+
+## ACL
+
+| ACL | 方向 | 负责 |
+| --- | --- | --- |
+| `CodexConversationACL` | Codex app-server -> Domain | 把 Codex `Thread`、`ThreadItem`、live event、error 转成 My-Code-X domain input |
+| `CodexTurnCommandACL` | Domain/Application -> Codex app-server | 把 send / steer / interrupt 转成 Codex request payload |
+
+### CodexConversationACL
+
+| 输入 | 输出 |
+| --- | --- |
+| Codex `Thread` | `ThreadRef` |
+| Codex `ThreadItem` | `CodexItem` |
+| Codex live event | `CodexItemPatch` / `CodexItemCompletion` / `CodexWorkProgressStatus` / `CodexThreadFailure` |
+| Codex scoped error | `ScopedFailureInput` |
+| Codex unscoped error / warning | `PageNoticeInput` |
+
+规则：
+
+- Codex payload 只在 ACL 边界解析和校验。
+- 不重写 Codex message、type、status、error message。
+- 必需字段缺失时返回 typed boundary error。
+- domain 不直接依赖 JSON-RPC 字段名或原始 protocol shape。
+- 未知 `ThreadItem.type` 转成可保留 payload，不丢弃。
+
+### CodexTurnCommandACL
+
+| 输入 | Codex request |
+| --- | --- |
+| `SendUserInput(threadId, input)` | `turn/start` |
+| `SteerInput(threadId, expectedTurnId, input)` | `turn/steer` |
+| `InterruptTurn(turnId)` | `turn/interrupt` |
+
+规则：
+
+- 每个发送给 Codex 的参数必须来自明确领域决策。
+- 用户原文进入 `UserInput[]` 时不删改。
+- 缺少 `threadId`、`expectedTurnId`、`turnId` 时不构造 request。
+- JSON-RPC error 转成 typed application failure，不吞掉 code/message/details。

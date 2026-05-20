@@ -195,17 +195,17 @@ Composer 是 Conversation View 底部的用户输入区域。它让用户继续�
 Functional Requirements:
 
 - Composer 绑定当前选中的 Codex `Thread`。
-- Composer 保存当前输入草稿。
+- Composer 按当前 `Thread` 保存输入草稿。
 - 用户可以输入多行文本。
 - 空文本不能发送。
 - 当前可以继续输入时，用户可以发送普通输入
 - 不对用户原始输入进行任何删改。
 - 当前 Codex 正在工作时，用户可以发送补充指令信息。
 - 当前 Codex 正在工作时，用户可以中断当前工作。
-- 发送请求被接受后，Composer 清空已发送草稿。
-- 发送请求失败时，Composer 保持原草稿不变。
+- 发送请求被接受后，Composer 清空当前 `Thread` 的已发送草稿。
+- 发送请求失败时，Composer 保持当前 `Thread` 的原草稿不变。
 - 发送失败、连接异常或输入暂时不可用时，页面展示非阻塞错误提示。
-- 当前没有选中 `Thread`、内容正在恢复、连接不可用或目标状态不明确时，Composer 保留草稿但禁用发送。
+- 当前没有选中 `Thread`、内容正在恢复、连接不可用或目标状态不明确时，Composer 保留当前 `Thread` 的草稿但禁用发送。
 - Composer 不把未被确认的输入伪装成已经进入 timeline 的正式内容。
 - 中断当前工作是高影响动作，需要防误触处理。
 

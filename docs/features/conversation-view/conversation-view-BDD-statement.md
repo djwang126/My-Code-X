@@ -364,7 +364,7 @@ Then Composer 绑定当前 `Thread`
 Given 用户在 Composer 输入内容  
 When 页面状态变化或暂时不能发送  
 Then Composer 保留当前输入草稿
-And 草稿全局保存
+And 草稿按当前 `Thread` 保存
 
 ### Scenario: 输入多行文本
 
@@ -393,15 +393,15 @@ Then 系统app层modal确认后再中断当前工作
 
 ### Scenario: 发送请求被接受后清空输入草稿
 
-Given Composer 中存在已发送的输入草稿  
+Given 当前 `Thread` 的 Composer 中存在已发送的输入草稿  
 When 发送请求被接受  
-Then Composer 清空该已发送的输入草稿
+Then Composer 清空当前 `Thread` 的已发送输入草稿
 
 ### Scenario: 发送失败保留输入草稿
 
-Given Composer 中存在待发送的输入草稿  
+Given 当前 `Thread` 的 Composer 中存在待发送的输入草稿  
 When 发送请求失败  
-Then Composer 保持输入草稿不变
+Then Composer 保持当前 `Thread` 的输入草稿不变
 
 ### Scenario: 移动端 safe area 与软键盘适配
 
