@@ -15,13 +15,6 @@
 
 ## Domain Events
 
-### Thread Selection
-
-| Event | 含义 |
-| --- | --- |
-| `ThreadSelected` | 用户选中了一个 Codex `Thread` |
-| `ThreadCleared` | 当前选中 Thread 被清除 |
-
 ### Timeline
 
 | Event | 含义 |
@@ -43,13 +36,6 @@
 | `TurnInterruptAccepted` | 中断请求被接受 |
 
 ## Commands
-
-### Thread Selection
-
-| Command | 产生的 Domain Events |
-| --- | --- |
-| `SelectThread` | `ThreadSelected` |
-| `ClearSelectedThread` | `ThreadCleared` |
 
 ### Timeline
 
@@ -74,7 +60,7 @@
 
 | Actor | 触发 Commands |
 | --- | --- |
-| `User` | `SelectThread`, `ClearSelectedThread`, `ChangeComposerDraft`, `SendUserInput`, `SendSteerInput`, `InterruptTurn` |
+| `User` | `ChangeComposerDraft`, `SendUserInput`, `SendSteerInput`, `InterruptTurn` |
 | `CodexAppServer` | `ReceiveTimelineItem`, `ApplyAgentMessageDelta`, `CompleteAgentMessage`, `ChangeWorkProgressStatus`, `ReportThreadFailure` |
 
 ## Invariants
@@ -144,6 +130,7 @@
 | `TurnId` | Codex turn id |
 | `ItemId` | Codex item id |
 | `ThreadRef` | `threadId`, `title`, `cwd` |
+| `AuthoritativeTime` | Codex 提供的时间信息，例如 `createdAt`、`updatedAt`、`startedAt`、`completedAt` |
 | `TimelineKind` | `message`, `workProgress`, `failure`, `unknown` |
 | `TimelineStatus` | `running`, `completed`, `failed`, `unknown` |
 | `TimelineContent` | message / work progress / failure / unknown 的 discriminated union |
@@ -160,6 +147,7 @@
 
 | 状态 | 原因 |
 | --- | --- |
+| selected thread / no selected thread | 当前查看目标|
 | restore / loading / empty / error | 页面恢复流程状态 |
 | syncing / reconnecting / stale | 同步和连接体验状态 |
 | banner notice lifecycle | UI/application concern |
@@ -169,6 +157,13 @@
 ## Application Events and State
 
 这些信号有设计价值，但不属于 `Conversation` aggregate 的 Domain Event 或 Command。
+
+### Thread Selection
+
+| Signal | 用途 |
+| --- | --- |
+| `ThreadSelected` | 标记用户选中了一个 Codex `Thread` 作为当前查看目标 |
+| `ThreadCleared` | 标记当前查看目标被清除 |
 
 ### Restore and Sync
 
@@ -210,7 +205,7 @@
 | `EmptyComposerDraft` | 尝试 send / steer，但当前 `DraftText` 为空 | 空文本不能发送 |
 | `NoReliableThreadTarget` | 发送普通输入时缺少可靠 `ThreadId` | 禁止向不明确目标发送 |
 | `NoReliableSteerTarget` | 追加输入时缺少可靠 `ThreadId` 或 `ExpectedTurnId` | 禁止向不明确 active turn 追加 |
-| `NoReliableInterruptTarget` | 中断时缺少可靠 active `TurnId` | 禁止中断不明确目标 |
+| `NoReliableInterruptTarget` | 中断时缺少可靠 `ThreadId` 或 active `TurnId` | 禁止中断不明确目标 |
 | `InterruptNotConfirmed` | 尝试 interrupt，但尚未通过确认 | 高影响动作未确认 |
 
 ## Repository Interfaces
@@ -279,7 +274,7 @@ interface ComposerService {
   changeDraft(threadId: ThreadId, text: DraftText): Promise<void>;
   send(threadId: ThreadId): Promise<void>;
   steer(threadId: ThreadId, expectedTurnId: TurnId): Promise<void>;
-  interrupt(turnId: TurnId, confirmed: boolean): Promise<void>;
+  interrupt(threadId: ThreadId, turnId: TurnId, confirmed: boolean): Promise<void>;
 }
 ```
 
@@ -309,10 +304,11 @@ interface ComposerService {
 `interrupt` 流程：
 
 1. validate `confirmed`
-2. validate active `turnId`
-3. 调用 Codex app-server `turn/interrupt`
-4. failure raise page notice
-5. 不修改 draft
+2. validate reliable `threadId`
+3. validate active `turnId`
+4. 调用 Codex app-server `turn/interrupt`
+5. failure raise page notice
+6. 不修改 draft
 
 ### ConversationRecoveryService
 
@@ -389,7 +385,7 @@ interface ConversationRecoveryService {
 | --- | --- |
 | `idle` + 非空 `DraftText` + 可靠 `ThreadId` | `send` |
 | `active` + 非空 `DraftText` + 可靠 `ThreadId` + `ExpectedTurnId` | `steer` |
-| `active` + 空 `DraftText` + reliable active `TurnId` + confirmed | `interrupt` |
+| `active` + 空 `DraftText` + reliable `ThreadId` + reliable active `TurnId` + confirmed | `interrupt` |
 | 其他 | `disabled(reason)` |
 
 约束：
@@ -445,7 +441,7 @@ interface ConversationRecoveryService {
 | --- | --- |
 | `SendUserInput(threadId, input)` | `turn/start` |
 | `SteerInput(threadId, expectedTurnId, input)` | `turn/steer` |
-| `InterruptTurn(turnId)` | `turn/interrupt` |
+| `InterruptTurn(threadId, turnId)` | `turn/interrupt` |
 
 规则：
 
