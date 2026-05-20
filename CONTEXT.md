@@ -15,59 +15,76 @@ Codex 原生的一次用户输入驱动的模型执行。
 _Avoid_: 用户消息、一轮问答、Conversation
 
 **ThreadItem**:
-Codex `Turn` 内由 app-server 提供的原生可渲染或可恢复单元。
-_Avoid_: Conversation item、UI 卡片、日志
+Codex `Turn` 内由 app-server 提供的原生可恢复单元。
+_Avoid_: Timeline item、UI 卡片、日志
 
 **Codex cwd scope**:
 Codex 以 `cwd` 为过滤条件查看历史 `Thread` 的范围。
 _Avoid_: Codex Workspace、Workspace、项目
 
-**Codex system notice**:
-Codex app-server 发出的系统级提示事件。
-_Avoid_: Client notice、Conversation error
+**Codex warning**:
+Codex app-server 发出的 warning 类 notification，例如 `warning`、`guardianWarning` 或 `configWarning`。
+_Avoid_: Client notice、Page notice、Failure item
+
+**Unscoped Codex error**:
+无法归属到具体 Codex `Thread` 的 Codex JSON-RPC error 或 runtime error。
+_Avoid_: Failure item、Thread failure、assistant message
+
+**Codex Server request**:
+Codex app-server 对客户端侧参与的反向请求，例如 approval、requestUserInput、elicitation、permissions request 或 dynamic tool call。
+_Avoid_: Timeline item、Page notice、Composer input
 
 
 ### My-Code-X 产品概念
 
 **Conversation**:
-当前选中 Codex `Thread` 的只读 timeline 投影。
+当前选中 Codex `Thread` 的可读工作现场投影。产品语境中它主要指 timeline 阅读内容；领域实现中可包含 `ThreadRef`、`Timeline item[]` 和当前 `Thread` 的 `Composer draft`。
 _Avoid_: Thread、页面、完整聊天工作区
 
-**Conversation timeline state**:
-当前 `Conversation` 的 timeline 在恢复、为空、失败、同步或可能非最新时的可读性状态。
+**ThreadRef**:
+Conversation View 展示当前 Codex `Thread` 所需的轻量引用，包含 `threadId`、标题和 `cwd`。
+_Avoid_: Thread、Workspace、完整 thread payload
+
+**Conversation View application state**:
+Conversation View 在无选中 `Thread`、恢复中、为空、读取失败、同步、重连或内容可能过期时的页面状态。
+_Avoid_: Timeline item、Conversation、ThreadStatus
 
 **Conversation View**:
 围绕当前选中 Codex `Thread` 提供 `Conversation` 阅读、`Composer` 输入、`Pending interaction` 展示和页面状态的 My-Code-X 主界面。
 
-**Conversation item**:
-My-Code-X 面向 Web client 的 timeline 展示单元，由 Codex `ThreadItem` 或 `Codex runtime event` 投影而来。
+**Timeline item**:
+My-Code-X timeline 中的一条可展示内容。它可以由 Codex `ThreadItem`、Codex live event 更新，或当前 `Thread` 内明确失败派生而来。
 _Avoid_: ThreadItem、任意 UI 卡片
 
 **Message item**:
-由 Codex `userMessage` 或 `agentMessage` 投影出的 `Conversation item`。
+`Timeline item` 的 `message` 分类，由 Codex `userMessage` 或 `agentMessage` 投影而来。
 
-**Work trace**:
-当前选中 Codex `Thread` 的某个 `Turn` 内，由已知 Codex 非消息 `ThreadItem` 或 `Codex runtime event` 投影出的 `Conversation item`。
-_Avoid_: 所有非消息 item、日志、Unknown item
+**Work progress item**:
+`Timeline item` 的 `workProgress` 分类，表示当前选中 Codex `Thread` 的某个 `Turn` 内已知工作过程信息。
+_Avoid_: 所有非消息 item、日志、Unknown item、plan
 
 **Unknown item**:
-来自 Codex `ThreadItem` 或可归属到当前 `Turn` 的 `Codex runtime event`，但 My-Code-X 当前没有专门产品分类的 `Conversation item`。
-_Avoid_: Error item、Work trace、调试 payload
+`Timeline item` 的 `unknown` 分类，表示 My-Code-X 当前不能专门理解但仍必须保留和展示的信息。
+_Avoid_: Failure item、Work progress item、调试 payload
 
-**Error item**:
-可归属到当前选中 Codex `Thread` 和 `Turn` 的 failure 投影，属于 `Conversation item`。
-_Avoid_: Client notice、任意错误、assistant message
+**Failure item**:
+`Timeline item` 的 `failure` 分类，表示可归属到当前选中 Codex `Thread` 和 `Turn` 的明确失败。
+_Avoid_: Page notice、Client notice、任意错误、assistant message
 
 **Recovering error**:
-当前 active `Turn` 中 Codex 仍会继续尝试恢复的错误投影。它属于 **Conversation View** 的临时 overlay，可以靠近 active `Turn` 展示，但不属于 **Conversation item**。
-_Avoid_: Error item、Conversation item、Conversation View notice
+当前 active `Turn` 中 Codex 仍会继续尝试恢复或重试的错误投影。它属于 **Conversation View** 的临时 overlay，可以靠近 active `Turn` 展示，但不属于 **Timeline item**；最终失败以 `turn/completed` 的 failed 状态为权威。
+_Avoid_: Failure item、Timeline item、Page notice
 
 **Pending interaction**:
 Codex app-server 对当前 `Thread` 发出的待用户处理反向请求。
-_Avoid_: Conversation item、全局弹窗、Client notice
+_Avoid_: Timeline item、全局弹窗、Client notice、Composer input
 
 **Composer**:
-Conversation View 中用于向当前选中 Codex `Thread` 发送普通用户输入的输入控制台。
+Conversation View 中绑定当前 Codex `Thread` 的输入控制台。它维护当前 `Thread` 的草稿，并根据可靠目标状态触发 `turn/start`、`turn/steer` 或 `turn/interrupt`。
+
+**Composer draft**:
+Composer 按 Codex `Thread` 保存的用户输入草稿。请求被接受后清空对应 `Thread` 的已发送草稿；请求失败时保留草稿。
+_Avoid_: Timeline item、pending message、browser input state
 
 **My-Code-X Workspace**:
 My-Code-X 保存的本机项目目录记录，产品身份是 canonical cwd。
@@ -101,13 +118,13 @@ _Avoid_: Codex runtime event、浏览器 DOM event、raw notification
 My-Code-X server 返回给 Web client 的当前前端状态快照。
 _Avoid_: Codex Thread 历史快照、浏览器缓存
 
-**Client notice**:
-My-Code-X Web client 用于展示 timeline 外提示、错误或警告的全局前端通知模型，可由不同功能产生。
-_Avoid_: Codex system notice、Error item、Conversation item、Toast
+**Page notice**:
+Conversation View 内不应投影为 `Timeline item`，也不属于 `Recovering error` 或 `Pending interaction` 的 timeline 外提示、错误或警告。
+_Avoid_: Failure item、Client notice、Toast
 
-**Conversation View notice**:
-Conversation View 内不应投影为 `Conversation item`，也不属于 `Recovering error` 或 `Pending interaction` 的 timeline 外提示、错误或警告。
-_Avoid_: Error item、Client notice、Toast
+**Codex ACL**:
+My-Code-X 在 Codex protocol 与 Conversation domain 之间的解析和转换边界。Codex payload 必须在这里被校验、分类和转换，domain 不直接依赖 raw protocol shape。
+_Avoid_: raw notification handler、UI mapper、string parser
 
 ## Relationships
 
@@ -115,21 +132,23 @@ _Avoid_: Error item、Client notice、Toast
 - 一个 **My-Code-X Workspace** 的 canonical cwd 可以作为 Codex `thread/list` 的 `cwd` 参数，从而形成一个 **Codex cwd scope**。
 - 一个 **Thread list** 属于 Codex app-server 的查询结果，不属于 **My-Code-X Workspace** registry。
 - **Conversation View** 围绕当前选中的 Codex **Thread** 展示一个 **Conversation**。
-- **Composer**、**Pending interaction**、**Recovering error** 和 **Conversation timeline state** 可以属于 **Conversation View**，但不属于 **Conversation** timeline。
+- 一个 **Conversation** 由 **ThreadRef**、**Timeline item** 列表和当前 **Composer draft** 组成。
 - **Composer** 可以触发 **Thread action**，但不用于响应 **Pending interaction**。
 - Codex `turn/start`、`turn/steer` 和 `turn/interrupt` 是 **Composer** 触发的 **Thread action**。
 - 一个 **Conversation** 投影当前选中的一个 Codex **Thread**。
 - 一个 **Thread** 包含零个或多个 **Turn**。
 - 一个 **Turn** 可以产生零个或多个 **ThreadItem** 和零个或多个 **Codex runtime event**。
-- 一个 **Conversation item** 由 Codex **ThreadItem** 或 **Codex runtime event** 投影而来。
-- **Message item**、**Work trace**、**Unknown item** 和 **Error item** 都是 **Conversation item** 的分类。
-- **Recovering error** 可以靠近当前 active **Turn** 的 timeline 区域展示，但不是第五类 **Conversation item**。
-- **Work trace** 和 **Unknown item** 的边界由 My-Code-X 产品分类决定，不由当前是否存在专门 renderer 决定。
-- **Conversation View notice** 可以投影为 **Client notice**，但前者是 Conversation View 局部概念，后者是 Web client 全局通知模型。
+- 一个 **Timeline item** 由 Codex **ThreadItem**、**Codex runtime event** 或当前 **Thread** 内明确失败投影而来。
+- **Message item**、**Work progress item**、**Unknown item** 和 **Failure item** 都是 **Timeline item** 的分类。
+- **Recovering error** 可以靠近当前 active **Turn** 的 timeline 区域展示，但不是第五类 **Timeline item**。
+- **Work progress item** 和 **Unknown item** 的边界由 My-Code-X 产品分类决定，不由当前是否存在专门 renderer 决定。
+- Codex `plan` 不属于 **Work progress item**。
+- **Page notice** 可以投影为 **Client notice**，但前者是 Conversation View 局部概念，后者是 Web client 全局通知模型。
 - Toast 是 **Client notice** 的一种 UI 呈现方式，不是独立领域对象。
-- **Codex system notice** 可以被投影为 **Client notice**，但二者不是同一个概念。
+- **Codex warning** 和 **Unscoped Codex error** 可以被投影为 **Page notice** 或 **Client notice**，但二者不是同一个概念。
 - **Codex runtime event** 可以被投影为 **Client event**，但二者不是同一个概念。
 - **Thread action** 可以改变当前选中 Codex **Thread** 或触发 **Conversation** 刷新，但不由 **Conversation** timeline 拥有。
+- **Codex ACL** 负责把 Codex **Thread**、**ThreadItem**、live event、warning、error 和 **Server request** 转成 My-Code-X 可处理的 domain/application input。
 
 ## Example dialogue
 
@@ -137,25 +156,16 @@ _Avoid_: Error item、Client notice、Toast
 > **Domain expert:** "不是。My-Code-X Workspace 只提供 canonical cwd；Codex app-server 用这个 cwd 形成 Codex cwd scope，再返回 Thread list。"
 >
 > **Dev:** "那点击一个 thread 后，Conversation 是不是等于这个 Thread？"
-> **Domain expert:** "不是。Thread 是 Codex 原生容器；Conversation 是当前选中 Thread 的只读 timeline 投影。"
+> **Domain expert:** "不是。Thread 是 Codex 原生容器；Conversation 是当前选中 Thread 的可读工作现场投影。"
 >
-> **Dev:** "审批请求要不要作为 Conversation item 插到 timeline？"
-> **Domain expert:** "不要。那是 Pending interaction，可以靠近 Conversation 展示，但不属于 timeline。"
->
-> **Dev:** "Codex 的 agentMessage 是不是直接等于 Conversation item？"
+> **Dev:** "Codex 的 agentMessage 是不是直接等于 Timeline item？"
 > **Domain expert:** "不是。它会被投影为 Message item；Message item 才是 My-Code-X timeline 里的展示单元。"
 
 ## Flagged ambiguities
 
-- “Conversation” 曾被用来泛指 Codex 对话、页面和 timeline；已解决：**Conversation** 只指当前选中 Codex **Thread** 的只读 timeline 投影。
-- “Conversation View” 是 My-Code-X 的主界面概念；它包含 **Conversation** 阅读和输入等页面能力，但不改变 **Conversation** 的只读 timeline 含义。
-- “Conversation page” 只是 UI 语境里的非正式说法；正式产品词汇使用 **Conversation View**。
-- “Conversation timeline state” 不包含无 Codex **Thread** 选中状态；无 `Thread` 选中状态属于 **Conversation View** 的界面状态。
-- “Recovering error” 不是 **Error item**，也不是临时 **Conversation item**；它是 **Conversation View** 对 active **Turn** 的临时 overlay。
-- “Work trace” 当前可以使用通用字段渲染；这不意味着它是 **Unknown item**。
-- “item” 不应裸用：My-Code-X timeline 单元写 **Conversation item**，Codex 可恢复单元写 **ThreadItem**，Codex notification method 写 Codex `item/*`。
-- “Workspace” 曾被用来同时表示 My-Code-X 保存记录和 Codex cwd 查询范围；已解决：保存记录叫 **My-Code-X Workspace**，Codex cwd 查询范围叫 **Codex cwd scope**。
-- “runtime event” 曾可能混指 Codex 事件和浏览器 SSE 事件；已解决：Codex 侧叫 **Codex runtime event**，Web client 侧叫 **Client event**。
-- “notice” 曾可能混指 Codex 系统提示、Conversation View 局部提示和 My-Code-X 前端提示；已解决：Codex 侧叫 **Codex system notice**，Conversation View 局部概念叫 **Conversation View notice**，Web client 全局通知模型叫 **Client notice**。
-- “Toast” 是通知的 UI 呈现方式，不是 **Client notice** 或 **Conversation View notice** 的领域来源。
-- “Work trace” 曾可能表示所有非消息 item；已解决：**Work trace** 只表示已知 Codex 非消息工作痕迹，**Unknown item** 和 **Error item** 独立分类。
+- “Conversation” 只指当前选中 Codex **Thread** 的可读工作现场投影。
+- “Conversation View” 是 My-Code-X 的主界面概念；它包含 **Conversation** 阅读、输入和页面状态等能力。
+- “item” 不应裸用：My-Code-X timeline 单元写 **Timeline item**，Codex 原生单元写 **ThreadItem**，Codex notification method 写 Codex `item/*`。
+- “error” 不应裸用：timeline 内明确失败写 **Failure item**，timeline 外页面提示写 **Page notice**，可恢复错误写 **Recovering error**。
+- “Workspace” 中，保存记录叫 **My-Code-X Workspace**，Codex cwd 查询范围叫 **Codex cwd scope**。
+- “runtime event” 中，Codex 侧叫 **Codex runtime event**，Web client 侧叫 **Client event**。
