@@ -7,6 +7,7 @@
 - Conversation View 不拥有 Codex `Thread`，只维护 My-Code-X 侧的可读投影。
 - 核心领域只保留一个 `Conversation` aggregate。
 - Codex app-server 是外部系统，所有 protocol payload 必须先经过 ACL 解析。
+- Codex `Turn.status = failed` 与 `Turn.error` 会被 My-Code-X 派生为 timeline item，但它不是 Codex `ThreadItem`。
 - 未确认被 Codex 接受的用户输入不能进入正式 timeline。
 - 未识别信息不能静默丢弃。
 - 失败信息不能伪装成普通 Codex 回复。
@@ -76,6 +77,7 @@
 | `FailureIsNotMessage` | 失败信息不能伪装成 Codex 普通回复 |
 | `UnknownIsNotFailure` | 未识别信息不能被当作失败信息 |
 | `ThreadFailureStaysInTimeline` | 归属于当前 Thread 的失败必须保留在 timeline 中对应位置 |
+| `TimelineIdentityMatchesSource` | 来自 Codex `ThreadItem` 的内容必须使用 `codexThreadItem(threadId, turnId, itemId)`；由 failed turn 派生的失败必须使用 `threadScopedFailure(threadId, turnId, message)`；不为失败伪造 `ItemId` |
 | `UnscopedFailureStaysOutOfTimeline` | 无法归属到具体 Thread 的错误不能插入 timeline |
 | `DraftBelongsToThread` | 草稿必须归属于一个明确的 `ThreadId` |
 | `ThreadSwitchKeepsDrafts` | 切换 Thread 不清空其他 Thread 的草稿 |
@@ -90,7 +92,7 @@
 | --- | --- |
 | `TimelineClassificationPolicy` | `userMessage` / `agentMessage` 归为普通对话；已知工作痕迹类型归为工作过程；明确 Codex failure 归为失败；未知类型归为未知 |
 | `UnknownPreservationPolicy` | 未知 item 使用通用结构保留，不阻断阅读或输入 |
-| `FailureDedupPolicy` | 同一个失败被重复报告时，只保留一个对用户有意义的失败呈现 |
+| `FailureDedupPolicy` | 同一 `threadId + turnId + error.message` 的失败只保留一个 timeline 呈现；`codexErrorInfo` 与 `additionalDetails` 作为 details merge，不制造第二条失败 |
 | `PageNoticePolicy` | My-Code-X 自身错误、连接级 warning、无 `threadId` 的 JSON-RPC error、发送失败等作为页面提示，不进入 timeline |
 | `ComposerActionPolicy` | `idle + 有文本` 发送普通输入；`active + 有文本` 发送追加输入；`active + 无文本` 中断当前工作；其他不可靠状态禁用 |
 | `InterruptGuardPolicy` | 中断当前工作是高影响动作，必须先确认再发送 interrupt |
@@ -119,7 +121,7 @@
 | Entity | Identity | 说明 |
 | --- | --- | --- |
 | `Conversation` | `ThreadId` | 当前 Thread 的 Conversation View 领域投影 |
-| `TimelineItem` | `ItemId` | 一条可展示内容，可被更新、完成、分类 |
+| `TimelineItem` | `TimelineItemId` | 一条可展示内容；可能来自 Codex `ThreadItem`，也可能由 `Turn.status = failed` 与 `Turn.error` 派生 |
 | `ComposerDraft` | `ThreadId` | 每个 Thread 一份草稿；切换 Thread 后恢复对应 Thread 的草稿 |
 
 ## Value Objects
@@ -128,14 +130,15 @@
 | --- | --- |
 | `ThreadId` | Codex Thread id |
 | `TurnId` | Codex turn id |
-| `ItemId` | Codex item id |
+| `ItemId` | Codex `ThreadItem.id`，只用于 Codex 原生 item |
+| `TimelineItemId` | timeline item identity；`codexThreadItem(threadId, turnId, itemId)` 或 `threadScopedFailure(threadId, turnId, message)` |
 | `ThreadRef` | `threadId`, `title`, `cwd` |
 | `AuthoritativeTime` | Codex 提供的时间信息，例如 `createdAt`、`updatedAt`、`startedAt`、`completedAt` |
 | `TimelineKind` | `message`, `workProgress`, `failure`, `unknown` |
 | `TimelineStatus` | `running`, `completed`, `failed`, `unknown` |
 | `TimelineContent` | message / work progress / failure / unknown 的 discriminated union |
 | `DraftText` | 用户输入原文 |
-| `FailureSignature` | 重复失败识别用的稳定签名 |
+| `FailureSignature` | 重复失败识别用的稳定签名，当前由 `threadId + turnId + error.message` 构成 |
 
 ## Aggregate
 
@@ -434,6 +437,8 @@ interface ConversationRecoveryService {
 - 必需字段缺失时返回 typed boundary error。
 - domain 不直接依赖 JSON-RPC 字段名或原始 protocol shape。
 - 未知 `ThreadItem.type` 转成可保留 payload，不丢弃。
+- `ThreadScopedFailureInput` 必须包含 `threadId`、`turnId`、`message`，可携带 `codexErrorInfo` 与 `additionalDetails`。
+- `willRetry = true` 的 error 不是最终 turn failure，不进入 failure timeline item。
 
 ### CodexTurnCommandACL
 
@@ -445,7 +450,7 @@ interface ConversationRecoveryService {
 
 规则：
 
-- 每个发送给 Codex 的参数必须来自明确领域决策。
+- 每个发送给 Codex 的参数必须来自明确决策。
 - 用户原文进入 `UserInput[]` 时不删改。
 - 缺少 `threadId`、`expectedTurnId`、`turnId` 时不构造 request。
 - JSON-RPC error 转成 typed application failure，不吞掉 code/message/details。
