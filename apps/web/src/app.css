@@ -113,18 +113,21 @@ textarea {
 .conversation-body {
   display: flex;
   flex: 1;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: center;
   min-height: 0;
-  overflow: auto;
-  padding: 28px 26px;
+  overflow: hidden;
+  padding: 0;
   background: #fff;
 }
 
 .empty-state {
+  align-self: center;
   width: 100%;
   max-width: 320px;
   margin: 0 auto;
+  padding: 28px 26px;
   text-align: center;
 }
 
@@ -168,6 +171,55 @@ textarea {
 
 .empty-state-error h1 {
   color: var(--red);
+}
+
+.conversation-timeline {
+  flex: 1;
+  overflow: auto;
+  background: #fff;
+}
+
+.timeline-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.transcript-row {
+  position: relative;
+  padding: 11px 14px;
+  border-bottom: 0;
+  background: #fff;
+}
+
+.message-row {
+  padding-bottom: 2px;
+  border-bottom: 0;
+}
+
+.user-message-row {
+  padding-top: 8px;
+}
+
+.message-text {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.message-text--user {
+  max-width: 90%;
+  margin-left: auto;
+  color: #174a88;
+  text-align: right;
+}
+
+.message-text p {
+  margin: 0;
 }
 
 .composer-shell {

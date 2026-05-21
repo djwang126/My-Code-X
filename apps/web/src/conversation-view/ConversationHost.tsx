@@ -8,7 +8,8 @@ import {
 } from "lucide-react";
 import type {
   ComposerDisabledReason,
-  ConversationHostView
+  ConversationHostView,
+  TimelineItem
 } from "@my-code-x/app-types";
 import { WorkspacePanelButton } from "../workspaces/WorkspacePanelButton";
 import sendButtonIconUrl from "./assets/send-button-icon.png";
@@ -114,6 +115,10 @@ function ReadyConversation(input: { conversationHost: ConversationHostView }) {
 
   const conversation = input.conversationHost.conversation;
 
+  if (conversation.timeline.length > 0) {
+    return <ConversationTimeline items={conversation.timeline} />;
+  }
+
   if (conversation.pageState.kind === "restoring") {
     return <RestoringConversation />;
   }
@@ -127,6 +132,55 @@ function ReadyConversation(input: { conversationHost: ConversationHostView }) {
   }
 
   return <EmptyConversation />;
+}
+
+interface ConversationTimelineProps {
+  items: TimelineItem[];
+}
+
+function ConversationTimeline({ items }: ConversationTimelineProps) {
+  return (
+    <div className="conversation-timeline" aria-label="Timeline">
+      <ol className="timeline-list">
+        {items.map((item) => (
+          <TimelineEntry item={item} key={item.id} />
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+function TimelineEntry({ item }: { item: TimelineItem }) {
+  if (item.kind === "message") {
+    return <MessageTimelineEntry item={item} />;
+  }
+
+  return null;
+}
+
+function MessageTimelineEntry({
+  item
+}: {
+  item: Extract<TimelineItem, { kind: "message" }>;
+}) {
+  const isUserMessage = item.message.role === "user";
+  const rowClassName = isUserMessage
+    ? "transcript-row message-row user-message-row"
+    : "transcript-row message-row";
+  const textClassName = isUserMessage
+    ? "message-text message-text--user"
+    : "message-text";
+  const roleLabel = isUserMessage ? "用户消息" : "Codex 消息";
+
+  return (
+    <li className={rowClassName}>
+      <article aria-label={roleLabel}>
+        <div className={textClassName}>
+          <p>{item.message.text}</p>
+        </div>
+      </article>
+    </li>
+  );
 }
 
 function topbarThreadContext(state: ConversationHostState): {
