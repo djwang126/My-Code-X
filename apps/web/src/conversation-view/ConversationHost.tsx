@@ -12,13 +12,15 @@ export interface ConversationHostProps {
 }
 
 export function ConversationHost({ state }: ConversationHostProps) {
+  const threadContext = topbarThreadContext(state);
+
   return (
     <main className="app-shell">
       <header className="conversation-topbar">
         <WorkspacePanelButton />
         <div className="thread-context">
-          <span className="thread-title">No Thread</span>
-          <span className="thread-cwd">未选择 Codex Thread</span>
+          <span className="thread-title">{threadContext.title}</span>
+          <span className="thread-cwd">{threadContext.cwd}</span>
         </div>
         <button className="icon-button" type="button" aria-label="Open context panel">
           <PanelLeft size={20} aria-hidden="true" />
@@ -78,4 +80,32 @@ function ReadyConversation(input: { conversationHost: ConversationHostView }) {
       </div>
     );
   }
+
+  return (
+    <div className="empty-state">
+      <h1>Thread 已选中</h1>
+      <p>当前 Thread 暂无已恢复的 Conversation timeline。</p>
+    </div>
+  );
+}
+
+function topbarThreadContext(state: ConversationHostState): {
+  title: string;
+  cwd: string;
+} {
+  if (
+    state.status === "ready" &&
+    state.conversationHost.kind === "conversationTargetSelected"
+  ) {
+    const thread = state.conversationHost.conversation.thread;
+    return {
+      title: thread.title ?? thread.threadId,
+      cwd: thread.cwd ?? ""
+    };
+  }
+
+  return {
+    title: "No Thread",
+    cwd: "未选择 Codex Thread"
+  };
 }
