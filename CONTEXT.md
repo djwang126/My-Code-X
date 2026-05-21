@@ -102,22 +102,6 @@ _Avoid_: Workspace 操作、Conversation 操作
 My-Code-X 连接并驱动的 Codex app-server 会话或进程能力抽象。
 _Avoid_: My-Code-X runtime、Node runtime、adapter
 
-**Codex runtime event**:
-`Codex runtime` 从 Codex app-server 接收到，并经 adapter 规范化后的 typed event。
-_Avoid_: Client event、Conversation event、raw notification
-
-**Client action**:
-Web client 请求 My-Code-X server 执行的用户意图。
-_Avoid_: Codex app-server request、前端 reducer action
-
-**Client event**:
-My-Code-X server 推送给 Web client 的前端状态事件。
-_Avoid_: Codex runtime event、浏览器 DOM event、raw notification
-
-**Client snapshot**:
-My-Code-X server 返回给 Web client 的当前前端状态快照。
-_Avoid_: Codex Thread 历史快照、浏览器缓存
-
 **Page notice**:
 Conversation View 内不应投影为 `Timeline item`，也不属于 `Recovering error` 或 `Pending interaction` 的 timeline 外提示、错误或警告。
 _Avoid_: Failure item、Client notice、Toast
@@ -137,14 +121,9 @@ _Avoid_: raw notification handler、UI mapper、string parser
 - Codex `turn/start`、`turn/steer` 和 `turn/interrupt` 是 **Composer** 触发的 **Thread action**。
 - 一个 **Conversation** 投影当前选中的一个 Codex **Thread**。
 - 一个 **Thread** 包含零个或多个 **Turn**。
-- 一个 **Turn** 可以产生零个或多个 **ThreadItem** 和零个或多个 **Codex runtime event**。
+- 一个 **Turn** 可以产生零个或多个 **ThreadItem** 。
 - 一个 **Timeline item** 由 Codex **ThreadItem**、**Codex runtime event** 或当前 **Thread** 内明确失败投影而来。
 - **Message item**、**Work progress item**、**Unknown item** 和 **Failure item** 都是 **Timeline item** 的分类。
-- **Recovering error** 可以靠近当前 active **Turn** 的 timeline 区域展示，但不是第五类 **Timeline item**。
-- **Work progress item** 和 **Unknown item** 的边界由 My-Code-X 产品分类决定，不由当前是否存在专门 renderer 决定。
-- Codex `plan` 不属于 **Work progress item**。
-- **Page notice** 可以投影为 **Client notice**，但前者是 Conversation View 局部概念，后者是 Web client 全局通知模型。
-- Toast 是 **Client notice** 的一种 UI 呈现方式，不是独立领域对象。
 - **Codex warning** 和 **Unscoped Codex error** 可以被投影为 **Page notice** 或 **Client notice**，但二者不是同一个概念。
 - **Codex runtime event** 可以被投影为 **Client event**，但二者不是同一个概念。
 - **Thread action** 可以改变当前选中 Codex **Thread** 或触发 **Conversation** 刷新，但不由 **Conversation** timeline 拥有。
@@ -168,4 +147,3 @@ _Avoid_: raw notification handler、UI mapper、string parser
 - “item” 不应裸用：My-Code-X timeline 单元写 **Timeline item**，Codex 原生单元写 **ThreadItem**，Codex notification method 写 Codex `item/*`。
 - “error” 不应裸用：timeline 内明确失败写 **Failure item**，timeline 外页面提示写 **Page notice**，可恢复错误写 **Recovering error**。
 - “Workspace” 中，保存记录叫 **My-Code-X Workspace**，Codex cwd 查询范围叫 **Codex cwd scope**。
-- “runtime event” 中，Codex 侧叫 **Codex runtime event**，Web client 侧叫 **Client event**。
