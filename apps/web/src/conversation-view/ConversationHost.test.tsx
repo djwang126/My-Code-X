@@ -51,6 +51,23 @@ describe("ConversationHost message timeline", () => {
     );
   });
 
+  test("renders one timeline list item per restored message", () => {
+    const html = renderHost([
+      messageTimelineItemFixture({
+        id: "item-user",
+        role: "user",
+        text: "第一条消息"
+      }),
+      messageTimelineItemFixture({
+        id: "item-agent",
+        role: "agent",
+        text: "第二条消息"
+      })
+    ]);
+
+    expect(html.match(/<li class="/g)).toHaveLength(2);
+  });
+
   test("distinguishes user messages from Codex messages", () => {
     const html = renderHost([
       messageTimelineItemFixture({
@@ -67,6 +84,13 @@ describe("ConversationHost message timeline", () => {
 
     expect(html).toContain('aria-label="用户消息"');
     expect(html).toContain('aria-label="Codex 消息"');
+    expect(html).toContain(
+      'class="transcript-row message-row user-message-row"'
+    );
+    expect(html).toContain('class="message-text message-text--user"');
+    expect(html).toContain('aria-label="User message toolbar"');
+    expect(html).toContain('aria-label="Codex message toolbar"');
+    expect(html).not.toContain("message-item");
   });
 
   test("does not add invented copy to message bodies", () => {
@@ -85,8 +109,131 @@ describe("ConversationHost message timeline", () => {
 
     expect(html).toContain(">只展示原始用户输入</p>");
     expect(html).toContain(">只展示原始 Codex 回复</p>");
+    expect(html).not.toContain(">复制用户消息</p>");
+    expect(html).not.toContain(">复制 Codex 消息</p>");
     expect(html).not.toContain("用户说");
     expect(html).not.toContain("Codex 回复：");
+  });
+
+  test("renders markdown messages as readable rich text", () => {
+    const html = renderHost([
+      messageTimelineItemFixture({
+        id: "item-agent",
+        role: "agent",
+        text: "Review **important** items:\n\n- tests\n- styles"
+      })
+    ]);
+
+    expect(html).toContain("<strong>important</strong>");
+    expect(html).toContain("<li>tests</li>");
+    expect(html).toContain("<li>styles</li>");
+    expect(html).not.toContain("**important**");
+  });
+
+  test("keeps plain text messages unparsed when markdown is disabled", () => {
+    const html = renderHost([
+      messageTimelineItemFixture({
+        id: "item-user",
+        markdown: false,
+        role: "user",
+        text: "Do not parse **this** [link](https://example.com)"
+      })
+    ]);
+
+    expect(html).toContain("Do not parse **this** [link](https://example.com)");
+    expect(html).not.toContain("<strong>this</strong>");
+    expect(html).not.toContain('href="https://example.com"');
+  });
+
+  test("renders fenced code blocks in a narrow-screen scroll container", () => {
+    const html = renderHost([
+      messageTimelineItemFixture({
+        id: "item-agent",
+        role: "agent",
+        text: "Use this:\n\n```ts\nconst value = 1;\n```"
+      })
+    ]);
+
+    expect(html).toContain('class="code-block-wrap"');
+    expect(html).toContain('class="code-block"');
+    expect(html).toContain("const value = 1;");
+    expect(html).not.toContain("```ts");
+  });
+
+  test("renders markdown tables in a horizontal scroll region", () => {
+    const html = renderHost([
+      messageTimelineItemFixture({
+        id: "item-agent",
+        role: "agent",
+        text: [
+          "| Item | Status |",
+          "| --- | --- |",
+          "| links | ok |",
+          "| wide table | scroll |"
+        ].join("\n")
+      })
+    ]);
+
+    expect(html).toContain('class="table-scroll"');
+    expect(html).toContain('class="markdown-table"');
+    expect(html).toContain("<th>Item</th>");
+    expect(html).toContain("<td>wide table</td>");
+  });
+
+  test("renders markdown links as safe clickable anchors", () => {
+    const html = renderHost([
+      messageTimelineItemFixture({
+        id: "item-agent",
+        role: "agent",
+        text: "Read the [streaming docs](https://example.com/docs)."
+      })
+    ]);
+
+    expect(html).toContain('href="https://example.com/docs"');
+    expect(html).toContain('target="_blank"');
+    expect(html).toContain('rel="noreferrer"');
+    expect(html).toContain(">streaming docs</a>");
+  });
+
+  test("does not render markdown images as external image requests", () => {
+    const html = renderHost([
+      messageTimelineItemFixture({
+        id: "item-agent",
+        role: "agent",
+        text: "Inspect ![diagram](https://example.com/diagram.png)"
+      })
+    ]);
+
+    expect(html).not.toContain('src="https://example.com/diagram.png"');
+    expect(html).not.toContain('href="https://example.com/diagram.png"');
+    expect(html).toContain("[image: diagram]");
+  });
+
+  test("does not inject raw markdown HTML into message output", () => {
+    const html = renderHost([
+      messageTimelineItemFixture({
+        id: "item-agent",
+        role: "agent",
+        text: "Before\n\n<script>alert('x')</script>\n\nAfter"
+      })
+    ]);
+
+    expect(html).toContain("Before");
+    expect(html).toContain("After");
+    expect(html).not.toContain("<script>");
+  });
+
+  test("renders markdown headings without introducing heading layout", () => {
+    const html = renderHost([
+      messageTimelineItemFixture({
+        id: "item-agent",
+        role: "agent",
+        text: "# Release notes"
+      })
+    ]);
+
+    expect(html).toContain("<p>Release notes</p>");
+    expect(html).not.toContain("<h1");
   });
 
   test("keeps readable messages when content is stale", () => {

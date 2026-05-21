@@ -66,7 +66,9 @@ export function conversationHostWithTimelineFixture(
 
 export function messageTimelineItemFixture(input: {
   id: string;
+  copyText?: string;
   occurredAt?: string;
+  markdown?: boolean;
   role: "user" | "agent";
   text: string;
 }): TimelineItem {
@@ -79,8 +81,8 @@ export function messageTimelineItemFixture(input: {
     message: {
       role: input.role,
       text: input.text,
-      markdown: input.role === "agent",
-      copyText: input.text
+      markdown: input.markdown ?? input.role === "agent",
+      copyText: input.copyText ?? input.text
     }
   };
 }

@@ -1,4 +1,6 @@
 import type { TimelineItem } from "@my-code-x/app-types";
+import { CopyButton } from "./CopyButton";
+import { MessageBody } from "./MessageBody";
 
 interface ConversationTimelineProps {
   items: TimelineItem[];
@@ -40,9 +42,23 @@ function MessageTimelineEntry({ item }: { item: MessageTimelineItem }) {
     <li className={rowClassName}>
       <article aria-label={roleLabel}>
         <div className={textClassName}>
-          <p>{item.message.text}</p>
+          <MessageBody message={item.message} />
         </div>
       </article>
+      <div
+        className={`toolbar-row ${isUserMessage ? "user-toolbar-row" : ""}`}
+        aria-label={
+          isUserMessage ? "User message toolbar" : "Codex message toolbar"
+        }
+      >
+        <div className={`copy-wrap ${isUserMessage ? "copy-wrap--user" : ""}`}>
+          <CopyButton
+            className="copy-inline"
+            ariaLabel={isUserMessage ? "复制用户消息" : "复制 Codex 消息"}
+            copyText={item.message.copyText}
+          />
+        </div>
+      </div>
     </li>
   );
 }

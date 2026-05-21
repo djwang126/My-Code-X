@@ -203,6 +203,17 @@ textarea {
   padding-top: 8px;
 }
 
+.toolbar-row {
+  display: flex;
+  min-height: 26px;
+  padding: 0 14px 6px;
+  background: #fff;
+}
+
+.user-toolbar-row {
+  justify-content: flex-end;
+}
+
 .message-text {
   margin: 0;
   font-size: 14px;
@@ -220,6 +231,116 @@ textarea {
 
 .message-text p {
   margin: 0;
+}
+
+.message-text p + p,
+.message-text p + ul,
+.message-text ul + p,
+.message-text .code-block-wrap {
+  margin-top: 8px;
+}
+
+.message-text ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.code-block-wrap {
+  position: relative;
+  margin: 8px 0 0;
+}
+
+.copy-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  color: var(--quiet);
+  cursor: pointer;
+}
+
+.code-block-copy {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 26px;
+  height: 24px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.code-block-copy:hover {
+  color: var(--ink);
+  background: #fff;
+}
+
+.code-block {
+  margin: 0;
+  overflow-x: auto;
+  border-left: 3px solid var(--line-strong);
+  background: #f8fafc;
+  padding: 8px 10px;
+  color: #263244;
+  font-family:
+    "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.45;
+  white-space: pre;
+}
+
+.table-scroll {
+  margin-top: 8px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.markdown-table {
+  width: max-content;
+  min-width: 100%;
+  border-collapse: collapse;
+  font-size: 11.5px;
+  line-height: 1.35;
+}
+
+.markdown-table th,
+.markdown-table td {
+  padding: 7px 9px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  white-space: nowrap;
+}
+
+.markdown-table th {
+  background: #f8fafc;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.markdown-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.copy-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 26px;
+}
+
+.copy-wrap--user {
+  justify-content: flex-end;
+}
+
+.copy-inline {
+  width: 28px;
+  height: 26px;
+  background: transparent;
+}
+
+.copy-inline:hover {
+  color: var(--ink);
+  background: rgba(23, 32, 51, 0.06);
 }
 
 .composer-shell {
