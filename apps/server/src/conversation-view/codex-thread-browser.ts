@@ -1,5 +1,6 @@
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import readline from "node:readline";
+import { AppError } from "../app-error";
 
 export interface CodexThreadBrowser {
   listThreads(input: ListCodexThreadsInput): Promise<CodexThreadListItem[]>;
@@ -95,13 +96,18 @@ function createCodexAppServerClient(input: CodexAppServerClientInput): CodexAppS
   let closed = false;
 
   child.once("error", (error) => {
-    rejectAll(pending, error);
+    rejectAll(
+      pending,
+      codexConnectionUnavailable(`Codex app-server failed to start: ${error.message}`)
+    );
   });
   child.once("exit", (code, signal) => {
     if (!closed) {
       rejectAll(
         pending,
-        new Error(`Codex app-server exited before response: code=${code} signal=${signal}`)
+        codexConnectionUnavailable(
+          `Codex app-server exited before response: code=${code} signal=${signal}`
+        )
       );
     }
   });
@@ -170,7 +176,11 @@ function sendRequest(input: SendRequestInput): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       input.pending.delete(input.id);
-      reject(new Error(`Codex app-server request timed out: ${input.method}`));
+      reject(
+        codexConnectionUnavailable(
+          `Codex app-server request timed out: ${input.method}`
+        )
+      );
     }, input.requestTimeoutMs);
 
     input.pending.set(input.id, {
@@ -191,7 +201,11 @@ function sendRequest(input: SendRequestInput): Promise<unknown> {
 
       clearTimeout(pendingRequest.timer);
       input.pending.delete(input.id);
-      pendingRequest.reject(error);
+      pendingRequest.reject(
+        codexConnectionUnavailable(
+          `Failed to send Codex app-server request: ${error.message}`
+        )
+      );
     });
   });
 }
@@ -211,7 +225,7 @@ function receiveLine(line: string, pending: Map<number, PendingRequest>) {
   pending.delete(parsed.id);
 
   if ("error" in parsed) {
-    request.reject(new Error(codexErrorMessage(parsed.error)));
+    request.reject(codexRequestRejected(codexErrorMessage(parsed.error)));
     return;
   }
 
@@ -252,12 +266,12 @@ function rejectAll(pending: Map<number, PendingRequest>, error: Error) {
 
 function parseThreadListResponse(raw: unknown): CodexThreadListItem[] {
   if (typeof raw !== "object" || raw === null || !("data" in raw)) {
-    throw new Error("Invalid Codex thread/list response");
+    throw codexProtocolError("Invalid Codex thread/list response");
   }
 
   const data = (raw as { data: unknown }).data;
   if (!Array.isArray(data)) {
-    throw new Error("Invalid Codex thread/list response");
+    throw codexProtocolError("Invalid Codex thread/list response");
   }
 
   return data.map(parseThreadListItem);
@@ -265,7 +279,7 @@ function parseThreadListResponse(raw: unknown): CodexThreadListItem[] {
 
 function parseThreadListItem(raw: unknown): CodexThreadListItem {
   if (typeof raw !== "object" || raw === null) {
-    throw new Error("Invalid Codex thread/list item");
+    throw codexProtocolError("Invalid Codex thread/list item");
   }
 
   const item = raw as Record<string, unknown>;
@@ -310,7 +324,7 @@ function parseThreadStatus(raw: unknown): CodexThreadStatus {
 function readString(item: Record<string, unknown>, key: string): string {
   const value = item[key];
   if (typeof value !== "string") {
-    throw new Error(`Invalid Codex thread/list item field: ${key}`);
+    throw codexProtocolError(`Invalid Codex thread/list item field: ${key}`);
   }
 
   return value;
@@ -323,7 +337,7 @@ function readNullableString(item: Record<string, unknown>, key: string): string 
   }
 
   if (typeof value !== "string") {
-    throw new Error(`Invalid Codex thread/list item field: ${key}`);
+    throw codexProtocolError(`Invalid Codex thread/list item field: ${key}`);
   }
 
   return value;
@@ -336,8 +350,35 @@ function readNullableNumber(item: Record<string, unknown>, key: string): number 
   }
 
   if (typeof value !== "number") {
-    throw new Error(`Invalid Codex thread/list item field: ${key}`);
+    throw codexProtocolError(`Invalid Codex thread/list item field: ${key}`);
   }
 
   return value;
+}
+
+function codexConnectionUnavailable(message: string): AppError {
+  return new AppError({
+    code: "CODEX_CONNECTION_UNAVAILABLE",
+    message,
+    status: 503,
+    retryable: true
+  });
+}
+
+function codexRequestRejected(message: string): AppError {
+  return new AppError({
+    code: "CODEX_REQUEST_REJECTED",
+    message,
+    status: 502,
+    retryable: false
+  });
+}
+
+function codexProtocolError(message: string): AppError {
+  return new AppError({
+    code: "CODEX_PROTOCOL_ERROR",
+    message,
+    status: 502,
+    retryable: false
+  });
 }

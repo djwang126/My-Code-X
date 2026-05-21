@@ -9,6 +9,7 @@ import type {
   CodexThreadListItem,
   ListCodexThreadsInput
 } from "./codex-thread-browser";
+import { createCodexAppServerThreadBrowser } from "./codex-thread-browser";
 
 let dataDir = "";
 const defaultCodexCwd = "D:\\workspaces\\AI-Tools\\My-Code-X-C";
@@ -124,6 +125,35 @@ describe("GET /api/conversation-view/current", () => {
         limit: 1
       }
     ]);
+  });
+
+  test("returns Codex connection unavailable when the Codex app-server cannot start", async () => {
+    const codexThreadBrowser = createCodexAppServerThreadBrowser({
+      command: "my-code-x-missing-codex-command",
+      requestTimeoutMs: 100
+    });
+    const app = createApp({
+      config: {
+        host: "127.0.0.1",
+        port: 0,
+        dataDir,
+        defaultCodexCwd
+      },
+      codexThreadBrowser
+    });
+
+    const response = await request(app).get("/api/conversation-view/current");
+
+    expect(response.status).toBe(503);
+    expect(response.body).toEqual({
+      ok: false,
+      error: {
+        code: "CODEX_CONNECTION_UNAVAILABLE",
+        message:
+          "Codex app-server failed to start: spawn my-code-x-missing-codex-command ENOENT",
+        retryable: true
+      }
+    });
   });
 });
 
