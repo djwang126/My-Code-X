@@ -66,7 +66,7 @@ function parseThreadListResponse(raw: unknown): CodexThreadListItem[] {
     throw codexProtocolError("Invalid Codex thread/list response");
   }
 
-  return data.map(parseThreadListItem);
+  return data.map(parseCodexThreadListItem);
 }
 
 function parseThreadReadResponse(raw: unknown): CodexThreadListItem {
@@ -74,10 +74,10 @@ function parseThreadReadResponse(raw: unknown): CodexThreadListItem {
     throw codexProtocolError("Invalid Codex thread/read response");
   }
 
-  return parseThreadListItem((raw as { thread: unknown }).thread);
+  return parseCodexThreadListItem((raw as { thread: unknown }).thread);
 }
 
-function parseThreadListItem(raw: unknown): CodexThreadListItem {
+export function parseCodexThreadListItem(raw: unknown): CodexThreadListItem {
   if (typeof raw !== "object" || raw === null) {
     throw codexProtocolError("Invalid Codex thread/list item");
   }
@@ -186,7 +186,7 @@ function readNullableNumber(item: Record<string, unknown>, key: string): number 
   return value;
 }
 
-function codexProtocolError(message: string): AppError {
+export function codexProtocolError(message: string): AppError {
   return new AppError({
     code: "CODEX_PROTOCOL_ERROR",
     message,

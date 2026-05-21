@@ -1,11 +1,19 @@
 import type {
   ConversationPageState,
   ConversationSyncState,
+  TimelineItem,
   ConversationView,
   ThreadContext
 } from "@my-code-x/app-types";
 import type { CodexThreadListItem } from "../codex-thread-browser/codex-thread-browser";
 import { emptyDraftComposerAction } from "./composer-policy";
+import type {
+  CodexRestoredAgentMessage,
+  CodexRestoredThread,
+  CodexRestoredThreadItem,
+  CodexRestoredUserMessage,
+  CodexRestoredUserInput
+} from "./codex-conversation-history-gateway";
 
 export function createEmptyConversationView(
   thread: CodexThreadListItem
@@ -27,6 +35,139 @@ export function createEmptyConversationView(
     notices: [],
     sync: unknownSyncState()
   };
+}
+
+export function createRestoredConversationView(
+  thread: CodexRestoredThread
+): ConversationView {
+  const timeline = restoreTimeline(thread);
+  const view = createEmptyConversationView(thread);
+
+  return {
+    ...view,
+    pageState: timeline.length === 0 ? view.pageState : { kind: "ready" },
+    timeline
+  };
+}
+
+function restoreTimeline(thread: CodexRestoredThread): TimelineItem[] {
+  const timeline: TimelineItem[] = [];
+
+  for (const turn of thread.turns) {
+    for (const item of turn.items) {
+      const timelineItem = projectRestoredThreadItem({
+        threadId: thread.id,
+        turnId: turn.id,
+        item
+      });
+
+      if (timelineItem) {
+        timeline.push(timelineItem);
+      }
+    }
+  }
+
+  return timeline;
+}
+
+interface ProjectRestoredThreadItemInput {
+  threadId: string;
+  turnId: string;
+  item: CodexRestoredThreadItem;
+}
+
+function projectRestoredThreadItem(
+  input: ProjectRestoredThreadItemInput
+): TimelineItem | null {
+  if (isRestoredUserMessage(input.item)) {
+    const text = input.item.content
+      .filter(isTextInput)
+      .map((entry) => entry.text)
+      .join("\n");
+
+    if (!text) {
+      return null;
+    }
+
+    return messageTimelineItem({
+      threadId: input.threadId,
+      turnId: input.turnId,
+      itemId: input.item.id,
+      role: "user",
+      text
+    });
+  }
+
+  if (isRestoredAgentMessage(input.item)) {
+    return messageTimelineItem({
+      threadId: input.threadId,
+      turnId: input.turnId,
+      itemId: input.item.id,
+      role: "agent",
+      text: input.item.text
+    });
+  }
+
+  return null;
+}
+
+function isRestoredUserMessage(
+  item: CodexRestoredThreadItem
+): item is CodexRestoredUserMessage {
+  return (
+    item.type === "userMessage" &&
+    typeof item.id === "string" &&
+    "content" in item &&
+    Array.isArray(item.content)
+  );
+}
+
+function isRestoredAgentMessage(
+  item: CodexRestoredThreadItem
+): item is CodexRestoredAgentMessage {
+  return (
+    item.type === "agentMessage" &&
+    typeof item.id === "string" &&
+    "text" in item &&
+    typeof item.text === "string"
+  );
+}
+
+function isTextInput(
+  input: CodexRestoredUserInput
+): input is Extract<CodexRestoredUserInput, { type: "text" }> {
+  return input.type === "text" && "text" in input && typeof input.text === "string";
+}
+
+interface MessageTimelineItemInput extends CodexThreadItemIdInput {
+  role: "user" | "agent";
+  text: string;
+}
+
+function messageTimelineItem(input: MessageTimelineItemInput): TimelineItem {
+  return {
+    id: codexThreadItemId(input),
+    turnId: input.turnId,
+    occurredAt: null,
+    status: "completed",
+    kind: "message",
+    message: {
+      role: input.role,
+      text: input.text,
+      markdown: true,
+      copyText: input.text
+    }
+  };
+}
+
+interface CodexThreadItemIdInput {
+  threadId: string;
+  turnId: string;
+  itemId: string;
+}
+
+function codexThreadItemId(input: CodexThreadItemIdInput): string {
+  return `codexThreadItem(${input.threadId},${input.turnId},${input.itemId})`;
 }
 
 function toThreadContext(thread: CodexThreadListItem): ThreadContext {
