@@ -3,10 +3,8 @@ import type { ServerConfig } from "./config";
 import { ok } from "./api-response";
 import { errorMiddleware } from "./error-middleware";
 import { conversationViewRoutes } from "./conversation-view/conversation-view-routes";
-import {
-  createCodexAppServerThreadBrowser,
-  type CodexThreadBrowser
-} from "./conversation-view/codex-thread-browser";
+import { createCodexAppServerThreadBrowser } from "./codex-thread-browser/codex-app-server-thread-browser";
+import type { CodexThreadBrowser } from "./codex-thread-browser/codex-thread-browser";
 import { createWorkspaceStore, type WorkspaceStore } from "./workspaces/workspace-store";
 import { workspaceRoutes } from "./workspaces/workspace-routes";
 

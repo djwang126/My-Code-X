@@ -10,8 +10,8 @@ import type {
   CodexThreadListItem,
   ListCodexThreadsInput,
   ReadCodexThreadInput
-} from "./codex-thread-browser";
-import { createCodexAppServerThreadBrowser } from "./codex-thread-browser";
+} from "../codex-thread-browser/codex-thread-browser";
+import { createCodexAppServerThreadBrowser } from "../codex-thread-browser/codex-app-server-thread-browser";
 
 let dataDir = "";
 const defaultCodexCwd = "D:\\workspaces\\AI-Tools\\My-Code-X-C";

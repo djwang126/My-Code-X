@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { ok } from "../api-response";
-import type { CodexThreadBrowser } from "./codex-thread-browser";
+import type { CodexThreadBrowser } from "../codex-thread-browser/codex-thread-browser";
 import { getConversationView } from "./get-conversation-view";
 import { getCurrentConversation } from "./get-current-conversation";
 

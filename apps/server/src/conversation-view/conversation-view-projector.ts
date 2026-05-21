@@ -1,13 +1,15 @@
 import type {
-  ComposerAction,
   ConversationPageState,
   ConversationSyncState,
   ConversationView,
   ThreadContext
 } from "@my-code-x/app-types";
-import type { CodexThreadListItem } from "./codex-thread-browser";
+import type { CodexThreadListItem } from "../codex-thread-browser/codex-thread-browser";
+import { emptyDraftComposerAction } from "./composer-policy";
 
-export function createEmptyConversationView(thread: CodexThreadListItem): ConversationView {
+export function createEmptyConversationView(
+  thread: CodexThreadListItem
+): ConversationView {
   const threadContext = toThreadContext(thread);
 
   return {
@@ -17,7 +19,10 @@ export function createEmptyConversationView(thread: CodexThreadListItem): Conver
     composer: {
       threadId: thread.id,
       draft: "",
-      action: composerActionForEmptyDraft(thread, threadContext)
+      action: emptyDraftComposerAction({
+        sourceStatus: thread.status.type,
+        thread: threadContext
+      })
     },
     notices: [],
     sync: unknownSyncState()
@@ -29,7 +34,8 @@ function toThreadContext(thread: CodexThreadListItem): ThreadContext {
     threadId: thread.id,
     title: threadTitle(thread),
     cwd: thread.cwd,
-    updatedAt: thread.updatedAt === null ? null : new Date(thread.updatedAt * 1000).toISOString(),
+    updatedAt:
+      thread.updatedAt === null ? null : new Date(thread.updatedAt * 1000).toISOString(),
     ...threadContextStatus(thread)
   };
 }
@@ -89,37 +95,4 @@ function threadContextStatus(
   }
 
   return { status: "unknown" };
-}
-
-function composerActionForEmptyDraft(
-  sourceThread: CodexThreadListItem,
-  thread: ThreadContext
-): ComposerAction {
-  if (sourceThread.status.type === "active") {
-    return disabledComposerAction("unreliableTurnTarget");
-  }
-
-  if (thread.status === "notLoaded") {
-    return disabledComposerAction("unreliableThreadTarget");
-  }
-
-  if (thread.status === "systemError") {
-    return disabledComposerAction("systemError");
-  }
-
-  if (thread.status === "unknown") {
-    return disabledComposerAction("unknown");
-  }
-
-  return disabledComposerAction("emptyDraft");
-}
-
-function disabledComposerAction(
-  reason: Extract<ComposerAction, { kind: "disabled" }>["reason"]
-): ComposerAction {
-  return {
-    kind: "disabled",
-    enabled: false,
-    reason
-  };
 }

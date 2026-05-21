@@ -1,6 +1,6 @@
 import type { ConversationHostView } from "@my-code-x/app-types";
-import type { CodexThreadBrowser } from "./codex-thread-browser";
-import { createEmptyConversationView } from "./empty-conversation-view";
+import type { CodexThreadBrowser } from "../codex-thread-browser/codex-thread-browser";
+import { createEmptyConversationView } from "./conversation-view-projector";
 
 export interface GetCurrentConversationInput {
   codexThreadBrowser: CodexThreadBrowser;

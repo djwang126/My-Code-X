@@ -1,7 +1,7 @@
 import type { ConversationView } from "@my-code-x/app-types";
 import { AppError } from "../app-error";
-import type { CodexThreadBrowser } from "./codex-thread-browser";
-import { createEmptyConversationView } from "./empty-conversation-view";
+import type { CodexThreadBrowser } from "../codex-thread-browser/codex-thread-browser";
+import { createEmptyConversationView } from "./conversation-view-projector";
 
 export interface GetConversationViewInput {
   codexThreadBrowser: CodexThreadBrowser;
