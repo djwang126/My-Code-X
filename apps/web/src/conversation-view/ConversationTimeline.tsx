@@ -1,5 +1,6 @@
-import type { DisplayDetail, TimelineItem } from "@my-code-x/app-types";
+import type { TimelineItem } from "@my-code-x/app-types";
 import { CopyButton } from "./CopyButton";
+import { DisplayDetailFields } from "./DisplayDetailFields";
 import { MessageBody } from "./MessageBody";
 
 interface ConversationTimelineProps {
@@ -100,26 +101,6 @@ function WorkProgressTimelineEntry({
         </div>
       </article>
     </li>
-  );
-}
-
-function DisplayDetailFields({ detail }: { detail: DisplayDetail }) {
-  if (detail.fields.length === 0) {
-    return null;
-  }
-
-  return (
-    <details className="display-detail">
-      <summary>查看详情</summary>
-      <dl className="display-detail-fields">
-        {detail.fields.map((field) => (
-          <div className="display-detail-field" key={field.key}>
-            <dt>{field.label}</dt>
-            <dd>{field.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </details>
   );
 }
 
