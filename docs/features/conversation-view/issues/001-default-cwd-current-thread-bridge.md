@@ -7,16 +7,6 @@ References:
 - `conversation-view-domain-model.md`: `Application State Outside Domain Aggregate`, `ConversationQueryService`
 - `conversation-view-codex-interface.md`: Thread list / cwd scope 相关接口说明
 
-Acceptance focus:
-- `/current` 的 response shape 以 `ConversationHostView` 为准。
-- 该 bridge 只负责 transitional host contract，不定义长期 selection lifecycle。
-- Thread 来源遵守 Codex app-server / cwd scope 语义，不直接扫描 session 文件作为权威来源。
-
-Out of scope:
-- 不实现 Workspace Thread Browser。
-- 不实现用户手动切换 Thread。
-- 不恢复 timeline history。
-
 ## Blocked by
 
 None - can start immediately

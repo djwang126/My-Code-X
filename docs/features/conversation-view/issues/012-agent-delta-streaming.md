@@ -8,16 +8,6 @@ References:
 - `conversation-view-domain-model.md`: `ApplyAgentMessageDelta`, `CompleteAgentMessage`, `TimelineItemNotFound`
 - `conversation-view-codex-interface.md`: `item/agentMessage/delta`, `item/completed`
 
-Acceptance focus:
-- delta 只应用到已存在的 agent message item。
-- completed/update event 的完整 item 是权威状态。
-- 找不到目标 item 时按 domain/API error contract 处理，不创建不可靠 message。
-
-Out of scope:
-- 不处理 work progress delta。
-- 不实现 reconnect 缺失 delta 回放。
-- 不改变 Markdown rendering contract。
-
 ## Blocked by
 
 - 011-sse-snapshot-and-item-updates.md

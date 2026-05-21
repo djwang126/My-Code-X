@@ -8,16 +8,6 @@ References:
 - `conversation-view-domain-model.md`: `FailureIsNotMessage`, `ThreadFailureStaysInTimeline`, `FailureDedupPolicy`, `NoticeClassifier`
 - `conversation-view-codex-interface.md`: `Failure and Warning`, `Event Correlation Notes`
 
-Acceptance focus:
-- 只有 thread-scoped failure 进入 timeline。
-- failure message 和 detail 保留上游语义，不添加 My-Code-X 自创解释。
-- 同一 failure signature 的重复报告按 dedup policy 处理。
-
-Out of scope:
-- 不处理 unscoped error 的 page notice。
-- 不实现 recovering error overlay。
-- 不为每种错误类型做专用 UI。
-
 ## Blocked by
 
 - 003-restore-message-history.md

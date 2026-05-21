@@ -8,16 +8,6 @@ References:
 - `conversation-view-domain-model.md`: `ConversationIngestService`, `ConversationRecoveryService`, `Timeline Item Transition`
 - `conversation-view-codex-interface.md`: `Server Notifications`, item lifecycle, turn lifecycle
 
-Acceptance focus:
-- SSE event 是 My-Code-X display event，不是 Codex raw notification 原样转发。
-- snapshot 全量替换，item add/update/completed/failure 按 contract 应用。
-- event 只作用于 path `threadId`，不串到其他 Thread。
-
-Out of scope:
-- 不实现 agent message delta streaming。
-- 不实现 reconnect 补齐和 stale catch-up 的完整体验。
-- 不实现 composer command 行为。
-
 ## Blocked by
 
 - 003-restore-message-history.md
