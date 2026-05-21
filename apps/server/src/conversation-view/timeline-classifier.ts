@@ -5,6 +5,14 @@ import type {
   CodexRestoredUserInput,
   CodexRestoredUserMessage
 } from "./codex-conversation-history-gateway";
+import {
+  codexThreadItemTimelineId,
+  type CodexThreadItemTimelineIdInput
+} from "./timeline-id";
+import {
+  createWorkProgressTimelineItem,
+  isRestoredWorkProgressItem
+} from "./work-progress-timeline-projector";
 
 export interface ClassifyRestoredThreadItemInput {
   threadId: string;
@@ -44,6 +52,14 @@ export function classifyRestoredThreadItem(
     });
   }
 
+  if (isRestoredWorkProgressItem(input.item)) {
+    return createWorkProgressTimelineItem({
+      threadId: input.threadId,
+      turnId: input.turnId,
+      item: input.item
+    });
+  }
+
   return null;
 }
 
@@ -75,14 +91,14 @@ function isTextInput(
   return input.type === "text" && "text" in input && typeof input.text === "string";
 }
 
-interface MessageTimelineItemInput extends CodexThreadItemIdInput {
+interface MessageTimelineItemInput extends CodexThreadItemTimelineIdInput {
   role: "user" | "agent";
   text: string;
 }
 
 function messageTimelineItem(input: MessageTimelineItemInput): TimelineItem {
   return {
-    id: codexThreadItemId(input),
+    id: codexThreadItemTimelineId(input),
     turnId: input.turnId,
     occurredAt: null,
     status: "completed",
@@ -94,14 +110,4 @@ function messageTimelineItem(input: MessageTimelineItemInput): TimelineItem {
       copyText: input.text
     }
   };
-}
-
-interface CodexThreadItemIdInput {
-  threadId: string;
-  turnId: string;
-  itemId: string;
-}
-
-function codexThreadItemId(input: CodexThreadItemIdInput): string {
-  return `codexThreadItem(${input.threadId},${input.turnId},${input.itemId})`;
 }

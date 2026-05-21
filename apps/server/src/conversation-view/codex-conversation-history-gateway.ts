@@ -22,6 +22,7 @@ export interface CodexRestoredTurn {
 export type CodexRestoredThreadItem =
   | CodexRestoredUserMessage
   | CodexRestoredAgentMessage
+  | CodexRestoredWorkProgressItem
   | CodexRestoredUnknownThreadItem;
 
 export interface CodexRestoredUserMessage {
@@ -46,8 +47,41 @@ export interface CodexRestoredAgentMessage {
   text: string;
 }
 
+export const codexRestoredWorkProgressTypes = [
+  "hookPrompt",
+  "reasoning",
+  "commandExecution",
+  "fileChange",
+  "mcpToolCall",
+  "dynamicToolCall",
+  "collabAgentToolCall",
+  "webSearch",
+  "imageView",
+  "imageGeneration",
+  "enteredReviewMode",
+  "exitedReviewMode",
+  "contextCompaction"
+] as const;
+
+export type CodexRestoredWorkProgressType =
+  (typeof codexRestoredWorkProgressTypes)[number];
+
+export interface CodexRestoredWorkProgressItem {
+  type: CodexRestoredWorkProgressType;
+  id: string;
+  [key: string]: unknown;
+}
+
 export interface CodexRestoredUnknownThreadItem {
   type: string;
   id?: string;
   [key: string]: unknown;
+}
+
+export function isCodexRestoredWorkProgressType(
+  type: string
+): type is CodexRestoredWorkProgressType {
+  return codexRestoredWorkProgressTypes.includes(
+    type as CodexRestoredWorkProgressType
+  );
 }

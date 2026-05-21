@@ -544,6 +544,94 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
     }
   });
 
+  test("restores work progress fields returned by Codex thread/resume", async () => {
+    await writeCodexResumeStub({
+      thread: {
+        id: "thread-1",
+        name: "Resume Thread",
+        preview: "",
+        cwd: "D:\\workspaces\\AI-Tools\\My-Code-X-C",
+        updatedAt: null,
+        status: {
+          type: "idle"
+        },
+        turns: [
+          {
+            id: "turn-1",
+            items: [
+              {
+                type: "commandExecution",
+                id: "command-item-1",
+                command: "pnpm test",
+                cwd: "D:\\workspaces\\AI-Tools\\My-Code-X-C",
+                status: "completed"
+              }
+            ]
+          }
+        ]
+      }
+    });
+    const originalCwd = process.cwd();
+    process.chdir(dataDir);
+    const codexThreadBrowser = createTestCodexThreadBrowser([]);
+    const codexConversationHistoryGateway =
+      createCodexAppServerConversationHistoryGateway({
+        command: process.execPath,
+        requestTimeoutMs: 1_000
+      });
+    const app = createConversationTestApp(
+      codexThreadBrowser,
+      codexConversationHistoryGateway
+    );
+
+    try {
+      const response = await request(app).post(
+        "/api/conversation-view/threads/thread-1/restore"
+      );
+
+      expect(response.status).toBe(200);
+      expect(response.body.ok).toBe(true);
+      expect(response.body.data.timeline).toEqual([
+        {
+          id: "codexThreadItem(thread-1,turn-1,command-item-1)",
+          turnId: "turn-1",
+          occurredAt: null,
+          status: "completed",
+          kind: "workProgress",
+          workProgress: {
+            sourceType: "commandExecution",
+            label: "commandExecution",
+            summary: "command: pnpm test",
+            detail: {
+              fields: [
+                {
+                  key: "command",
+                  label: "command",
+                  value: "pnpm test",
+                  copyText: "pnpm test"
+                },
+                {
+                  key: "cwd",
+                  label: "cwd",
+                  value: "D:\\workspaces\\AI-Tools\\My-Code-X-C",
+                  copyText: "D:\\workspaces\\AI-Tools\\My-Code-X-C"
+                },
+                {
+                  key: "status",
+                  label: "status",
+                  value: "completed",
+                  copyText: "completed"
+                }
+              ]
+            }
+          }
+        }
+      ]);
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
   test("restores user text input as a message timeline item", async () => {
     const restoredThread = restoredThreadFixture({
       id: "thread-1",
@@ -645,6 +733,359 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
         }
       }
     ]);
+  });
+
+  test("restores known Codex work progress as a generic timeline item", async () => {
+    const restoredThread = restoredThreadFixture({
+      id: "thread-1",
+      turns: [
+        {
+          id: "turn-1",
+          items: [
+            {
+              type: "commandExecution",
+              id: "command-item-1",
+              command: "pnpm test",
+              cwd: "D:\\workspaces\\AI-Tools\\My-Code-X-C",
+              source: "agent",
+              status: "inProgress"
+            }
+          ]
+        }
+      ]
+    });
+    const codexThreadBrowser = createTestCodexThreadBrowser([]);
+    const codexConversationHistoryGateway =
+      createTestCodexConversationHistoryGateway([restoredThread]);
+    const app = createConversationTestApp(
+      codexThreadBrowser,
+      codexConversationHistoryGateway
+    );
+
+    const response = await request(app).post(
+      "/api/conversation-view/threads/thread-1/restore"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(response.body.data.timeline).toEqual([
+      {
+        id: "codexThreadItem(thread-1,turn-1,command-item-1)",
+        turnId: "turn-1",
+        occurredAt: null,
+        status: "inProgress",
+        kind: "workProgress",
+        workProgress: {
+          sourceType: "commandExecution",
+          label: "commandExecution",
+          summary: "command: pnpm test",
+          detail: {
+            fields: [
+              {
+                key: "command",
+                label: "command",
+                value: "pnpm test",
+                copyText: "pnpm test"
+              },
+              {
+                key: "cwd",
+                label: "cwd",
+                value: "D:\\workspaces\\AI-Tools\\My-Code-X-C",
+                copyText: "D:\\workspaces\\AI-Tools\\My-Code-X-C"
+              },
+              {
+                key: "source",
+                label: "source",
+                value: "agent",
+                copyText: "agent"
+              },
+              {
+                key: "status",
+                label: "status",
+                value: "inProgress",
+                copyText: "inProgress"
+              }
+            ]
+          }
+        }
+      }
+    ]);
+  });
+
+  test("restores different known work progress types through the same timeline contract", async () => {
+    const restoredThread = restoredThreadFixture({
+      id: "thread-1",
+      turns: [
+        {
+          id: "turn-1",
+          items: [
+            {
+              type: "commandExecution",
+              id: "command-item-1",
+              command: "pnpm test"
+            },
+            {
+              type: "fileChange",
+              id: "file-change-item-1",
+              changes: [
+                {
+                  path: "apps/server/src/example.ts",
+                  kind: "update",
+                  diff: "@@ -1 +1 @@"
+                }
+              ]
+            },
+            {
+              type: "mcpToolCall",
+              id: "mcp-tool-item-1",
+              server: "filesystem",
+              tool: "read_file"
+            }
+          ]
+        }
+      ]
+    });
+    const codexThreadBrowser = createTestCodexThreadBrowser([]);
+    const codexConversationHistoryGateway =
+      createTestCodexConversationHistoryGateway([restoredThread]);
+    const app = createConversationTestApp(
+      codexThreadBrowser,
+      codexConversationHistoryGateway
+    );
+
+    const response = await request(app).post(
+      "/api/conversation-view/threads/thread-1/restore"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(
+      response.body.data.timeline.map(
+        (item: { kind: string; workProgress: { sourceType: string } }) => ({
+          kind: item.kind,
+          sourceType: item.workProgress.sourceType
+        })
+      )
+    ).toEqual([
+      {
+        kind: "workProgress",
+        sourceType: "commandExecution"
+      },
+      {
+        kind: "workProgress",
+        sourceType: "fileChange"
+      },
+      {
+        kind: "workProgress",
+        sourceType: "mcpToolCall"
+      }
+    ]);
+  });
+
+  test("serializes work progress detail fields as readable text", async () => {
+    const restoredThread = restoredThreadFixture({
+      id: "thread-1",
+      turns: [
+        {
+          id: "turn-1",
+          items: [
+            {
+              type: "mcpToolCall",
+              id: "mcp-tool-item-1",
+              server: "filesystem",
+              tool: "read_file",
+              arguments: {
+                path: "apps/server/src/example.ts"
+              },
+              success: true,
+              durationMs: 42,
+              error: null,
+              missingPayload: undefined
+            }
+          ]
+        }
+      ]
+    });
+    const codexThreadBrowser = createTestCodexThreadBrowser([]);
+    const codexConversationHistoryGateway =
+      createTestCodexConversationHistoryGateway([restoredThread]);
+    const app = createConversationTestApp(
+      codexThreadBrowser,
+      codexConversationHistoryGateway
+    );
+
+    const response = await request(app).post(
+      "/api/conversation-view/threads/thread-1/restore"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(response.body.data.timeline[0].workProgress.detail).toEqual({
+      fields: [
+        {
+          key: "server",
+          label: "server",
+          value: "filesystem",
+          copyText: "filesystem"
+        },
+        {
+          key: "tool",
+          label: "tool",
+          value: "read_file",
+          copyText: "read_file"
+        },
+        {
+          key: "arguments",
+          label: "arguments",
+          value: "{\"path\":\"apps/server/src/example.ts\"}",
+          copyText: "{\"path\":\"apps/server/src/example.ts\"}"
+        },
+        {
+          key: "success",
+          label: "success",
+          value: "true",
+          copyText: "true"
+        },
+        {
+          key: "durationMs",
+          label: "durationMs",
+          value: "42",
+          copyText: "42"
+        },
+        {
+          key: "error",
+          label: "error",
+          value: "null",
+          copyText: "null"
+        },
+        {
+          key: "missingPayload",
+          label: "missingPayload",
+          value: "undefined",
+          copyText: "undefined"
+        }
+      ]
+    });
+  });
+
+  test("uses only upstream status for work progress timeline status", async () => {
+    const restoredThread = restoredThreadFixture({
+      id: "thread-1",
+      turns: [
+        {
+          id: "turn-1",
+          items: [
+            {
+              type: "commandExecution",
+              id: "command-item-1",
+              command: "pnpm test",
+              exitCode: 0,
+              durationMs: 100
+            },
+            {
+              type: "commandExecution",
+              id: "command-item-2",
+              command: "pnpm build",
+              status: "inProgress",
+              exitCode: 0
+            },
+            {
+              type: "commandExecution",
+              id: "command-item-3",
+              command: "pnpm build",
+              status: "failed",
+              exitCode: 0
+            },
+            {
+              type: "commandExecution",
+              id: "command-item-4",
+              command: "git apply patch.diff",
+              status: "declined"
+            },
+            {
+              type: "commandExecution",
+              id: "command-item-5",
+              command: "pnpm lint",
+              status: "futureStatus"
+            }
+          ]
+        }
+      ]
+    });
+    const codexThreadBrowser = createTestCodexThreadBrowser([]);
+    const codexConversationHistoryGateway =
+      createTestCodexConversationHistoryGateway([restoredThread]);
+    const app = createConversationTestApp(
+      codexThreadBrowser,
+      codexConversationHistoryGateway
+    );
+
+    const response = await request(app).post(
+      "/api/conversation-view/threads/thread-1/restore"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(
+      response.body.data.timeline.map((item: { id: string; status: string }) => ({
+        id: item.id,
+        status: item.status
+      }))
+    ).toEqual([
+      {
+        id: "codexThreadItem(thread-1,turn-1,command-item-1)",
+        status: "unknown"
+      },
+      {
+        id: "codexThreadItem(thread-1,turn-1,command-item-2)",
+        status: "inProgress"
+      },
+      {
+        id: "codexThreadItem(thread-1,turn-1,command-item-3)",
+        status: "failed"
+      },
+      {
+        id: "codexThreadItem(thread-1,turn-1,command-item-4)",
+        status: "declined"
+      },
+      {
+        id: "codexThreadItem(thread-1,turn-1,command-item-5)",
+        status: "unknown"
+      }
+    ]);
+  });
+
+  test("does not restore plan as work progress", async () => {
+    const restoredThread = restoredThreadFixture({
+      id: "thread-1",
+      turns: [
+        {
+          id: "turn-1",
+          items: [
+            {
+              type: "plan",
+              id: "plan-item-1",
+              text: "1. Run tests"
+            }
+          ]
+        }
+      ]
+    });
+    const codexThreadBrowser = createTestCodexThreadBrowser([]);
+    const codexConversationHistoryGateway =
+      createTestCodexConversationHistoryGateway([restoredThread]);
+    const app = createConversationTestApp(
+      codexThreadBrowser,
+      codexConversationHistoryGateway
+    );
+
+    const response = await request(app).post(
+      "/api/conversation-view/threads/thread-1/restore"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(response.body.data.timeline).toEqual([]);
   });
 
   test("returns restored message timeline in Codex history order", async () => {
@@ -886,6 +1327,61 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
         error: {
           code: "CODEX_PROTOCOL_ERROR",
           message: "Invalid Codex thread/resume response",
+          retryable: false
+        }
+      });
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  test("returns CODEX_PROTOCOL_ERROR when a known work progress item has no id", async () => {
+    await writeCodexResumeStub({
+      thread: {
+        id: "thread-1",
+        name: "Malformed Thread",
+        preview: "",
+        cwd: "D:\\workspaces\\AI-Tools\\My-Code-X-C",
+        updatedAt: null,
+        status: {
+          type: "idle"
+        },
+        turns: [
+          {
+            id: "turn-1",
+            items: [
+              {
+                type: "commandExecution",
+                command: "pnpm test"
+              }
+            ]
+          }
+        ]
+      }
+    });
+    const originalCwd = process.cwd();
+    process.chdir(dataDir);
+    const codexConversationHistoryGateway =
+      createCodexAppServerConversationHistoryGateway({
+        command: process.execPath,
+        requestTimeoutMs: 1_000
+      });
+    const app = createConversationTestApp(
+      createTestCodexThreadBrowser([]),
+      codexConversationHistoryGateway
+    );
+
+    try {
+      const response = await request(app).post(
+        "/api/conversation-view/threads/thread-1/restore"
+      );
+
+      expect(response.status).toBe(502);
+      expect(response.body).toEqual({
+        ok: false,
+        error: {
+          code: "CODEX_PROTOCOL_ERROR",
+          message: "Invalid Codex thread/resume commandExecution field: id",
           retryable: false
         }
       });

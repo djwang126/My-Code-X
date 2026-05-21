@@ -226,9 +226,10 @@ interface TimelineItemBase {
 }
 
 type TimelineStatus =
-  | "running"
+  | "inProgress"
   | "completed"
   | "failed"
+  | "declined"
   | "unknown";
 
 type TimelineItem =
@@ -406,14 +407,19 @@ type InterruptTurnResponse = ApiResponse<ComposerView>;
 
 | Transition | Allowed |
 | --- | --- |
-| missing -> `running` | yes |
+| missing -> `inProgress` | yes |
 | missing -> `completed` | yes |
-| `running` -> `completed` | yes |
-| `running` -> `failed` | yes |
-| `unknown` -> `completed` / `failed` | yes |
-| `completed` -> `running` | no |
+| missing -> `declined` | yes |
+| `inProgress` -> `completed` | yes |
+| `inProgress` -> `failed` | yes |
+| `inProgress` -> `declined` | yes |
+| `unknown` -> `completed` / `failed` / `declined` | yes |
+| `completed` -> `inProgress` | no |
 | `completed` -> `failed` | no |
-| `failed` -> `running` | no |
+| `completed` -> `declined` | no |
+| `failed` -> `inProgress` | no |
+| `failed` -> `declined` | no |
+| `declined` -> `inProgress` | no |
 
 ### Draft Lifecycle
 

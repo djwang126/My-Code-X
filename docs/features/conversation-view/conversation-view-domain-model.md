@@ -134,7 +134,7 @@
 | `ThreadRef` | `threadId`, `title`, `cwd` |
 | `AuthoritativeTime` | Codex 提供的时间信息，例如 `createdAt`、`updatedAt`、`startedAt`、`completedAt` |
 | `TimelineKind` | `message`, `workProgress`, `failure`, `unknown` |
-| `TimelineStatus` | `running`, `completed`, `failed`, `unknown` |
+| `TimelineStatus` | `inProgress`, `completed`, `failed`, `declined`, `unknown` |
 | `TimelineContent` | message / work progress / failure / unknown 的 discriminated union |
 | `DraftText` | 用户输入原文 |
 | `FailureSignature` | 重复失败识别用的稳定签名，当前由 `threadId + turnId + error.message` 构成 |
@@ -203,7 +203,7 @@
 | `ThreadMismatch` | 命令目标 `ThreadId` 与当前 `Conversation.threadId` 不一致 | 禁止把其他 Thread 的内容或结果写入当前 Conversation |
 | `TimelineItemNotFound` | 增量、完成、状态更新指向不存在的 `ItemId` | 上游事件无法应用到当前 timeline |
 | `UnknownTimelineItemRejected` | 未知 item 缺少可保留的原始 payload | 无法满足“未知信息不丢失” |
-| `InvalidTimelineTransition` | item 状态转换不合法，例如已 completed 后继续被标记 running | timeline lifecycle 被破坏 |
+| `InvalidTimelineTransition` | item 状态转换不合法，例如已 completed 后继续被标记 inProgress | timeline lifecycle 被破坏 |
 | `EmptyComposerDraft` | 尝试 send / steer，但当前 `DraftText` 为空 | 空文本不能发送 |
 | `NoReliableThreadTarget` | 发送普通输入时缺少可靠 `ThreadId` | 禁止向不明确目标发送 |
 | `NoReliableSteerTarget` | 追加输入时缺少可靠 `ThreadId` 或 `ExpectedTurnId` | 禁止向不明确 active turn 追加 |

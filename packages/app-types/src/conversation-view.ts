@@ -79,7 +79,7 @@ const timelineItemBaseSchema = {
   id: z.string(),
   turnId: z.string().nullable(),
   occurredAt: z.string().nullable(),
-  status: z.enum(["running", "completed", "failed", "unknown"])
+  status: z.enum(["inProgress", "completed", "failed", "declined", "unknown"])
 };
 
 export const timelineItemSchema = z.discriminatedUnion("kind", [
