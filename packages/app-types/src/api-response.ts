@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 export const apiErrorCodeSchema = z.enum([
+  "THREAD_NOT_FOUND",
   "INVALID_REQUEST",
   "INVALID_WORKSPACE_PATH",
   "DUPLICATE_WORKSPACE",
@@ -15,6 +16,7 @@ export const apiErrorCodeSchema = z.enum([
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 
 export const errorTargetSchema = z.object({
+  threadId: z.string().optional(),
   field: z.string().optional()
 });
 

@@ -4,11 +4,16 @@ import { AppError } from "../app-error";
 
 export interface CodexThreadBrowser {
   listThreads(input: ListCodexThreadsInput): Promise<CodexThreadListItem[]>;
+  readThread(input: ReadCodexThreadInput): Promise<CodexThreadListItem | null>;
 }
 
 export interface ListCodexThreadsInput {
   cwd: string;
   limit: number;
+}
+
+export interface ReadCodexThreadInput {
+  threadId: string;
 }
 
 export interface CodexThreadListItem {
@@ -24,12 +29,16 @@ export type CodexThreadStatus =
   | { type: "notLoaded" }
   | { type: "idle" }
   | { type: "systemError"; message?: string }
-  | { type: "active"; activeTurnId?: string };
+  | { type: "active"; activeFlags: string[] }
+  | { type: "unknown" };
 
 export function createUnavailableCodexThreadBrowser(): CodexThreadBrowser {
   return {
     async listThreads() {
       return [];
+    },
+    async readThread() {
+      return null;
     }
   };
 }
@@ -47,21 +56,38 @@ export function createCodexAppServerThreadBrowser(
 
   return {
     async listThreads(request) {
-      const client = createCodexAppServerClient({
+      const result = await withCodexAppServerClient({
         command,
-        requestTimeoutMs
+        requestTimeoutMs,
+        run: (client) =>
+          client.request("thread/list", {
+            cwd: request.cwd,
+            limit: request.limit
+          })
       });
 
+      return parseThreadListResponse(result);
+    },
+
+    async readThread(request) {
       try {
-        await client.initialize();
-        const result = await client.request("thread/list", {
-          cwd: request.cwd,
-          limit: request.limit
+        const result = await withCodexAppServerClient({
+          command,
+          requestTimeoutMs,
+          run: (client) =>
+            client.request("thread/read", {
+              threadId: request.threadId,
+              includeTurns: false
+            })
         });
 
-        return parseThreadListResponse(result);
-      } finally {
-        client.close();
+        return parseThreadReadResponse(result);
+      } catch (error) {
+        if (isThreadReadNotFound(error)) {
+          return null;
+        }
+
+        throw error;
       }
     }
   };
@@ -76,6 +102,23 @@ interface CodexAppServerClient {
   initialize(): Promise<void>;
   request(method: string, params: unknown): Promise<unknown>;
   close(): void;
+}
+
+interface WithCodexAppServerClientInput<T> extends CodexAppServerClientInput {
+  run(client: CodexAppServerClient): Promise<T>;
+}
+
+async function withCodexAppServerClient<T>(
+  input: WithCodexAppServerClientInput<T>
+): Promise<T> {
+  const client = createCodexAppServerClient(input);
+
+  try {
+    await client.initialize();
+    return await input.run(client);
+  } finally {
+    client.close();
+  }
 }
 
 interface PendingRequest {
@@ -277,6 +320,14 @@ function parseThreadListResponse(raw: unknown): CodexThreadListItem[] {
   return data.map(parseThreadListItem);
 }
 
+function parseThreadReadResponse(raw: unknown): CodexThreadListItem {
+  if (typeof raw !== "object" || raw === null || !("thread" in raw)) {
+    throw codexProtocolError("Invalid Codex thread/read response");
+  }
+
+  return parseThreadListItem((raw as { thread: unknown }).thread);
+}
+
 function parseThreadListItem(raw: unknown): CodexThreadListItem {
   if (typeof raw !== "object" || raw === null) {
     throw codexProtocolError("Invalid Codex thread/list item");
@@ -311,14 +362,19 @@ function parseThreadStatus(raw: unknown): CodexThreadStatus {
   }
 
   if (type === "systemError") {
-    return { type: "systemError" };
+    const message = readOptionalString(raw as Record<string, unknown>, "message");
+    return message ? { type: "systemError", message } : { type: "systemError" };
   }
 
   if (type === "active") {
-    return { type: "active" };
+    const activeFlags = readStringArray(
+      raw as Record<string, unknown>,
+      "activeFlags"
+    );
+    return { type: "active", activeFlags };
   }
 
-  return { type: "notLoaded" };
+  return { type: "unknown" };
 }
 
 function readString(item: Record<string, unknown>, key: string): string {
@@ -337,6 +393,28 @@ function readNullableString(item: Record<string, unknown>, key: string): string 
   }
 
   if (typeof value !== "string") {
+    throw codexProtocolError(`Invalid Codex thread/list item field: ${key}`);
+  }
+
+  return value;
+}
+
+function readOptionalString(item: Record<string, unknown>, key: string): string | undefined {
+  const value = item[key];
+  if (value === null || value === undefined) {
+    return undefined;
+  }
+
+  if (typeof value !== "string") {
+    throw codexProtocolError(`Invalid Codex thread/list item field: ${key}`);
+  }
+
+  return value;
+}
+
+function readStringArray(item: Record<string, unknown>, key: string): string[] {
+  const value = item[key];
+  if (!Array.isArray(value) || !value.every((entry) => typeof entry === "string")) {
     throw codexProtocolError(`Invalid Codex thread/list item field: ${key}`);
   }
 
@@ -381,4 +459,15 @@ function codexProtocolError(message: string): AppError {
     status: 502,
     retryable: false
   });
+}
+
+function isThreadReadNotFound(error: unknown): boolean {
+  if (!(error instanceof AppError) || error.code !== "CODEX_REQUEST_REJECTED") {
+    return false;
+  }
+
+  return (
+    error.message.startsWith("thread not loaded:") ||
+    error.message.startsWith("invalid thread id:")
+  );
 }
