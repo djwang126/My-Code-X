@@ -1,5 +1,0 @@
-export const RAW_UPLOAD_LIMIT_BYTES = 10_000_000;
-export const MAX_ATTACHMENT_BYTES = 2_000_000;
-export const MAX_LONGEST_EDGE = 1600;
-export const MAX_DECODED_PIXELS = 40_000_000;
-//# sourceMappingURL=attachment-limits.js.map

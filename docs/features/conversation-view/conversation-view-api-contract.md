@@ -45,14 +45,6 @@ type TimelineItemId = string;
 type NoticeId = string;
 type ClientRequestId = string;
 type ISODateTime = string;
-
-type JsonValue =
-  | null
-  | boolean
-  | number
-  | string
-  | JsonValue[]
-  | { [key: string]: JsonValue };
 ```
 
 ## Request DTO
@@ -70,22 +62,21 @@ interface SyncConversationRequest {
 
 interface ChangeComposerDraftRequest {
   text: string;
-  clientRequestId?: ClientRequestId;
 }
 
 interface SendUserInputRequest {
-  clientRequestId?: ClientRequestId;
+  clientRequestId: ClientRequestId;
 }
 
 interface SendSteerInputRequest {
   expectedTurnId: TurnId;
-  clientRequestId?: ClientRequestId;
+  clientRequestId: ClientRequestId;
 }
 
 interface InterruptTurnRequest {
   turnId: TurnId;
   confirmed: true;
-  clientRequestId?: ClientRequestId;
+  clientRequestId: ClientRequestId;
 }
 ```
 
@@ -95,10 +86,13 @@ interface InterruptTurnRequest {
 | --- | --- |
 | `ChangeComposerDraftRequest.text` | 必填，可以是空字符串；保存时不 trim |
 | `SendUserInputRequest` | 使用服务端 draft；draft 为空返回 `EMPTY_COMPOSER_DRAFT` |
+| `SendUserInputRequest.clientRequestId` | 必填且非空 |
 | `SendSteerInputRequest.expectedTurnId` | 必填且非空 |
 | `SendSteerInputRequest` | 使用服务端 draft；draft 为空返回 `EMPTY_COMPOSER_DRAFT` |
+| `SendSteerInputRequest.clientRequestId` | 必填且非空 |
 | `InterruptTurnRequest.turnId` | 必填且非空 |
 | `InterruptTurnRequest.confirmed` | 必须是 `true` |
+| `InterruptTurnRequest.clientRequestId` | 必填且非空 |
 
 SSE reconnect 使用标准 `Last-Event-ID` header。`?lastEventId=` 只作为 fallback。
 
@@ -118,7 +112,9 @@ interface ApiFailure {
 type ApiResponse<T> = ApiSuccess<T> | ApiFailure;
 ```
 
-REST endpoint 返回 `ApiResponse<T>`，即 `ApiSuccess<T> | ApiFailure`。
+REST endpoint 成功时返回 `2xx` + `ApiSuccess<T>`。
+
+REST endpoint 失败时返回 HTTP Mapping 中对应的非 `2xx` status + `ApiFailure`。
 
 ## ConversationView DTO
 
@@ -144,62 +140,69 @@ type ConversationHostViewResponse = ApiResponse<ConversationHostView>;
 
 type ConversationHostView =
   | {
-      kind: "noSelectedThread";
-      target: ActiveConversationTargetNone;
+      kind: "noConversationTarget";
     }
   | {
-      kind: "threadSelected";
-      target: ActiveConversationTargetThread;
+      kind: "conversationTargetSelected";
+      threadId: ThreadId;
       conversation: ConversationView;
     };
-
-type ActiveConversationTarget =
-  | ActiveConversationTargetNone
-  | ActiveConversationTargetThread;
-
-interface ActiveConversationTargetNone {
-  kind: "none";
-  reason: NoSelectedThreadReason;
-}
-
-interface ActiveConversationTargetThread {
-  kind: "thread";
-  threadId: ThreadId;
-}
-
-type NoSelectedThreadReason =
-  | "initial"
-  | "threadArchived"
-  | "threadUnavailable"
-  | "unknown";
 ```
 
 规则：
 
-- `ConversationHostView` 只为当前迁移阶段提供 host-level selection bridge。
-- `kind: "noSelectedThread"` 不包含 `ConversationView`、`ThreadContext` 或 `ComposerView`。
-- `kind: "threadSelected"` 的 `conversation.thread.threadId` 必须等于 `target.threadId`。
+- `/current` 是 transitional host bridge，只回答是否有当前 conversation target。
+- `/current` 不定义 selection lifecycle、selection reason 或 thread browser 状态。
+- `kind: "noConversationTarget"` 不包含 `ConversationView`、`ThreadContext` 或 `ComposerView`。
+- `kind: "conversationTargetSelected"` 的 `conversation.thread.threadId` 必须等于 `threadId`。
 - Workspace Thread Browser 完成 Thread selection contract 后，前端应优先消费 selection/snapshot，再调用 `/threads/{threadId}`。
 
 ### ThreadContext
 
 ```ts
-interface ThreadContext {
+interface ThreadContextBase {
   threadId: ThreadId;
   title: string | null;
   cwd: string | null;
-  status: ThreadRunStatus;
-  activeTurnId: TurnId | null;
   updatedAt: ISODateTime | null;
 }
 
-type ThreadRunStatus =
-  | "notLoaded"
-  | "idle"
-  | "active"
-  | "systemError"
-  | "unknown";
+type ThreadContext =
+  | IdleThreadContext
+  | ActiveThreadContext
+  | NotLoadedThreadContext
+  | SystemErrorThreadContext
+  | UnknownThreadContext;
+
+interface IdleThreadContext extends ThreadContextBase {
+  status: "idle";
+}
+
+interface ActiveThreadContext extends ThreadContextBase {
+  status: "active";
+  activeTurnId: TurnId;
+}
+
+interface NotLoadedThreadContext extends ThreadContextBase {
+  status: "notLoaded";
+}
+
+interface SystemErrorThreadContext extends ThreadContextBase {
+  status: "systemError";
+  message: string;
+}
+
+interface UnknownThreadContext extends ThreadContextBase {
+  status: "unknown";
+}
 ```
+
+规则：
+
+- 只有 `status: "active"` 的 `ThreadContext` 包含 `activeTurnId`。
+- `idle` / `notLoaded` / `systemError` / `unknown` 不包含 `activeTurnId`。
+- `ComposerAction.kind: "steer"` 和 `ComposerAction.kind: "interrupt"` 只能从 `ActiveThreadContext.activeTurnId` 派生。
+- 前端不得自行推断 active turn；只消费 `composer.action` 暴露的可执行 command。
 
 ### ConversationPageState
 
@@ -261,7 +264,7 @@ interface WorkProgressContent {
   sourceType: string;
   label: string;
   summary: string | null;
-  detail: GenericDetail;
+  detail: DisplayDetail;
 }
 ```
 
@@ -273,7 +276,7 @@ interface FailureTimelineItem extends TimelineItemBase {
 
 interface FailureContent {
   message: string;
-  detail: GenericDetail | null;
+  detail: DisplayDetail | null;
 }
 ```
 
@@ -286,21 +289,22 @@ interface UnknownTimelineItem extends TimelineItemBase {
 interface UnknownContent {
   sourceType: string;
   statusLabel: string | null;
-  detail: GenericDetail;
+  detail: DisplayDetail;
 }
 ```
 
-### GenericDetail
+### DisplayDetail
 
 ```ts
-interface GenericDetail {
-  fields: GenericField[];
-  rawPreview?: JsonValue;
+interface DisplayDetail {
+  fields: DisplayField[];
 }
 
-interface GenericField {
+interface DisplayField {
   key: string;
-  value: JsonValue;
+  label: string;
+  value: string;
+  copyText?: string;
 }
 ```
 
@@ -338,7 +342,7 @@ interface PageNotice {
   message: string;
   createdAt: ISODateTime;
   autoDismissMs: number | null;
-  detail: GenericDetail | null;
+  detail: DisplayDetail | null;
 }
 
 type PageNoticeLevel = "info" | "warning" | "error";
@@ -430,11 +434,10 @@ Thread switch 由上层 selection contract 触发；Conversation View 只读取�
 interface ApiError {
   code: ApiErrorCode;
   message: string;
-  httpStatus: number;
   target?: ErrorTarget;
   retryable: boolean;
   notice?: PageNotice;
-  details?: GenericDetail;
+  details?: DisplayDetail;
 }
 
 interface ErrorTarget {
@@ -490,7 +493,7 @@ type ApiErrorCode =
 | `NoReliableInterruptTarget` | `NO_RELIABLE_INTERRUPT_TARGET` | `409` | false | keep |
 | `InterruptNotConfirmed` | `INTERRUPT_NOT_CONFIRMED` | `400` | false | keep |
 
-Codex JSON-RPC error 使用 `CODEX_REQUEST_REJECTED` 或 `CODEX_PROTOCOL_ERROR`，并保留 upstream `code/message/data` 到 `details.fields[].value`。
+Codex JSON-RPC error 使用 `CODEX_REQUEST_REJECTED` 或 `CODEX_PROTOCOL_ERROR`。`details.fields` 只包含经过服务端白名单化、面向展示的 diagnostic fields。
 
 ## SSE Events
 
@@ -615,7 +618,13 @@ interface StreamHeartbeatEvent extends ConversationViewEventBase {
 
 ## Idempotency
 
-`clientRequestId` 幂等范围：
+`clientRequestId` 对会触发 Codex 副作用的 command 必填：
+
+- `SendUserInput`
+- `SendSteerInput`
+- `InterruptTurn`
+
+幂等范围：
 
 ```text
 threadId + commandName + clientRequestId
@@ -625,10 +634,14 @@ threadId + commandName + clientRequestId
 | --- | --- |
 | `RestoreConversation` | 重复请求返回当前或最近一次 restore 后的 `ConversationView` |
 | `SyncConversation` | sync 正在进行时返回当前 view/syncing 状态 |
-| `ChangeComposerDraft` | 同一 `threadId` draft 最终等于最后一次成功保存的 `text` |
+| `ChangeComposerDraft` | 不使用 `clientRequestId`；同一 `threadId` draft 最终等于最后一次成功保存的 `text` |
 | `SendUserInput` | 同一 id 不得产生第二个 `turn/start` |
 | `SendSteerInput` | 同一 id 不得产生第二个 `turn/steer` |
 | `InterruptTurn` | 同一 id 不得产生第二个 `turn/interrupt` |
+
+缺失必填 `clientRequestId` 返回 `INVALID_REQUEST`。
+
+同一幂等 key 的重复请求必须返回第一次 accepted command 的当前投影结果，不得再次向 Codex 发送 command。
 
 `send` / `steer` accepted 后，同一 `clientRequestId` 重复请求不因为 draft 已清空而返回 `EMPTY_COMPOSER_DRAFT`。
 
@@ -678,6 +691,14 @@ SSE 的 `Last-Event-ID` 不是 timeline pagination cursor。
 
 `/api/conversation-view/current` 是 transitional endpoint，不作为最终稳定 selection contract。
 
+移除条件：
+
+- App Shell 或 Workspace Thread Browser 提供稳定 selected thread contract。
+- Conversation View entry 已改为从上层接收 `threadId`。
+- 前端不再依赖 `/current` 读取当前 conversation。
+
+`/current` 不进入长期稳定 contract；稳定 contract 只包括 thread-scoped endpoints。
+
 稳定 contract：
 
 - endpoint path
@@ -691,7 +712,7 @@ SSE 的 `Last-Event-ID` 不是 timeline pagination cursor。
 前端 fallback：
 
 - unknown `TimelineItem.kind` 按 `unknown` 展示。
-- unknown `ThreadRunStatus` 禁用 composer。
+- unknown `ThreadContext.status` 禁用 composer。
 - unknown `ComposerAction.kind` 禁用 composer。
 - unknown SSE event 忽略。
 - unknown `ApiError.code` 按不可重试错误展示 page notice。

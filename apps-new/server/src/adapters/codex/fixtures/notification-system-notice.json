@@ -1,8 +1,0 @@
-{
-  "method": "system/notice",
-  "params": {
-    "threadId": "thread-fixture",
-    "level": "warning",
-    "message": "low context"
-  }
-}

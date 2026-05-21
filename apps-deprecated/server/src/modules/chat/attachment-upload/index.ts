@@ -1,1 +1,0 @@
-export { handleChatAttachmentUploadRoute } from './chat-attachment-upload.controller.js';

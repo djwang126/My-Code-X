@@ -1,6 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="My Code X">
-  <rect width="128" height="128" rx="28" fill="#111827" />
-  <path d="M34 45 18 64l16 19" fill="none" stroke="#60A5FA" stroke-linecap="round" stroke-linejoin="round" stroke-width="10" />
-  <path d="M94 45l16 19-16 19" fill="none" stroke="#34D399" stroke-linecap="round" stroke-linejoin="round" stroke-width="10" />
-  <path d="m72 30-18 68" fill="none" stroke="#F9FAFB" stroke-linecap="round" stroke-width="10" />
-</svg>
