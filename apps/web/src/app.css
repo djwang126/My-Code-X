@@ -229,6 +229,81 @@ textarea {
   text-align: right;
 }
 
+.work-progress-row {
+  padding: 8px 14px;
+}
+
+.work-progress-card {
+  border-left: 3px solid var(--line-strong);
+  padding: 8px 10px;
+  background: #f8fafc;
+}
+
+.work-progress-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.work-progress-label {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 680;
+  line-height: 1.35;
+}
+
+.work-progress-summary {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.display-detail {
+  margin-top: 7px;
+}
+
+.display-detail summary {
+  width: max-content;
+  max-width: 100%;
+  color: var(--blue);
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.display-detail-fields {
+  display: grid;
+  gap: 6px;
+  margin: 7px 0 0;
+}
+
+.display-detail-field {
+  min-width: 0;
+}
+
+.display-detail-field dt {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.display-detail-field dd {
+  margin: 2px 0 0;
+  color: var(--ink);
+  font-family:
+    "Cascadia Code", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 11.5px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
 .message-text p {
   margin: 0;
 }

@@ -9,6 +9,7 @@ node_modules/
 repos.md
 output/
 dist/
+.vite/
 *.tsbuildinfo
 *.bat
 .DS_Store

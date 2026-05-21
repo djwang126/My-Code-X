@@ -1,4 +1,4 @@
-import type { TimelineItem } from "@my-code-x/app-types";
+import type { DisplayDetail, TimelineItem } from "@my-code-x/app-types";
 import { CopyButton } from "./CopyButton";
 import { MessageBody } from "./MessageBody";
 
@@ -7,6 +7,16 @@ interface ConversationTimelineProps {
 }
 
 type MessageTimelineItem = Extract<TimelineItem, { kind: "message" }>;
+type TimelineStatus = TimelineItem["status"];
+type WorkProgressTimelineItem = Extract<TimelineItem, { kind: "workProgress" }>;
+
+const timelineStatusLabels: Record<TimelineStatus, string> = {
+  inProgress: "进行中",
+  completed: "完成",
+  failed: "失败",
+  declined: "已拒绝",
+  unknown: "状态未知"
+};
 
 export function ConversationTimeline({ items }: ConversationTimelineProps) {
   return (
@@ -23,6 +33,10 @@ export function ConversationTimeline({ items }: ConversationTimelineProps) {
 function TimelineEntry({ item }: { item: TimelineItem }) {
   if (item.kind === "message") {
     return <MessageTimelineEntry item={item} />;
+  }
+
+  if (item.kind === "workProgress") {
+    return <WorkProgressTimelineEntry item={item} />;
   }
 
   return null;
@@ -61,4 +75,54 @@ function MessageTimelineEntry({ item }: { item: MessageTimelineItem }) {
       </div>
     </li>
   );
+}
+
+function WorkProgressTimelineEntry({
+  item
+}: {
+  item: WorkProgressTimelineItem;
+}) {
+  const workProgress = item.workProgress;
+
+  return (
+    <li className="transcript-row work-progress-row">
+      <article aria-label="Work progress item">
+        <div className="work-progress-card">
+          <div className="work-progress-meta">
+            <span>{workProgress.sourceType}</span>
+            <span>{timelineStatusLabel(item.status)}</span>
+          </div>
+          <div className="work-progress-label">{workProgress.label}</div>
+          {workProgress.summary === null ? null : (
+            <p className="work-progress-summary">{workProgress.summary}</p>
+          )}
+          <DisplayDetailFields detail={workProgress.detail} />
+        </div>
+      </article>
+    </li>
+  );
+}
+
+function DisplayDetailFields({ detail }: { detail: DisplayDetail }) {
+  if (detail.fields.length === 0) {
+    return null;
+  }
+
+  return (
+    <details className="display-detail">
+      <summary>查看详情</summary>
+      <dl className="display-detail-fields">
+        {detail.fields.map((field) => (
+          <div className="display-detail-field" key={field.key}>
+            <dt>{field.label}</dt>
+            <dd>{field.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </details>
+  );
+}
+
+function timelineStatusLabel(status: TimelineStatus): string {
+  return timelineStatusLabels[status];
 }

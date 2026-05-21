@@ -6,7 +6,8 @@ import type {
 } from "@my-code-x/app-types";
 import {
   conversationHostWithTimelineFixture,
-  messageTimelineItemFixture
+  messageTimelineItemFixture,
+  workProgressTimelineItemFixture
 } from "../conversation-view-test-fixtures";
 import { ConversationHost } from "./ConversationHost";
 
@@ -286,6 +287,196 @@ describe("ConversationHost message timeline", () => {
 
     expect(html).toContain("正在恢复内容");
     expect(html).not.toContain('aria-label="Timeline"');
+  });
+});
+
+describe("ConversationHost work progress timeline", () => {
+  test("shows restored work progress timeline instead of empty state", () => {
+    const html = renderHost([
+      workProgressTimelineItemFixture({
+        id: "item-work",
+        sourceType: "commandExecution",
+        label: "运行测试",
+        summary: "pnpm test 已启动"
+      })
+    ]);
+
+    expect(html).toContain("运行测试");
+    expect(html).toContain("pnpm test 已启动");
+    expect(html).not.toContain("暂无可展示内容");
+  });
+
+  test("keeps mixed message and work progress in server order", () => {
+    const html = renderHost([
+      messageTimelineItemFixture({
+        id: "item-user",
+        role: "user",
+        text: "先提出需求"
+      }),
+      workProgressTimelineItemFixture({
+        id: "item-work",
+        sourceType: "commandExecution",
+        label: "再运行命令",
+        summary: "pnpm test"
+      }),
+      messageTimelineItemFixture({
+        id: "item-agent",
+        role: "agent",
+        text: "最后给出结果"
+      })
+    ]);
+
+    expect(html.indexOf("先提出需求")).toBeLessThan(
+      html.indexOf("再运行命令")
+    );
+    expect(html.indexOf("再运行命令")).toBeLessThan(
+      html.indexOf("最后给出结果")
+    );
+  });
+
+  test("shows compact source and status for work progress", () => {
+    const html = renderHost([
+      workProgressTimelineItemFixture({
+        id: "item-work",
+        sourceType: "commandExecution",
+        label: "执行命令",
+        summary: "pnpm test",
+        status: "completed"
+      })
+    ]);
+
+    expect(html).toContain("commandExecution");
+    expect(html).toContain("完成");
+    expect(html).toContain("执行命令");
+    expect(html).toContain("pnpm test");
+  });
+
+  test("keeps work progress readable when summary is absent", () => {
+    const html = renderHost([
+      workProgressTimelineItemFixture({
+        id: "item-work",
+        sourceType: "fileChange",
+        label: "更新文件",
+        summary: null,
+        status: "inProgress"
+      })
+    ]);
+
+    expect(html).toContain("fileChange");
+    expect(html).toContain("更新文件");
+    expect(html).toContain("进行中");
+    expect(html).not.toContain(">null<");
+  });
+
+  test("shows work progress detail fields in an expandable region", () => {
+    const html = renderHost([
+      workProgressTimelineItemFixture({
+        id: "item-work",
+        sourceType: "commandExecution",
+        label: "执行命令",
+        summary: "pnpm test",
+        fields: [
+          {
+            key: "cwd",
+            label: "工作目录",
+            value: "D:\\workspaces\\AI-Tools\\My-Code-X-C"
+          },
+          {
+            key: "command",
+            label: "命令",
+            value: "pnpm test"
+          }
+        ]
+      })
+    ]);
+
+    expect(html).toContain("<summary>查看详情</summary>");
+    expect(html).toContain("工作目录");
+    expect(html).toContain("D:\\workspaces\\AI-Tools\\My-Code-X-C");
+    expect(html).toContain("命令");
+    expect(html).toContain("pnpm test");
+  });
+
+  test("renders work progress detail values as plain text", () => {
+    const html = renderHost([
+      workProgressTimelineItemFixture({
+        id: "item-work",
+        sourceType: "mcpToolCall",
+        label: "调用工具",
+        summary: "读取资源",
+        fields: [
+          {
+            key: "unsafe",
+            label: "原始内容",
+            value: "<script>alert('x')</script> [docs](https://example.com)"
+          }
+        ]
+      })
+    ]);
+
+    expect(html).toContain("&lt;script&gt;alert(&#x27;x&#x27;)&lt;/script&gt;");
+    expect(html).toContain("[docs](https://example.com)");
+    expect(html).not.toContain("<script>");
+    expect(html).not.toContain('href="https://example.com"');
+  });
+
+  test("uses the same generic presentation for different work progress sources", () => {
+    const html = renderHost([
+      workProgressTimelineItemFixture({
+        id: "item-command",
+        sourceType: "commandExecution",
+        label: "执行命令",
+        summary: "pnpm test"
+      }),
+      workProgressTimelineItemFixture({
+        id: "item-tool",
+        sourceType: "mcpToolCall",
+        label: "调用 MCP 工具",
+        summary: "读取资源"
+      })
+    ]);
+
+    expect(html.match(/aria-label="Work progress item"/g)).toHaveLength(2);
+    expect(html).not.toContain("command-execution-item");
+    expect(html).not.toContain("mcp-tool-call-item");
+  });
+
+  test("does not turn work progress details into extra timeline entries", () => {
+    const html = renderHost([
+      workProgressTimelineItemFixture({
+        id: "item-command",
+        sourceType: "commandExecution",
+        label: "执行命令",
+        summary: "pnpm test",
+        fields: [
+          {
+            key: "command",
+            label: "命令",
+            value: "pnpm test"
+          }
+        ]
+      }),
+      workProgressTimelineItemFixture({
+        id: "item-file",
+        sourceType: "fileChange",
+        label: "修改文件",
+        summary: "更新 ConversationTimeline.tsx",
+        fields: [
+          {
+            key: "path",
+            label: "路径",
+            value: "apps/web/src/conversation-view/ConversationTimeline.tsx"
+          }
+        ]
+      }),
+      messageTimelineItemFixture({
+        id: "item-agent",
+        role: "agent",
+        text: "完成"
+      })
+    ]);
+
+    expect(html.match(/<li class="/g)).toHaveLength(3);
   });
 });
 

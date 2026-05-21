@@ -2,6 +2,7 @@ import type {
   ConversationHostView,
   ConversationPageState,
   ConversationView,
+  DisplayDetail,
   TimelineItem
 } from "@my-code-x/app-types";
 
@@ -83,6 +84,31 @@ export function messageTimelineItemFixture(input: {
       text: input.text,
       markdown: input.markdown ?? input.role === "agent",
       copyText: input.copyText ?? input.text
+    }
+  };
+}
+
+export function workProgressTimelineItemFixture(input: {
+  id: string;
+  fields?: DisplayDetail["fields"];
+  label: string;
+  sourceType: string;
+  status?: TimelineItem["status"];
+  summary?: string | null;
+}): TimelineItem {
+  return {
+    id: input.id,
+    turnId: "turn-1",
+    occurredAt: null,
+    status: input.status ?? "inProgress",
+    kind: "workProgress",
+    workProgress: {
+      sourceType: input.sourceType,
+      label: input.label,
+      summary: input.summary ?? null,
+      detail: {
+        fields: input.fields ?? []
+      }
     }
   };
 }
