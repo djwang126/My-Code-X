@@ -12,12 +12,21 @@ import type {
   TimelineItem
 } from "@my-code-x/app-types";
 import { WorkspacePanelButton } from "../workspaces/WorkspacePanelButton";
+import { ConversationTimeline } from "./ConversationTimeline";
 import sendButtonIconUrl from "./assets/send-button-icon.png";
 
 type ConversationHostState =
   | { status: "loading" }
   | { status: "ready"; conversationHost: ConversationHostView }
   | { status: "failed"; message: string };
+
+type ConversationBodyView =
+  | { kind: "noConversationTarget" }
+  | { kind: "timeline"; items: TimelineItem[] }
+  | { kind: "restoring" }
+  | { kind: "restoreFailed"; message: string }
+  | { kind: "stale"; message: string }
+  | { kind: "empty" };
 
 export interface ConversationHostProps {
   state: ConversationHostState;
@@ -102,84 +111,69 @@ function FailedConversation({ message }: { message: string }) {
 }
 
 function ReadyConversation(input: { conversationHost: ConversationHostView }) {
-  if (input.conversationHost.kind === "noConversationTarget") {
-    return (
-      <div className="empty-state">
-        <div className="state-icon state-icon-quiet">
-          <MessageSquare size={22} aria-hidden="true" />
-        </div>
-        <h1>打开一个 Codex Thread</h1>
-      </div>
-    );
+  const body = conversationBodyView(input.conversationHost);
+
+  switch (body.kind) {
+    case "noConversationTarget":
+      return <NoConversationTarget />;
+    case "timeline":
+      return <ConversationTimeline items={body.items} />;
+    case "restoring":
+      return <RestoringConversation />;
+    case "restoreFailed":
+      return <FailedConversation message={body.message} />;
+    case "stale":
+      return <StaleConversation message={body.message} />;
+    case "empty":
+      return <EmptyConversation />;
+  }
+}
+
+function conversationBodyView(
+  conversationHost: ConversationHostView
+): ConversationBodyView {
+  if (conversationHost.kind === "noConversationTarget") {
+    return { kind: "noConversationTarget" };
   }
 
-  const conversation = input.conversationHost.conversation;
+  const conversation = conversationHost.conversation;
 
   if (conversation.timeline.length > 0) {
-    return <ConversationTimeline items={conversation.timeline} />;
+    return {
+      kind: "timeline",
+      items: conversation.timeline
+    };
   }
 
   if (conversation.pageState.kind === "restoring") {
-    return <RestoringConversation />;
+    return { kind: "restoring" };
   }
 
   if (conversation.pageState.kind === "restoreFailed") {
-    return <FailedConversation message={conversation.pageState.message} />;
+    return {
+      kind: "restoreFailed",
+      message: conversation.pageState.message
+    };
   }
 
   if (conversation.pageState.kind === "stale") {
-    return <StaleConversation message={conversation.pageState.message} />;
+    return {
+      kind: "stale",
+      message: conversation.pageState.message
+    };
   }
 
-  return <EmptyConversation />;
+  return { kind: "empty" };
 }
 
-interface ConversationTimelineProps {
-  items: TimelineItem[];
-}
-
-function ConversationTimeline({ items }: ConversationTimelineProps) {
+function NoConversationTarget() {
   return (
-    <div className="conversation-timeline" aria-label="Timeline">
-      <ol className="timeline-list">
-        {items.map((item) => (
-          <TimelineEntry item={item} key={item.id} />
-        ))}
-      </ol>
+    <div className="empty-state">
+      <div className="state-icon state-icon-quiet">
+        <MessageSquare size={22} aria-hidden="true" />
+      </div>
+      <h1>打开一个 Codex Thread</h1>
     </div>
-  );
-}
-
-function TimelineEntry({ item }: { item: TimelineItem }) {
-  if (item.kind === "message") {
-    return <MessageTimelineEntry item={item} />;
-  }
-
-  return null;
-}
-
-function MessageTimelineEntry({
-  item
-}: {
-  item: Extract<TimelineItem, { kind: "message" }>;
-}) {
-  const isUserMessage = item.message.role === "user";
-  const rowClassName = isUserMessage
-    ? "transcript-row message-row user-message-row"
-    : "transcript-row message-row";
-  const textClassName = isUserMessage
-    ? "message-text message-text--user"
-    : "message-text";
-  const roleLabel = isUserMessage ? "用户消息" : "Codex 消息";
-
-  return (
-    <li className={rowClassName}>
-      <article aria-label={roleLabel}>
-        <div className={textClassName}>
-          <p>{item.message.text}</p>
-        </div>
-      </article>
-    </li>
   );
 }
 

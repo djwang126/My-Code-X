@@ -1,15 +1,15 @@
 import { describe, expect, test, vi } from "vitest";
-import type { ConversationHostView, ConversationView } from "@my-code-x/app-types";
+import type { ConversationHostView } from "@my-code-x/app-types";
+import {
+  conversationViewFixture,
+  messageTimelineItemFixture,
+  selectedConversationHostFixture
+} from "./conversation-view-test-fixtures";
 import { loadInitialConversationHost } from "./load-initial-conversation-host";
-
-type SelectedConversationHostView = Extract<
-  ConversationHostView,
-  { kind: "conversationTargetSelected" }
->;
 
 describe("loadInitialConversationHost", () => {
   test("restores the selected Thread before returning the initial host view", async () => {
-    const selectedHost = selectedConversationHost(emptyConversation());
+    const selectedHost = selectedConversationHostFixture();
     const restoredConversation = conversationWithMessage();
     const getCurrentConversation = vi.fn().mockResolvedValue(selectedHost);
     const restoreConversation = vi.fn().mockResolvedValue(restoredConversation);
@@ -20,7 +20,7 @@ describe("loadInitialConversationHost", () => {
     });
 
     expect(result).toEqual(
-      selectedConversationHost(restoredConversation)
+      selectedConversationHostFixture(restoredConversation)
     );
     expect(restoreConversation).toHaveBeenCalledWith({
       threadId: "thread-1"
@@ -43,7 +43,7 @@ describe("loadInitialConversationHost", () => {
   });
 
   test("keeps the selected Thread context when restore fails", async () => {
-    const selectedHost = selectedConversationHost(emptyConversation());
+    const selectedHost = selectedConversationHostFixture();
     const getCurrentConversation = vi.fn().mockResolvedValue(selectedHost);
     const restoreConversation = vi.fn().mockRejectedValue(
       new Error("恢复历史失败")
@@ -55,7 +55,7 @@ describe("loadInitialConversationHost", () => {
     });
 
     expect(result).toEqual(
-      selectedConversationHost({
+      selectedConversationHostFixture({
         ...selectedHost.conversation,
         pageState: {
           kind: "restoreFailed",
@@ -66,63 +66,16 @@ describe("loadInitialConversationHost", () => {
   });
 });
 
-function selectedConversationHost(
-  conversation: ConversationView
-): SelectedConversationHostView {
-  return {
-    kind: "conversationTargetSelected",
-    threadId: "thread-1",
-    conversation
-  };
-}
-
-function emptyConversation(): ConversationView {
-  return {
-    thread: {
-      threadId: "thread-1",
-      title: "Restore message history",
-      cwd: "D:\\workspaces\\AI-Tools\\My-Code-X-C",
-      updatedAt: "2026-05-21T10:00:00.000Z",
-      status: "idle"
-    },
-    pageState: { kind: "empty" },
-    timeline: [],
-    composer: {
-      threadId: "thread-1",
-      draft: "",
-      action: {
-        kind: "disabled",
-        enabled: false,
-        reason: "emptyDraft"
-      }
-    },
-    notices: [],
-    sync: {
-      connection: "connected",
-      freshness: "fresh",
-      lastSyncedAt: "2026-05-21T10:00:00.000Z"
-    }
-  };
-}
-
-function conversationWithMessage(): ConversationView {
-  return {
-    ...emptyConversation(),
+function conversationWithMessage() {
+  return conversationViewFixture({
     pageState: { kind: "ready" },
     timeline: [
-      {
+      messageTimelineItemFixture({
         id: "item-agent",
-        turnId: "turn-1",
         occurredAt: "2026-05-21T10:01:00.000Z",
-        status: "completed",
-        kind: "message",
-        message: {
-          role: "agent",
-          text: "恢复完成",
-          markdown: true,
-          copyText: "恢复完成"
-        }
-      }
+        role: "agent",
+        text: "恢复完成"
+      })
     ]
-  };
+  });
 }

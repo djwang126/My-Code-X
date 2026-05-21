@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import type { ConversationView } from "@my-code-x/app-types";
+import { conversationViewFixture } from "./conversation-view-test-fixtures";
 import { restoreConversation } from "./api-client";
 
 describe("restoreConversation", () => {
@@ -8,7 +8,7 @@ describe("restoreConversation", () => {
   });
 
   test("posts to the restore endpoint and returns the restored Conversation View", async () => {
-    const restoredConversation = conversationView();
+    const restoredConversation = conversationViewFixture();
     const fetch = vi.fn().mockResolvedValue(
       jsonResponse({
         ok: true,
@@ -37,7 +37,7 @@ describe("restoreConversation", () => {
     const fetch = vi.fn().mockResolvedValue(
       jsonResponse({
         ok: true,
-        data: conversationView()
+        data: conversationViewFixture()
       })
     );
     vi.stubGlobal("fetch", fetch);
@@ -58,7 +58,7 @@ describe("restoreConversation", () => {
     const fetch = vi.fn().mockResolvedValue(
       jsonResponse({
         ok: true,
-        data: conversationView()
+        data: conversationViewFixture()
       })
     );
     vi.stubGlobal("fetch", fetch);
@@ -82,7 +82,7 @@ describe("restoreConversation", () => {
         jsonResponse(
           {
             ok: true,
-            data: conversationView()
+            data: conversationViewFixture()
           },
           { ok: false }
         )
@@ -124,47 +124,4 @@ function jsonResponse(body: unknown, input?: { ok?: boolean }): Response {
     ok: input?.ok ?? true,
     json: async () => body
   } as Response;
-}
-
-function conversationView(): ConversationView {
-  return {
-    thread: {
-      threadId: "thread-1",
-      title: "Restore message history",
-      cwd: "D:\\workspaces\\AI-Tools\\My-Code-X-C",
-      updatedAt: "2026-05-21T10:00:00.000Z",
-      status: "idle"
-    },
-    pageState: { kind: "ready" },
-    timeline: [
-      {
-        id: "item-user",
-        turnId: "turn-1",
-        occurredAt: "2026-05-21T10:00:00.000Z",
-        status: "completed",
-        kind: "message",
-        message: {
-          role: "user",
-          text: "恢复历史",
-          markdown: false,
-          copyText: "恢复历史"
-        }
-      }
-    ],
-    composer: {
-      threadId: "thread-1",
-      draft: "",
-      action: {
-        kind: "disabled",
-        enabled: false,
-        reason: "emptyDraft"
-      }
-    },
-    notices: [],
-    sync: {
-      connection: "connected",
-      freshness: "fresh",
-      lastSyncedAt: "2026-05-21T10:00:00.000Z"
-    }
-  };
 }
