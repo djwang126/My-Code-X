@@ -467,17 +467,7 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
       status: { type: "idle" },
       turns: []
     });
-    const codexThreadBrowser = createTestCodexThreadBrowser([]);
-    const codexConversationHistoryGateway =
-      createTestCodexConversationHistoryGateway([restoredThread]);
-    const app = createConversationTestApp(
-      codexThreadBrowser,
-      codexConversationHistoryGateway
-    );
-
-    const response = await request(app).post(
-      "/api/conversation-view/threads/thread-1/restore"
-    );
+    const response = await restoreConversationView(restoredThread);
 
     expect(response.status).toBe(200);
     expect(response.body.ok).toBe(true);
@@ -657,17 +647,7 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
         }
       ]
     });
-    const codexThreadBrowser = createTestCodexThreadBrowser([]);
-    const codexConversationHistoryGateway =
-      createTestCodexConversationHistoryGateway([restoredThread]);
-    const app = createConversationTestApp(
-      codexThreadBrowser,
-      codexConversationHistoryGateway
-    );
-
-    const response = await request(app).post(
-      "/api/conversation-view/threads/thread-1/restore"
-    );
+    const response = await restoreConversationView(restoredThread);
 
     expect(response.status).toBe(200);
     expect(response.body.ok).toBe(true);
@@ -704,17 +684,7 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
         }
       ]
     });
-    const codexThreadBrowser = createTestCodexThreadBrowser([]);
-    const codexConversationHistoryGateway =
-      createTestCodexConversationHistoryGateway([restoredThread]);
-    const app = createConversationTestApp(
-      codexThreadBrowser,
-      codexConversationHistoryGateway
-    );
-
-    const response = await request(app).post(
-      "/api/conversation-view/threads/thread-1/restore"
-    );
+    const response = await restoreConversationView(restoredThread);
 
     expect(response.status).toBe(200);
     expect(response.body.ok).toBe(true);
@@ -733,6 +703,197 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
         }
       }
     ]);
+  });
+
+  test("restores unknown ThreadItem as an unknown timeline item", async () => {
+    const restoredThread = restoredThreadFixture({
+      id: "thread-1",
+      turns: [
+        {
+          id: "turn-1",
+          items: [
+            {
+              type: "futureThing",
+              id: "future-item-1"
+            }
+          ]
+        }
+      ]
+    });
+    const response = await restoreConversationView(restoredThread);
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(response.body.data.timeline).toHaveLength(1);
+    expect(response.body.data.timeline[0].kind).toBe("unknown");
+  });
+
+  test("restores unknown ThreadItem identity and source type", async () => {
+    const restoredThread = restoredThreadFixture({
+      id: "thread-1",
+      turns: [
+        {
+          id: "turn-1",
+          items: [
+            {
+              type: "futureThing",
+              id: "future-item-1"
+            }
+          ]
+        }
+      ]
+    });
+    const response = await restoreConversationView(restoredThread);
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(response.body.data.timeline).toEqual([
+      {
+        id: "codexThreadItem(thread-1,turn-1,future-item-1)",
+        turnId: "turn-1",
+        occurredAt: null,
+        status: "unknown",
+        kind: "unknown",
+        unknown: {
+          sourceType: "futureThing",
+          statusLabel: null,
+          detail: {
+            fields: []
+          }
+        }
+      }
+    ]);
+  });
+
+  test("restores unknown ThreadItem status without guessing", async () => {
+    const restoredThread = restoredThreadFixture({
+      id: "thread-1",
+      turns: [
+        {
+          id: "turn-1",
+          items: [
+            {
+              type: "futureThing",
+              id: "future-item-1",
+              status: "completed"
+            },
+            {
+              type: "futureThing",
+              id: "future-item-2",
+              status: "futureStatus"
+            }
+          ]
+        }
+      ]
+    });
+    const codexThreadBrowser = createTestCodexThreadBrowser([]);
+    const codexConversationHistoryGateway =
+      createTestCodexConversationHistoryGateway([restoredThread]);
+    const app = createConversationTestApp(
+      codexThreadBrowser,
+      codexConversationHistoryGateway
+    );
+
+    const response = await request(app).post(
+      "/api/conversation-view/threads/thread-1/restore"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(
+      response.body.data.timeline.map(
+        (item: { status: string; unknown: { statusLabel: string | null } }) => ({
+          status: item.status,
+          statusLabel: item.unknown.statusLabel
+        })
+      )
+    ).toEqual([
+      {
+        status: "completed",
+        statusLabel: "completed"
+      },
+      {
+        status: "unknown",
+        statusLabel: "futureStatus"
+      }
+    ]);
+  });
+
+  test("restores unknown ThreadItem payload as display detail", async () => {
+    const restoredThread = restoredThreadFixture({
+      id: "thread-1",
+      turns: [
+        {
+          id: "turn-1",
+          items: [
+            {
+              type: "futureThing",
+              id: "future-item-1",
+              title: "Future payload",
+              count: 2,
+              enabled: true,
+              missing: null,
+              meta: { mode: "preview" },
+              attachments: ["a", "b"]
+            }
+          ]
+        }
+      ]
+    });
+    const codexThreadBrowser = createTestCodexThreadBrowser([]);
+    const codexConversationHistoryGateway =
+      createTestCodexConversationHistoryGateway([restoredThread]);
+    const app = createConversationTestApp(
+      codexThreadBrowser,
+      codexConversationHistoryGateway
+    );
+
+    const response = await request(app).post(
+      "/api/conversation-view/threads/thread-1/restore"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(response.body.data.timeline[0].unknown.detail).toEqual({
+      fields: [
+        {
+          key: "title",
+          label: "title",
+          value: "Future payload",
+          copyText: "Future payload"
+        },
+        {
+          key: "count",
+          label: "count",
+          value: "2",
+          copyText: "2"
+        },
+        {
+          key: "enabled",
+          label: "enabled",
+          value: "true",
+          copyText: "true"
+        },
+        {
+          key: "missing",
+          label: "missing",
+          value: "null",
+          copyText: "null"
+        },
+        {
+          key: "meta",
+          label: "meta",
+          value: "{\"mode\":\"preview\"}",
+          copyText: "{\"mode\":\"preview\"}"
+        },
+        {
+          key: "attachments",
+          label: "attachments",
+          value: "[\"a\",\"b\"]",
+          copyText: "[\"a\",\"b\"]"
+        }
+      ]
+    });
   });
 
   test("restores known Codex work progress as a generic timeline item", async () => {
@@ -808,6 +969,66 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
             ]
           }
         }
+      }
+    ]);
+  });
+
+  test("keeps unknown ThreadItems in Codex history order with known items", async () => {
+    const restoredThread = restoredThreadFixture({
+      id: "thread-1",
+      turns: [
+        {
+          id: "turn-1",
+          items: [
+            {
+              type: "agentMessage",
+              id: "agent-item-1",
+              text: "Starting work"
+            },
+            {
+              type: "futureThing",
+              id: "future-item-1"
+            },
+            {
+              type: "commandExecution",
+              id: "command-item-1",
+              command: "pnpm test"
+            }
+          ]
+        }
+      ]
+    });
+    const codexThreadBrowser = createTestCodexThreadBrowser([]);
+    const codexConversationHistoryGateway =
+      createTestCodexConversationHistoryGateway([restoredThread]);
+    const app = createConversationTestApp(
+      codexThreadBrowser,
+      codexConversationHistoryGateway
+    );
+
+    const response = await request(app).post(
+      "/api/conversation-view/threads/thread-1/restore"
+    );
+
+    expect(response.status).toBe(200);
+    expect(response.body.ok).toBe(true);
+    expect(
+      response.body.data.timeline.map((item: { id: string; kind: string }) => ({
+        id: item.id,
+        kind: item.kind
+      }))
+    ).toEqual([
+      {
+        id: "codexThreadItem(thread-1,turn-1,agent-item-1)",
+        kind: "message"
+      },
+      {
+        id: "codexThreadItem(thread-1,turn-1,future-item-1)",
+        kind: "unknown"
+      },
+      {
+        id: "codexThreadItem(thread-1,turn-1,command-item-1)",
+        kind: "workProgress"
       }
     ]);
   });
@@ -1055,7 +1276,7 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
     ]);
   });
 
-  test("does not restore plan as work progress", async () => {
+  test("restores plan as unknown instead of work progress", async () => {
     const restoredThread = restoredThreadFixture({
       id: "thread-1",
       turns: [
@@ -1085,7 +1306,29 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.ok).toBe(true);
-    expect(response.body.data.timeline).toEqual([]);
+    expect(response.body.data.timeline).toEqual([
+      {
+        id: "codexThreadItem(thread-1,turn-1,plan-item-1)",
+        turnId: "turn-1",
+        occurredAt: null,
+        status: "unknown",
+        kind: "unknown",
+        unknown: {
+          sourceType: "plan",
+          statusLabel: null,
+          detail: {
+            fields: [
+              {
+                key: "text",
+                label: "text",
+                value: "1. Run tests",
+                copyText: "1. Run tests"
+              }
+            ]
+          }
+        }
+      }
+    ]);
   });
 
   test("returns restored message timeline in Codex history order", async () => {
@@ -1390,6 +1633,117 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
     }
   });
 
+  test("returns CODEX_PROTOCOL_ERROR when an unknown ThreadItem has no id", async () => {
+    await writeCodexResumeStub({
+      thread: {
+        id: "thread-1",
+        name: "Malformed Thread",
+        preview: "",
+        cwd: "D:\\workspaces\\AI-Tools\\My-Code-X-C",
+        updatedAt: null,
+        status: {
+          type: "idle"
+        },
+        turns: [
+          {
+            id: "turn-1",
+            items: [
+              {
+                type: "futureThing",
+                value: "not enough identity"
+              }
+            ]
+          }
+        ]
+      }
+    });
+    const originalCwd = process.cwd();
+    process.chdir(dataDir);
+    const codexConversationHistoryGateway =
+      createCodexAppServerConversationHistoryGateway({
+        command: process.execPath,
+        requestTimeoutMs: 1_000
+      });
+    const app = createConversationTestApp(
+      createTestCodexThreadBrowser([]),
+      codexConversationHistoryGateway
+    );
+
+    try {
+      const response = await request(app).post(
+        "/api/conversation-view/threads/thread-1/restore"
+      );
+
+      expect(response.status).toBe(502);
+      expect(response.body).toEqual({
+        ok: false,
+        error: {
+          code: "CODEX_PROTOCOL_ERROR",
+          message: "Invalid Codex thread/resume futureThing field: id",
+          retryable: false
+        }
+      });
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
+  test("returns CODEX_PROTOCOL_ERROR when an unknown ThreadItem id is not a string", async () => {
+    await writeCodexResumeStub({
+      thread: {
+        id: "thread-1",
+        name: "Malformed Thread",
+        preview: "",
+        cwd: "D:\\workspaces\\AI-Tools\\My-Code-X-C",
+        updatedAt: null,
+        status: {
+          type: "idle"
+        },
+        turns: [
+          {
+            id: "turn-1",
+            items: [
+              {
+                type: "futureThing",
+                id: 123,
+                value: "numeric identity"
+              }
+            ]
+          }
+        ]
+      }
+    });
+    const originalCwd = process.cwd();
+    process.chdir(dataDir);
+    const codexConversationHistoryGateway =
+      createCodexAppServerConversationHistoryGateway({
+        command: process.execPath,
+        requestTimeoutMs: 1_000
+      });
+    const app = createConversationTestApp(
+      createTestCodexThreadBrowser([]),
+      codexConversationHistoryGateway
+    );
+
+    try {
+      const response = await request(app).post(
+        "/api/conversation-view/threads/thread-1/restore"
+      );
+
+      expect(response.status).toBe(502);
+      expect(response.body).toEqual({
+        ok: false,
+        error: {
+          code: "CODEX_PROTOCOL_ERROR",
+          message: "Invalid Codex thread/resume futureThing field: id",
+          retryable: false
+        }
+      });
+    } finally {
+      process.chdir(originalCwd);
+    }
+  });
+
   test("returns CODEX_PROTOCOL_ERROR when a restored agent message has no text", async () => {
     await writeCodexResumeStub({
       thread: {
@@ -1492,6 +1846,17 @@ function restoredThreadFixture(
     turns: [],
     ...input
   };
+}
+
+async function restoreConversationView(restoredThread: CodexRestoredThread) {
+  const codexConversationHistoryGateway =
+    createTestCodexConversationHistoryGateway([restoredThread]);
+  const app = createConversationTestApp(
+    createTestCodexThreadBrowser([]),
+    codexConversationHistoryGateway
+  );
+
+  return request(app).post("/api/conversation-view/threads/thread-1/restore");
 }
 
 function expectEmptyConversationView(input: {

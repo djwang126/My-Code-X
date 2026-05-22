@@ -13,6 +13,7 @@ import {
   createWorkProgressTimelineItem,
   isRestoredWorkProgressItem
 } from "./work-progress-timeline-projector";
+import { createUnknownTimelineItem } from "./unknown-timeline-projector";
 
 export interface ClassifyRestoredThreadItemInput {
   threadId: string;
@@ -60,7 +61,11 @@ export function classifyRestoredThreadItem(
     });
   }
 
-  return null;
+  return createUnknownTimelineItem({
+    threadId: input.threadId,
+    turnId: input.turnId,
+    item: input.item
+  });
 }
 
 function isRestoredUserMessage(

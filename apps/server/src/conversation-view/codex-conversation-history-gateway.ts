@@ -74,7 +74,7 @@ export interface CodexRestoredWorkProgressItem {
 
 export interface CodexRestoredUnknownThreadItem {
   type: string;
-  id?: string;
+  id: string;
   [key: string]: unknown;
 }
 

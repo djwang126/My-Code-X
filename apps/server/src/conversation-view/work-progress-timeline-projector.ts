@@ -4,6 +4,10 @@ import {
   type CodexRestoredThreadItem,
   type CodexRestoredWorkProgressItem
 } from "./codex-conversation-history-gateway";
+import {
+  payloadDisplayDetail,
+  timelineStatusFromCodexStatus
+} from "./timeline-display";
 import { codexThreadItemTimelineId } from "./timeline-id";
 
 export interface WorkProgressTimelineItemInput {
@@ -35,7 +39,7 @@ export function createWorkProgressTimelineItem(
     }),
     turnId: input.turnId,
     occurredAt: null,
-    status: timelineStatus(input.item.status),
+    status: timelineStatusFromCodexStatus(input.item.status),
     kind: "workProgress",
     workProgress: {
       sourceType: input.item.type,
@@ -47,20 +51,10 @@ export function createWorkProgressTimelineItem(
 }
 
 function workProgressDetail(item: CodexRestoredWorkProgressItem): DisplayDetail {
-  const fields = Object.entries(item)
-    .filter(([key]) => key !== "id" && key !== "type")
-    .map(([key, value]) => {
-      const text = displayValue(value);
-
-      return {
-        key,
-        label: key,
-        value: text,
-        copyText: text
-      };
-    });
-
-  return { fields };
+  return payloadDisplayDetail({
+    payload: item,
+    excludedKeys: ["id", "type"]
+  });
 }
 
 function workProgressSummary(
@@ -72,42 +66,4 @@ function workProgressSummary(
   }
 
   return `${firstField.label}: ${firstField.value}`;
-}
-
-function timelineStatus(status: unknown): TimelineItem["status"] {
-  if (
-    status === "inProgress" ||
-    status === "completed" ||
-    status === "failed" ||
-    status === "declined"
-  ) {
-    return status;
-  }
-
-  return "unknown";
-}
-
-function displayValue(value: unknown): string {
-  if (typeof value === "string") {
-    return value;
-  }
-
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-
-  if (value === null) {
-    return "null";
-  }
-
-  try {
-    const json = JSON.stringify(value);
-    if (typeof json === "string") {
-      return json;
-    }
-  } catch {
-    return "[unserializable]";
-  }
-
-  return String(value);
 }

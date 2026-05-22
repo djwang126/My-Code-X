@@ -94,14 +94,10 @@ function readThreadItem(raw: unknown): CodexRestoredThreadItem {
     };
   }
 
-  const id = item.id;
-  if (id !== undefined && typeof id !== "string") {
-    throw codexProtocolError("Invalid Codex thread/resume item field: id");
-  }
-
   return {
     ...item,
-    type
+    type,
+    id: readRequiredString(item, "id", type)
   };
 }
 
