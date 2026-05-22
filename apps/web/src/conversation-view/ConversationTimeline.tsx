@@ -11,6 +11,7 @@ interface ConversationTimelineProps {
 
 type MessageTimelineItem = Extract<TimelineItem, { kind: "message" }>;
 type TimelineStatus = TimelineItem["status"];
+type UnknownTimelineItem = Extract<TimelineItem, { kind: "unknown" }>;
 type WorkProgressTimelineItem = Extract<TimelineItem, { kind: "workProgress" }>;
 
 export function ConversationTimeline({ items }: ConversationTimelineProps) {
@@ -32,6 +33,10 @@ function TimelineEntry({ item }: { item: TimelineItem }) {
 
   if (item.kind === "workProgress") {
     return <WorkProgressTimelineEntry item={item} />;
+  }
+
+  if (item.kind === "unknown") {
+    return <UnknownTimelineEntry item={item} />;
   }
 
   return null;
@@ -112,6 +117,48 @@ function WorkProgressTimelineEntry({
         )}
         {isDetailExpanded ? (
           <DisplayDetailFields detail={workProgress.detail} />
+        ) : null}
+      </article>
+    </li>
+  );
+}
+
+function UnknownTimelineEntry({ item }: { item: UnknownTimelineItem }) {
+  const unknown = item.unknown;
+  const [isDetailExpanded, setIsDetailExpanded] = useState(false);
+  const disclosureLabel = isDetailExpanded
+    ? "收起未知条目详情"
+    : "展开未知条目详情";
+  const itemLabel = isDetailExpanded
+    ? "Expanded unknown item"
+    : "Collapsed unknown item";
+
+  return (
+    <li className="transcript-row event-row event-row--unknown">
+      <span className="event-rule" aria-hidden="true" />
+      <article className="event-content" aria-label={itemLabel}>
+        <div className="event-head">
+          <p className="event-type">{unknown.sourceType}</p>
+          {unknown.statusLabel === null ? null : (
+            <span className="status-chip status-chip--unknown">
+              {unknown.statusLabel}
+            </span>
+          )}
+          <button
+            className="disclosure"
+            type="button"
+            aria-label={disclosureLabel}
+            onClick={() => setIsDetailExpanded((current) => !current)}
+          >
+            {isDetailExpanded ? (
+              <ChevronUp size={16} aria-hidden="true" />
+            ) : (
+              <ChevronDown size={16} aria-hidden="true" />
+            )}
+          </button>
+        </div>
+        {isDetailExpanded ? (
+          <DisplayDetailFields detail={unknown.detail} />
         ) : null}
       </article>
     </li>

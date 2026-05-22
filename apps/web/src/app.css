@@ -247,6 +247,20 @@ textarea {
   background: var(--green);
 }
 
+.event-row--unknown {
+  background: #fffdf7;
+}
+
+.event-row--unknown .event-rule {
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--amber) 0,
+    var(--amber) 5px,
+    transparent 5px,
+    transparent 9px
+  );
+}
+
 .event-content {
   min-width: 0;
 }

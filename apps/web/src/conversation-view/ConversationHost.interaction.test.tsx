@@ -7,6 +7,7 @@ import type { TimelineItem } from "@my-code-x/app-types";
 import {
   conversationHostWithTimelineFixture,
   messageTimelineItemFixture,
+  unknownTimelineItemFixture,
   workProgressTimelineItemFixture
 } from "../conversation-view-test-fixtures";
 import { ConversationHost } from "./ConversationHost";
@@ -118,6 +119,44 @@ describe("ConversationHost message interactions", () => {
     await click(getButtonByLabel(view.container, "展开工作痕迹详情"));
 
     expect(view.container.querySelector(".field-list")).not.toBeNull();
+  });
+
+  test("expands and collapses unknown item details from the disclosure button", async () => {
+    const view = renderHost([
+      unknownTimelineItemFixture({
+        id: "item-unknown",
+        sourceType: "session_shadow_event",
+        statusLabel: "received",
+        fields: [
+          {
+            key: "payload",
+            label: "原始内容",
+            value: "future payload"
+          }
+        ]
+      })
+    ]);
+
+    expect(view.container.querySelector(".field-list")).toBeNull();
+    expect(
+      view.container.querySelector('article[aria-label="Collapsed unknown item"]')
+    ).not.toBeNull();
+    expect(view.container.textContent).toContain("session_shadow_event");
+    expect(view.container.textContent).not.toContain("future payload");
+
+    await click(getButtonByLabel(view.container, "展开未知条目详情"));
+
+    expect(
+      view.container.querySelector('article[aria-label="Expanded unknown item"]')
+    ).not.toBeNull();
+    expect(view.container.querySelector(".field-list")).not.toBeNull();
+    expect(view.container.textContent).toContain("原始内容");
+    expect(view.container.textContent).toContain("future payload");
+
+    await click(getButtonByLabel(view.container, "收起未知条目详情"));
+
+    expect(view.container.querySelector(".field-list")).toBeNull();
+    expect(view.container.textContent).not.toContain("future payload");
   });
 });
 

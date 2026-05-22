@@ -7,6 +7,7 @@ import type {
 import {
   conversationHostWithTimelineFixture,
   messageTimelineItemFixture,
+  unknownTimelineItemFixture,
   workProgressTimelineItemFixture
 } from "../conversation-view-test-fixtures";
 import { ConversationHost } from "./ConversationHost";
@@ -516,6 +517,82 @@ describe("ConversationHost work progress timeline", () => {
     ]);
 
     expect(html.match(/<li class="/g)).toHaveLength(3);
+  });
+});
+
+describe("ConversationHost unknown timeline", () => {
+  test("shows unknown timeline items instead of dropping them", () => {
+    const html = renderHost([
+      unknownTimelineItemFixture({
+        id: "item-unknown",
+        sourceType: "futureThreadItem",
+        fields: [
+          {
+            key: "payload",
+            label: "原始内容",
+            value: "future payload"
+          }
+        ]
+      })
+    ]);
+
+    expect(html).toContain('aria-label="Collapsed unknown item"');
+    expect(html).toContain("event-row--unknown");
+    expect(html).toContain('aria-label="展开未知条目详情"');
+    expect(html).toContain("futureThreadItem");
+    expect(html).not.toContain("future payload");
+    expect(html).not.toContain("暂无可展示内容");
+  });
+
+  test("shows unknown status label when present", () => {
+    const html = renderHost([
+      unknownTimelineItemFixture({
+        id: "item-unknown",
+        sourceType: "futureThreadItem",
+        statusLabel: "pending-review"
+      })
+    ]);
+
+    expect(html).toContain("pending-review");
+  });
+
+  test("keeps unknown items readable without a status label", () => {
+    const html = renderHost([
+      unknownTimelineItemFixture({
+        id: "item-unknown",
+        sourceType: "futureThreadItem",
+        statusLabel: null,
+        fields: [
+          {
+            key: "payload",
+            label: "原始内容",
+            value: "future payload"
+          }
+        ]
+      })
+    ]);
+
+    expect(html).toContain("futureThreadItem");
+    expect(html).toContain('aria-label="展开未知条目详情"');
+    expect(html).not.toContain("future payload");
+    expect(html).not.toContain(">null<");
+  });
+
+  test("does not present unknown items as failures", () => {
+    const html = renderHost([
+      unknownTimelineItemFixture({
+        id: "item-unknown",
+        sourceType: "futureThreadItem",
+        status: "failed",
+        statusLabel: "failed"
+      })
+    ]);
+
+    expect(html).toContain('aria-label="Collapsed unknown item"');
+    expect(html).toContain(">failed</span>");
+    expect(html).not.toContain('role="alert"');
+    expect(html).not.toContain("内容读取失败");
+    expect(html).not.toContain("status-chip--error");
   });
 });
 

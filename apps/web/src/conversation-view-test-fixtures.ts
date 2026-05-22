@@ -112,3 +112,26 @@ export function workProgressTimelineItemFixture(input: {
     }
   };
 }
+
+export function unknownTimelineItemFixture(input: {
+  id: string;
+  fields?: DisplayDetail["fields"];
+  sourceType: string;
+  status?: TimelineItem["status"];
+  statusLabel?: string | null;
+}): TimelineItem {
+  return {
+    id: input.id,
+    turnId: "turn-1",
+    occurredAt: null,
+    status: input.status ?? "unknown",
+    kind: "unknown",
+    unknown: {
+      sourceType: input.sourceType,
+      statusLabel: input.statusLabel ?? null,
+      detail: {
+        fields: input.fields ?? []
+      }
+    }
+  };
+}
