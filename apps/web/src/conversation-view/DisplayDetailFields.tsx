@@ -10,16 +10,13 @@ export function DisplayDetailFields({ detail }: DisplayDetailFieldsProps) {
   }
 
   return (
-    <details className="display-detail">
-      <summary>查看详情</summary>
-      <dl className="display-detail-fields">
-        {detail.fields.map((field) => (
-          <div className="display-detail-field" key={field.key}>
-            <dt>{field.label}</dt>
-            <dd>{field.value}</dd>
-          </div>
-        ))}
-      </dl>
-    </details>
+    <dl className="field-list">
+      {detail.fields.map((field) => (
+        <div className="field-row" key={field.key}>
+          <dt className="field-name">{field.label}</dt>
+          <dd className="field-value">{field.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }

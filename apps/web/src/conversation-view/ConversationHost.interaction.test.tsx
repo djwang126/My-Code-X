@@ -6,7 +6,8 @@ import { afterEach, describe, expect, test, vi } from "vitest";
 import type { TimelineItem } from "@my-code-x/app-types";
 import {
   conversationHostWithTimelineFixture,
-  messageTimelineItemFixture
+  messageTimelineItemFixture,
+  workProgressTimelineItemFixture
 } from "../conversation-view-test-fixtures";
 import { ConversationHost } from "./ConversationHost";
 
@@ -87,6 +88,36 @@ describe("ConversationHost message interactions", () => {
     await expect(
       click(getButtonByLabel(view.container, "复制 Codex 消息"))
     ).resolves.toBeUndefined();
+  });
+
+  test("collapses and expands work progress details from the disclosure button", async () => {
+    const view = renderHost([
+      workProgressTimelineItemFixture({
+        id: "item-work",
+        sourceType: "commandExecution",
+        label: "执行命令",
+        summary: "pnpm test",
+        fields: [
+          {
+            key: "command",
+            label: "命令",
+            value: "pnpm test"
+          }
+        ]
+      })
+    ]);
+
+    expect(view.container.querySelector(".field-list")).not.toBeNull();
+    expect(view.container.textContent).toContain("pnpm test");
+
+    await click(getButtonByLabel(view.container, "收起工作痕迹详情"));
+
+    expect(view.container.querySelector(".field-list")).toBeNull();
+    expect(view.container.textContent).toContain("pnpm test");
+
+    await click(getButtonByLabel(view.container, "展开工作痕迹详情"));
+
+    expect(view.container.querySelector(".field-list")).not.toBeNull();
   });
 });
 

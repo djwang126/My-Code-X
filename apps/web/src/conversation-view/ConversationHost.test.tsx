@@ -303,6 +303,13 @@ describe("ConversationHost work progress timeline", () => {
 
     expect(html).toContain("运行测试");
     expect(html).toContain("pnpm test 已启动");
+    expect(html).toContain('class="transcript-row event-row"');
+    expect(html).toContain('class="event-rule"');
+    expect(html).toContain('class="event-content"');
+    expect(html).toContain('class="event-head"');
+    expect(html).toContain('class="event-type"');
+    expect(html).toContain('class="status-chip status-chip--work"');
+    expect(html).toContain('class="disclosure"');
     expect(html).not.toContain("暂无可展示内容");
   });
 
@@ -346,7 +353,8 @@ describe("ConversationHost work progress timeline", () => {
     ]);
 
     expect(html).toContain("commandExecution");
-    expect(html).toContain("完成");
+    expect(html).toContain(">completed</span>");
+    expect(html).not.toContain(">完成</span>");
     expect(html).toContain("执行命令");
     expect(html).toContain("pnpm test");
   });
@@ -364,8 +372,32 @@ describe("ConversationHost work progress timeline", () => {
 
     expect(html).toContain("fileChange");
     expect(html).toContain("更新文件");
-    expect(html).toContain("进行中");
+    expect(html).toContain(">inProgress</span>");
     expect(html).not.toContain(">null<");
+  });
+
+  test("uses status chip variants for failed and unknown work progress", () => {
+    const html = renderHost([
+      workProgressTimelineItemFixture({
+        id: "item-failed",
+        sourceType: "fileChange",
+        label: "修改文件失败",
+        status: "failed"
+      }),
+      workProgressTimelineItemFixture({
+        id: "item-unknown",
+        sourceType: "futureTool",
+        label: "未来工具状态",
+        status: "unknown"
+      })
+    ]);
+
+    expect(html).toContain(
+      'class="status-chip status-chip--error">failed</span>'
+    );
+    expect(html).toContain(
+      'class="status-chip status-chip--unknown">unknown</span>'
+    );
   });
 
   test("shows work progress detail fields in an expandable region", () => {
@@ -390,7 +422,11 @@ describe("ConversationHost work progress timeline", () => {
       })
     ]);
 
-    expect(html).toContain("<summary>查看详情</summary>");
+    expect(html).toContain('class="field-list"');
+    expect(html).toContain('class="field-row"');
+    expect(html).toContain('class="field-name"');
+    expect(html).toContain('class="field-value"');
+    expect(html).not.toContain("<summary>查看详情</summary>");
     expect(html).toContain("工作目录");
     expect(html).toContain("D:\\workspaces\\AI-Tools\\My-Code-X-C");
     expect(html).toContain("命令");
@@ -439,6 +475,9 @@ describe("ConversationHost work progress timeline", () => {
     expect(html.match(/aria-label="Work progress item"/g)).toHaveLength(2);
     expect(html).not.toContain("command-execution-item");
     expect(html).not.toContain("mcp-tool-call-item");
+    expect(html).not.toContain("work-progress-card");
+    expect(html).not.toContain("work-progress-row");
+    expect(html).not.toContain("display-detail");
   });
 
   test("does not turn work progress details into extra timeline entries", () => {

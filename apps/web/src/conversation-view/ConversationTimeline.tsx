@@ -1,4 +1,6 @@
 import type { TimelineItem } from "@my-code-x/app-types";
+import { useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { CopyButton } from "./CopyButton";
 import { DisplayDetailFields } from "./DisplayDetailFields";
 import { MessageBody } from "./MessageBody";
@@ -10,14 +12,6 @@ interface ConversationTimelineProps {
 type MessageTimelineItem = Extract<TimelineItem, { kind: "message" }>;
 type TimelineStatus = TimelineItem["status"];
 type WorkProgressTimelineItem = Extract<TimelineItem, { kind: "workProgress" }>;
-
-const timelineStatusLabels: Record<TimelineStatus, string> = {
-  inProgress: "进行中",
-  completed: "完成",
-  failed: "失败",
-  declined: "已拒绝",
-  unknown: "状态未知"
-};
 
 export function ConversationTimeline({ items }: ConversationTimelineProps) {
   return (
@@ -84,26 +78,54 @@ function WorkProgressTimelineEntry({
   item: WorkProgressTimelineItem;
 }) {
   const workProgress = item.workProgress;
+  const hasDetailFields = workProgress.detail.fields.length > 0;
+  const [isDetailExpanded, setIsDetailExpanded] = useState(hasDetailFields);
+  const disclosureLabel = isDetailExpanded
+    ? "收起工作痕迹详情"
+    : "展开工作痕迹详情";
 
   return (
-    <li className="transcript-row work-progress-row">
-      <article aria-label="Work progress item">
-        <div className="work-progress-card">
-          <div className="work-progress-meta">
-            <span>{workProgress.sourceType}</span>
-            <span>{timelineStatusLabel(item.status)}</span>
-          </div>
-          <div className="work-progress-label">{workProgress.label}</div>
-          {workProgress.summary === null ? null : (
-            <p className="work-progress-summary">{workProgress.summary}</p>
-          )}
-          <DisplayDetailFields detail={workProgress.detail} />
+    <li className="transcript-row event-row">
+      <span className="event-rule" aria-hidden="true" />
+      <article className="event-content" aria-label="Work progress item">
+        <div className="event-head">
+          <p className="event-type">{workProgress.sourceType}</p>
+          <span className={`status-chip ${statusChipClassName(item.status)}`}>
+            {item.status}
+          </span>
+          <button
+            className="disclosure"
+            type="button"
+            aria-label={disclosureLabel}
+            onClick={() => setIsDetailExpanded((current) => !current)}
+          >
+            {isDetailExpanded ? (
+              <ChevronUp size={16} aria-hidden="true" />
+            ) : (
+              <ChevronDown size={16} aria-hidden="true" />
+            )}
+          </button>
         </div>
+        <p className="event-note">{workProgress.label}</p>
+        {workProgress.summary === null ? null : (
+          <p className="collapsed-hint">{workProgress.summary}</p>
+        )}
+        {isDetailExpanded ? (
+          <DisplayDetailFields detail={workProgress.detail} />
+        ) : null}
       </article>
     </li>
   );
 }
 
-function timelineStatusLabel(status: TimelineStatus): string {
-  return timelineStatusLabels[status];
+function statusChipClassName(status: TimelineStatus): string {
+  if (status === "failed") {
+    return "status-chip--error";
+  }
+
+  if (status === "unknown") {
+    return "status-chip--unknown";
+  }
+
+  return "status-chip--work";
 }
