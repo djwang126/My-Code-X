@@ -231,7 +231,7 @@ function composerView(state: ConversationHostState): ComposerPresentation {
       buttonKind: "stop",
       buttonLabel: "中断当前 Turn",
       disabled: false,
-      draft: conversation.composer.draft,
+      draft: "",
       placeholder: "发送指令"
     };
   }
@@ -242,13 +242,12 @@ function composerView(state: ConversationHostState): ComposerPresentation {
       buttonKind: "send",
       buttonLabel: action.kind === "send" ? "发送" : "追加输入",
       disabled: false,
-      draft: conversation.composer.draft,
+      draft: "",
       placeholder: "输入给 Codex 的指令"
     };
   }
 
   return disabledComposerActionView({
-    draft: conversation.composer.draft,
     reason: action.reason
   });
 }
@@ -265,7 +264,6 @@ function disabledComposerView(placeholder: string): ComposerPresentation {
 }
 
 function disabledComposerActionView(input: {
-  draft: string;
   reason: ComposerDisabledReason;
 }): ComposerPresentation {
   const lockInput = input.reason !== "emptyDraft";
@@ -275,7 +273,7 @@ function disabledComposerActionView(input: {
     buttonKind: "disabled",
     buttonLabel: "发送不可用",
     disabled: lockInput,
-    draft: input.draft,
+    draft: "",
     placeholder: disabledComposerPlaceholder(input.reason)
   };
 }

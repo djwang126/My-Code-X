@@ -126,7 +126,6 @@ export type TimelineItem = z.infer<typeof timelineItemSchema>;
 
 export const composerViewSchema = z.object({
   threadId: z.string(),
-  draft: z.string(),
   action: z.discriminatedUnion("kind", [
     z.object({
       kind: z.literal("send"),

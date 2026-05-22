@@ -21,7 +21,6 @@ export function createEmptyConversationView(
     timeline: [],
     composer: {
       threadId: thread.id,
-      draft: "",
       action: emptyDraftComposerAction({
         sourceStatus: thread.status.type,
         thread: threadContext

@@ -27,7 +27,6 @@ export function conversationViewFixture(input?: {
     timeline: input?.timeline ?? [],
     composer: {
       threadId: "thread-1",
-      draft: "",
       action: {
         kind: "disabled",
         enabled: false,

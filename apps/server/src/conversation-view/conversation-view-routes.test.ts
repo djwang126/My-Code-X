@@ -1447,7 +1447,6 @@ describe("POST /api/conversation-view/threads/:threadId/restore", () => {
         ],
         composer: {
           threadId: "thread-1",
-          draft: "",
           action: {
             kind: "disabled",
             enabled: false,
@@ -1872,7 +1871,6 @@ function expectEmptyConversationView(input: {
     timeline: [],
     composer: {
       threadId: input.thread.threadId,
-      draft: "",
       action: input.action
     },
     notices: [],
