@@ -195,7 +195,7 @@ Params：
 
 `input` 填写规则：
 
-- 普通文本输入使用 `{ "type": "text", "text": <draft>, "textElements": [] }`。
+- 普通文本输入使用 `{ "type": "text", "text": <input>, "textElements": [] }`。
 - Codex wire protocol 还支持 `image`、`localImage`、`skill`、`mention`。调用方不应丢弃未知或暂未处理的 `UserInput` 原始 payload。
 - `textElements` 使用 `byteRange` 标记正文里的特殊元素范围；没有特殊元素时传空数组。
 

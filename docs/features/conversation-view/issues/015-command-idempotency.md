@@ -1,6 +1,6 @@
 ## What to build
 
-让会触发 Codex 副作用的 composer command 按 client request identity 幂等，避免网络重试或重复点击造成重复 turn action。
+让会触发 Codex 副作用的 composer command 按 client request identity 幂等，避免网络重试或重复点击造成重复 turn action；send / steer 的重复请求不得用新的 body text 覆盖首次 accepted 输入。
 
 References:
 - `conversation-view-api-contract.md`: `Idempotency`, `SendUserInputRequest`, `SendSteerInputRequest`, `InterruptTurnRequest`

@@ -16,7 +16,7 @@
 
 - REST response 返回 My-Code-X DTO，不返回 Codex raw protocol payload。
 - `GET` 不隐式调用 Codex `thread/resume`。
-- `send` / `steer` 使用服务端保存的 draft，不在 command body 里重复传文本。
+- `send` / `steer` 使用 command body 里的 `text`；API 不保存或返回 Composer draft。
 - SSE event 是 My-Code-X display event，不是 Codex notification 原样转发。
 - `/threads/{threadId}` endpoints 是 thread-scoped contract；`threadId` 由上层 selection 提供，Conversation View 不拥有 Thread 选中状态。
 
@@ -29,7 +29,6 @@
 | `POST` | `/api/conversation-view/threads/{threadId}/restore` | `ConversationViewResponse` |
 | `POST` | `/api/conversation-view/threads/{threadId}/sync` | `ConversationViewResponse` |
 | `GET` | `/api/conversation-view/threads/{threadId}/events` | `text/event-stream` |
-| `PUT` | `/api/conversation-view/threads/{threadId}/draft` | `ChangeComposerDraftResponse` |
 | `POST` | `/api/conversation-view/threads/{threadId}/commands/send` | `SendUserInputResponse` |
 | `POST` | `/api/conversation-view/threads/{threadId}/commands/steer` | `SendSteerInputResponse` |
 | `POST` | `/api/conversation-view/threads/{threadId}/commands/interrupt` | `InterruptTurnResponse` |
@@ -60,15 +59,13 @@ interface SyncConversationRequest {
   clientRequestId?: ClientRequestId;
 }
 
-interface ChangeComposerDraftRequest {
-  text: string;
-}
-
 interface SendUserInputRequest {
+  text: string;
   clientRequestId: ClientRequestId;
 }
 
 interface SendSteerInputRequest {
+  text: string;
   expectedTurnId: TurnId;
   clientRequestId: ClientRequestId;
 }
@@ -84,11 +81,10 @@ interface InterruptTurnRequest {
 
 | Request | Rule |
 | --- | --- |
-| `ChangeComposerDraftRequest.text` | 必填，可以是空字符串；保存时不 trim |
-| `SendUserInputRequest` | 使用服务端 draft；draft 为空返回 `EMPTY_COMPOSER_DRAFT` |
+| `SendUserInputRequest.text` | 必填，不能为空字符串；传给 Codex 时不 trim、不改写 |
 | `SendUserInputRequest.clientRequestId` | 必填且非空 |
+| `SendSteerInputRequest.text` | 必填，不能为空字符串；传给 Codex 时不 trim、不改写 |
 | `SendSteerInputRequest.expectedTurnId` | 必填且非空 |
-| `SendSteerInputRequest` | 使用服务端 draft；draft 为空返回 `EMPTY_COMPOSER_DRAFT` |
 | `SendSteerInputRequest.clientRequestId` | 必填且非空 |
 | `InterruptTurnRequest.turnId` | 必填且非空 |
 | `InterruptTurnRequest.confirmed` | 必须是 `true` |
@@ -201,8 +197,8 @@ interface UnknownThreadContext extends ThreadContextBase {
 
 - 只有 `status: "active"` 的 `ThreadContext` 包含 `activeTurnId`。
 - `idle` / `notLoaded` / `systemError` / `unknown` 不包含 `activeTurnId`。
-- `ComposerAction.kind: "steer"` 和 `ComposerAction.kind: "interrupt"` 只能从 `ActiveThreadContext.activeTurnId` 派生。
-- 前端不得自行推断 active turn；只消费 `composer.action` 暴露的可执行 command。
+- `ComposerAction.kind: "active"` 只能从 `ActiveThreadContext.activeTurnId` 派生。
+- 前端不得自行推断 active turn；只消费 `composer.action` 暴露的目标状态，并结合本地 draft 决定 steer 或 interrupt。
 
 ### ConversationPageState
 
@@ -314,14 +310,12 @@ interface DisplayField {
 ```ts
 interface ComposerView {
   threadId: ThreadId;
-  draft: string;
   action: ComposerAction;
 }
 
 type ComposerAction =
-  | { kind: "send"; enabled: true }
-  | { kind: "steer"; enabled: true; expectedTurnId: TurnId }
-  | { kind: "interrupt"; enabled: true; turnId: TurnId; requiresConfirmation: true }
+  | { kind: "idle"; enabled: true }
+  | { kind: "active"; enabled: true; expectedTurnId: TurnId; turnId: TurnId; interruptRequiresConfirmation: true }
   | { kind: "disabled"; enabled: false; reason: ComposerDisabledReason };
 
 type ComposerDisabledReason =
@@ -329,7 +323,6 @@ type ComposerDisabledReason =
   | "connectionUnavailable"
   | "unreliableThreadTarget"
   | "unreliableTurnTarget"
-  | "emptyDraft"
   | "systemError"
   | "unknown";
 ```
@@ -375,7 +368,6 @@ type ConversationFreshness =
 ### Command Responses
 
 ```ts
-type ChangeComposerDraftResponse = ApiResponse<ComposerView>;
 type SendUserInputResponse = ApiResponse<ComposerView>;
 type SendSteerInputResponse = ApiResponse<ComposerView>;
 type InterruptTurnResponse = ApiResponse<ComposerView>;
@@ -398,9 +390,8 @@ type InterruptTurnResponse = ApiResponse<ComposerView>;
 
 | Condition | Action |
 | --- | --- |
-| `idle` + non-empty draft + reliable `threadId` | `send` |
-| `active` + non-empty draft + reliable `expectedTurnId` | `steer` |
-| `active` + empty draft + reliable `turnId` | `interrupt` |
+| `idle` + reliable `threadId` | `idle` |
+| `active` + reliable `expectedTurnId` + reliable `turnId` | `active` |
 | `notLoaded` / `systemError` / `unknown` | `disabled` |
 
 ### Timeline Item Transition
@@ -421,18 +412,17 @@ type InterruptTurnResponse = ApiResponse<ComposerView>;
 | `failed` -> `declined` | no |
 | `declined` -> `inProgress` | no |
 
-### Draft Lifecycle
+### Client Draft Responsibilities
 
 | Event | Draft |
 | --- | --- |
-| draft changed | save to `threadId` |
-| send accepted | clear same-thread draft |
-| steer accepted | clear same-thread draft |
-| send/steer rejected | keep draft |
-| interrupt accepted/rejected | keep draft |
+| draft changed | save by `threadId` |
+| send/steer accepted | clear same-thread draft |
+| send/steer rejected | keep same-thread draft |
+| interrupt accepted/rejected | keep same-thread draft |
 | thread switched | restore target-thread draft |
 
-Thread switch 由上层 selection contract 触发；Conversation View 只读取切换后的 `threadId` 对应 draft。
+Thread switch 来自上层 selection；draft 恢复由 client 完成。
 
 ## Error Contract
 
@@ -456,7 +446,7 @@ interface ErrorTarget {
 type ApiErrorCode =
   | "THREAD_NOT_FOUND"
   | "THREAD_MISMATCH"
-  | "EMPTY_COMPOSER_DRAFT"
+  | "EMPTY_COMPOSER_INPUT"
   | "NO_RELIABLE_THREAD_TARGET"
   | "NO_RELIABLE_STEER_TARGET"
   | "NO_RELIABLE_INTERRUPT_TARGET"
@@ -477,7 +467,7 @@ type ApiErrorCode =
 
 | HTTP | Codes |
 | ---: | --- |
-| `400` | `INVALID_REQUEST`, `EMPTY_COMPOSER_DRAFT`, `INTERRUPT_NOT_CONFIRMED` |
+| `400` | `INVALID_REQUEST`, `EMPTY_COMPOSER_INPUT`, `INTERRUPT_NOT_CONFIRMED` |
 | `404` | `THREAD_NOT_FOUND` |
 | `409` | `THREAD_MISMATCH`, `NO_RELIABLE_THREAD_TARGET`, `NO_RELIABLE_STEER_TARGET`, `NO_RELIABLE_INTERRUPT_TARGET`, `INVALID_TIMELINE_TRANSITION`, `TIMELINE_ITEM_NOT_FOUND` |
 | `422` | `UNKNOWN_TIMELINE_ITEM_REJECTED` |
@@ -487,13 +477,13 @@ type ApiErrorCode =
 
 ### Domain Error Mapping
 
-| Domain Error | ApiErrorCode | HTTP | retryable | Draft |
+| Domain Error | ApiErrorCode | HTTP | retryable | Client draft |
 | --- | --- | ---: | --- | --- |
 | `ThreadMismatch` | `THREAD_MISMATCH` | `409` | false | unchanged |
 | `TimelineItemNotFound` | `TIMELINE_ITEM_NOT_FOUND` | `409` | true | unchanged |
 | `UnknownTimelineItemRejected` | `UNKNOWN_TIMELINE_ITEM_REJECTED` | `422` | false | unchanged |
 | `InvalidTimelineTransition` | `INVALID_TIMELINE_TRANSITION` | `409` | true | unchanged |
-| `EmptyComposerDraft` | `EMPTY_COMPOSER_DRAFT` | `400` | false | unchanged |
+| `EmptyComposerInput` | `EMPTY_COMPOSER_INPUT` | `400` | false | unchanged |
 | `NoReliableThreadTarget` | `NO_RELIABLE_THREAD_TARGET` | `409` | false | unchanged |
 | `NoReliableSteerTarget` | `NO_RELIABLE_STEER_TARGET` | `409` | false | keep |
 | `NoReliableInterruptTarget` | `NO_RELIABLE_INTERRUPT_TARGET` | `409` | false | keep |
@@ -640,16 +630,15 @@ threadId + commandName + clientRequestId
 | --- | --- |
 | `RestoreConversation` | 重复请求返回当前或最近一次 restore 后的 `ConversationView` |
 | `SyncConversation` | sync 正在进行时返回当前 view/syncing 状态 |
-| `ChangeComposerDraft` | 不使用 `clientRequestId`；同一 `threadId` draft 最终等于最后一次成功保存的 `text` |
-| `SendUserInput` | 同一 id 不得产生第二个 `turn/start` |
-| `SendSteerInput` | 同一 id 不得产生第二个 `turn/steer` |
+| `SendUserInput` | 同一 id 不得产生第二个 `turn/start`；首次 accepted 的 `text` 与结果用于重复请求 |
+| `SendSteerInput` | 同一 id 不得产生第二个 `turn/steer`；首次 accepted 的 `text`、`expectedTurnId` 与结果用于重复请求 |
 | `InterruptTurn` | 同一 id 不得产生第二个 `turn/interrupt` |
 
 缺失必填 `clientRequestId` 返回 `INVALID_REQUEST`。
 
 同一幂等 key 的重复请求必须返回第一次 accepted command 的当前投影结果，不得再次向 Codex 发送 command。
 
-`send` / `steer` accepted 后，同一 `clientRequestId` 重复请求不因为 draft 已清空而返回 `EMPTY_COMPOSER_DRAFT`。
+`send` / `steer` accepted 后，同一 `clientRequestId` 重复请求不得使用新的 body `text` 覆盖首次 accepted 输入。
 
 ## Authorization And Visibility
 
@@ -660,7 +649,6 @@ threadId + commandName + clientRequestId
 | `POST /api/conversation-view/threads/{threadId}/restore` | `conversation.restore` |
 | `POST /api/conversation-view/threads/{threadId}/sync` | `conversation.sync` |
 | `GET /api/conversation-view/threads/{threadId}/events` | `conversation.events.subscribe` |
-| `PUT /api/conversation-view/threads/{threadId}/draft` | `conversation.draft.write` |
 | `POST /api/conversation-view/threads/{threadId}/commands/send` | `conversation.command.send` |
 | `POST /api/conversation-view/threads/{threadId}/commands/steer` | `conversation.command.steer` |
 | `POST /api/conversation-view/threads/{threadId}/commands/interrupt` | `conversation.command.interrupt` |
@@ -732,9 +720,8 @@ SSE 的 `Last-Event-ID` 不是 timeline pagination cursor。
 | `POST /api/conversation-view/threads/{threadId}/restore` | `restoreConversation` | `ConversationRecoveryService.restore(threadRef)` + query |
 | `POST /api/conversation-view/threads/{threadId}/sync` | `syncConversation` | `ConversationRecoveryService.sync(threadRef)` + query |
 | `GET /api/conversation-view/threads/{threadId}/events` | `subscribeConversationEvents` | `ConversationEventStreamService.subscribe(threadId, lastEventId)` |
-| `PUT /api/conversation-view/threads/{threadId}/draft` | `changeDraft` | `ComposerService.changeDraft(threadId, text)` + query composer |
-| `POST /api/conversation-view/threads/{threadId}/commands/send` | `sendUserInput` | `ComposerService.send(threadId)` + query composer |
-| `POST /api/conversation-view/threads/{threadId}/commands/steer` | `sendSteerInput` | `ComposerService.steer(threadId, expectedTurnId)` + query composer |
+| `POST /api/conversation-view/threads/{threadId}/commands/send` | `sendUserInput` | `ComposerService.send(threadId, text)` + query composer |
+| `POST /api/conversation-view/threads/{threadId}/commands/steer` | `sendSteerInput` | `ComposerService.steer(threadId, expectedTurnId, text)` + query composer |
 | `POST /api/conversation-view/threads/{threadId}/commands/interrupt` | `interruptTurn` | `ComposerService.interrupt(threadId, turnId, confirmed)` + query composer |
 
 Handler 只负责 HTTP/SSE 边界、鉴权、DTO 解析和 error mapping。Codex protocol 字段、JSON-RPC request id、notification method 和 raw payload 只能在 ACL/adapter 边界处理。

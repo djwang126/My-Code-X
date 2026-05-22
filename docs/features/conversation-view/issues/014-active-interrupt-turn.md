@@ -1,6 +1,6 @@
 ## What to build
 
-在已选 Thread 有可靠 active Turn 且用户确认后，允许用户触发 Codex `turn/interrupt`；interrupt 不修改 composer draft。
+在已选 Thread 有可靠 active Turn 且用户确认后，允许用户触发 Codex `turn/interrupt`；interrupt 不修改前端 composer draft。
 
 References:
 - `conversation-view-feature-description.md`: `Composer`

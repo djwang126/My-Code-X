@@ -364,7 +364,7 @@ Then Composer 绑定当前 `Thread`
 Given 用户在 Composer 输入内容  
 When 页面状态变化或暂时不能发送  
 Then Composer 保留当前输入草稿
-And 草稿按当前 `Thread` 保存
+And 前端按当前 `Thread` 保存草稿
 
 ### Scenario: 输入多行文本
 
@@ -382,7 +382,8 @@ Then 发送不可用
 
 Given 用户在 Composer 中输入原文  
 When 系统发送请求  
-Then 不对用户原始输入进行任何删改
+Then 请求携带该原文
+And 不对用户原始输入进行任何删改
 
 ### Scenario: 工作中中断当前工作需要防误触处理
 

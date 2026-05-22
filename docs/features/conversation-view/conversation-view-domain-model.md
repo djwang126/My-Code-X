@@ -29,8 +29,6 @@
 
 | Event | 含义 |
 | --- | --- |
-| `ComposerDraftChanged` | 当前 Thread 的草稿发生变化 |
-| `ComposerDraftCleared` | 当前 Thread 的草稿被清空 |
 | `UserInputAccepted` | 普通输入请求被接受 |
 | `SteerInputAccepted` | 追加输入请求被接受 |
 | `TurnInterruptAccepted` | 中断请求被接受 |
@@ -51,16 +49,15 @@
 
 | Command | 产生的 Domain Events |
 | --- | --- |
-| `ChangeComposerDraft` | `ComposerDraftChanged` |
-| `SendUserInput` | `UserInputAccepted` / `ComposerDraftCleared` |
-| `SendSteerInput` | `SteerInputAccepted` / `ComposerDraftCleared` |
+| `SendUserInput` | `UserInputAccepted` |
+| `SendSteerInput` | `SteerInputAccepted` |
 | `InterruptTurn` | `TurnInterruptAccepted` |
 
 ## Actors
 
 | Actor | 触发 Commands |
 | --- | --- |
-| `User` | `ChangeComposerDraft`, `SendUserInput`, `SendSteerInput`, `InterruptTurn` |
+| `User` | `SendUserInput`, `SendSteerInput`, `InterruptTurn` |
 | `CodexAppServer` | `ReceiveTimelineItem`, `ApplyAgentMessageDelta`, `CompleteAgentMessage`, `ChangeWorkProgressStatus`, `ReportThreadFailure` |
 
 ## Invariants
@@ -78,10 +75,6 @@
 | `ThreadFailureStaysInTimeline` | 归属于当前 Thread 的失败必须保留在 timeline 中对应位置 |
 | `TimelineIdentityMatchesSource` | 来自 Codex `ThreadItem` 的内容必须使用 `codexThreadItem(threadId, turnId, itemId)`；由 failed turn 派生的失败必须使用 `threadScopedFailure(threadId, turnId, message)`；不为失败伪造 `ItemId` |
 | `UnscopedFailureStaysOutOfTimeline` | 无法归属到具体 Thread 的错误不能插入 timeline |
-| `DraftBelongsToThread` | 草稿必须归属于一个明确的 `ThreadId` |
-| `ThreadSwitchKeepsDrafts` | 切换 Thread 不清空其他 Thread 的草稿 |
-| `DraftClearsOnlyAfterAcceptedForSameThread` | 只有当前 Thread 的发送请求被接受后，才清空该 Thread 草稿 |
-| `DraftPreservedAfterFailureForSameThread` | 当前 Thread 的发送失败时，保留该 Thread 草稿 |
 | `ReliableTargetRequired` | 发送、追加、中断必须有可靠目标标识 |
 | `NoInventedCodexCopy` | 用户输入、Codex 回复、类型标签、错误 message 不添加 My-Code-X 自创解释文案 |
 
@@ -93,7 +86,7 @@
 | `UnknownPreservationPolicy` | 未知 item 使用通用结构保留，不阻断阅读或输入 |
 | `FailureDedupPolicy` | 同一 FailureSignature 的失败只保留一个 timeline 呈现 |
 | `PageNoticePolicy` | My-Code-X 自身错误、连接级 warning、无 `threadId` 的 JSON-RPC error、发送失败等作为页面提示，不进入 timeline |
-| `ComposerActionPolicy` | `idle + 有文本` 发送普通输入；`active + 有文本` 发送追加输入；`active + 无文本` 中断当前工作；其他不可靠状态禁用 |
+| `ComposerActionPolicy` | 服务端给出 `idle` / `active` / `disabled` 目标状态；前端结合本地草稿决定发送、追加或中断 |
 | `InterruptGuardPolicy` | 中断当前工作是高影响动作，必须先确认再发送 interrupt |
 | `RequestAcceptancePolicy` | `turn/start` 或 `turn/steer` success response 才代表输入被接受 |
 | `WorkProgressStatusPolicy` | 工作过程状态只表达上游提供的状态，不自行推断完成、失败或进行中 |
@@ -108,8 +101,8 @@
 | `MissingExpectedTurnId` | 禁止 active 状态下追加输入 |
 | `MissingActiveTurnId` | 禁止中断当前工作 |
 | `EmptyInputForSendOrSteer` | 禁止发送普通输入或追加输入 |
-| `UserInputRejected` | 草稿保留；输入不进入 timeline；产生页面提示 |
-| `SteerInputRejected` | 草稿保留；追加内容不进入 timeline；产生页面提示 |
+| `UserInputRejected` | 前端草稿保留；输入不进入 timeline；产生页面提示 |
+| `SteerInputRejected` | 前端草稿保留；追加内容不进入 timeline；产生页面提示 |
 | `TurnInterruptRejected` | 当前工作不视为已中断；产生页面提示 |
 | `ThreadFailureReported` | 作为当前 Thread timeline 内失败信息处理 |
 | `UnscopedCodexErrorReported` | 作为页面提示处理，不进入 timeline |
@@ -121,7 +114,6 @@
 | --- | --- | --- |
 | `Conversation` | `ThreadId` | 当前 Thread 的 Conversation View 领域投影 |
 | `TimelineItem` | `TimelineItemId` | 一条可展示内容；可能来自 Codex `ThreadItem`，也可能由 `threadScopedFailure` 派生 |
-| `ComposerDraft` | `ThreadId` | 每个 Thread 一份草稿；切换 Thread 后恢复对应 Thread 的草稿 |
 
 ## Value Objects
 
@@ -136,14 +128,14 @@
 | `TimelineKind` | `message`, `workProgress`, `failure`, `unknown` |
 | `TimelineStatus` | `inProgress`, `completed`, `failed`, `declined`, `unknown` |
 | `TimelineContent` | message / work progress / failure / unknown 的 discriminated union |
-| `DraftText` | 用户输入原文 |
+| `InputText` | 用户输入原文 |
 | `FailureSignature` | 重复失败识别用的稳定签名，当前由 `threadId + turnId + error.message` 构成 |
 
 ## Aggregate
 
 | Aggregate Root | 包含 | 负责的业务一致性 |
 | --- | --- | --- |
-| `Conversation` | `ThreadRef`, `TimelineItem[]`, `ComposerDraft` | 当前只对应一个 Thread；可展示 item 不丢；未知 item 保留；失败不伪装成普通回复；未接受输入不进 timeline；当前 Thread 的草稿按接受/失败规则处理 |
+| `Conversation` | `ThreadRef`, `TimelineItem[]` | 当前只对应一个 Thread；可展示 item 不丢；未知 item 保留；失败不伪装成普通回复；未接受输入不进 timeline |
 
 ## Application State Outside Domain Aggregate
 
@@ -152,6 +144,7 @@
 | selected thread / no selected thread | 当前查看目标|
 | restore / loading / empty / error | 页面恢复流程状态 |
 | syncing / reconnecting / stale | 同步和连接体验状态 |
+| composer draft by thread | 前端交互状态；不进入后端 `Conversation` aggregate |
 | banner notice lifecycle | UI/application concern |
 | scroll follow / reading position | 纯交互状态 |
 | button style / safe area / markdown rendering | 纯 UI concern |
@@ -191,8 +184,8 @@
 
 | Signal | 用途 |
 | --- | --- |
-| `UserInputRejected` | 普通输入请求被拒绝，草稿保留，输入不进入 timeline |
-| `SteerInputRejected` | 追加输入请求被拒绝，草稿保留，输入不进入 timeline |
+| `UserInputRejected` | 普通输入请求被拒绝，前端草稿保留，输入不进入 timeline |
+| `SteerInputRejected` | 追加输入请求被拒绝，前端草稿保留，输入不进入 timeline |
 | `TurnInterruptRejected` | 中断请求被拒绝，当前工作不视为已中断 |
 
 ## Domain Errors
@@ -204,7 +197,7 @@
 | `TimelineItemNotFound` | 增量、完成、状态更新指向不存在的 `ItemId` | 上游事件无法应用到当前 timeline |
 | `UnknownTimelineItemRejected` | 未知 item 缺少可保留的原始 payload | 无法满足“未知信息不丢失” |
 | `InvalidTimelineTransition` | item 状态转换不合法，例如已 completed 后继续被标记 inProgress | timeline lifecycle 被破坏 |
-| `EmptyComposerDraft` | 尝试 send / steer，但当前 `DraftText` 为空 | 空文本不能发送 |
+| `EmptyComposerInput` | 尝试 send / steer，但请求 `InputText` 为空 | 空文本不能发送 |
 | `NoReliableThreadTarget` | 发送普通输入时缺少可靠 `ThreadId` | 禁止向不明确目标发送 |
 | `NoReliableSteerTarget` | 追加输入时缺少可靠 `ThreadId` 或 `ExpectedTurnId` | 禁止向不明确 active turn 追加 |
 | `NoReliableInterruptTarget` | 中断时缺少可靠 `ThreadId` 或 active `TurnId` | 禁止中断不明确目标 |
@@ -221,9 +214,9 @@ interface ConversationRepository {
 
 | Repository | 负责 | 不负责 |
 | --- | --- | --- |
-| `ConversationRepository` | 保存 My-Code-X 对某个 Thread 的 Conversation 领域投影，包括 timeline 与该 Thread 的草稿 | 不调用 Codex app-server；不负责恢复、同步、live subscription |
+| `ConversationRepository` | 保存 My-Code-X 对某个 Thread 的 Conversation 领域投影，包括 timeline | 不调用 Codex app-server；不负责恢复、同步、live subscription；不保存 Composer draft |
 
-不单独建立 `ThreadRepository`、`TimelineItemRepository`、`ComposerDraftRepository`、`PageNoticeRepository`、`ConnectionRepository`。
+不单独建立 `ThreadRepository`、`TimelineItemRepository`、`PageNoticeRepository`、`ConnectionRepository`。
 
 ## Application Services
 
@@ -231,7 +224,7 @@ interface ConversationRepository {
 | --- | --- |
 | `ConversationQueryService` | 加载当前 Thread 的 Conversation View 数据 |
 | `ConversationIngestService` | 接收 Codex 历史或 live item，写入 `Conversation` |
-| `ComposerService` | 处理 send / steer / interrupt，维护 per-thread 草稿 |
+| `ComposerService` | 处理 send / steer / interrupt；不保存 Composer draft |
 | `ConversationRecoveryService` | 编排恢复、同步、stale 状态和 page notice |
 
 ### ConversationQueryService
@@ -245,10 +238,9 @@ interface ConversationQueryService {
 流程：
 
 1. 从 `ConversationRepository.get(threadId)` 读取 `Conversation`
-2. 从 `Conversation` 读取 per-thread draft
-3. 组合为 `ConversationView`
-4. 不发起 Codex 请求
-5. 不修改领域状态
+2. 组合为 `ConversationView`
+3. 不发起 Codex 请求
+4. 不修改领域状态
 
 ### ConversationIngestService
 
@@ -273,35 +265,30 @@ interface ConversationIngestService {
 
 ```ts
 interface ComposerService {
-  changeDraft(threadId: ThreadId, text: DraftText): Promise<void>;
-  send(threadId: ThreadId): Promise<void>;
-  steer(threadId: ThreadId, expectedTurnId: TurnId): Promise<void>;
+  send(threadId: ThreadId, input: InputText): Promise<void>;
+  steer(threadId: ThreadId, expectedTurnId: TurnId, input: InputText): Promise<void>;
   interrupt(threadId: ThreadId, turnId: TurnId, confirmed: boolean): Promise<void>;
 }
 ```
 
-`changeDraft` 流程：
-
-1. load or create `Conversation(threadId)`
-2. 设置该 Conversation 的 `DraftText`
-3. save `Conversation`
+约束：`ComposerService` 只消费请求里的 `InputText`，不读取、保存或清空客户端 draft。
 
 `send` 流程：
 
 1. load `Conversation` by `threadId`
-2. validate draft non-empty
+2. validate input non-empty
 3. 调用 Codex app-server `turn/start`
-4. success 后只清空该 `Conversation.threadId` 的 draft
-5. failure 保留 draft，并 raise page notice
+4. success 返回 accepted result
+5. failure raise page notice
 
 `steer` 流程：
 
 1. load `Conversation` by `threadId`
-2. validate draft non-empty
+2. validate input non-empty
 3. validate `expectedTurnId`
 4. 调用 Codex app-server `turn/steer`
-5. success 后只清空该 `Conversation.threadId` 的 draft
-6. failure 保留 draft，并 raise page notice
+5. success 返回 accepted result
+6. failure raise page notice
 
 `interrupt` 流程：
 
@@ -310,7 +297,6 @@ interface ComposerService {
 3. validate active `turnId`
 4. 调用 Codex app-server `turn/interrupt`
 5. failure raise page notice
-6. 不修改 draft
 
 ### ConversationRecoveryService
 
@@ -349,7 +335,7 @@ interface ConversationRecoveryService {
 | --- | --- | --- | --- |
 | `TimelineClassifier` | 把已解析的 Codex item 归类为 My-Code-X 的 `TimelineContent` | `CodexItem` | `message` / `workProgress` / `failure` / `unknown` |
 | `FailureDeduper` | 判断当前失败是否已经存在 | `FailureSignature`, existing signatures | `new` / `duplicate` |
-| `ComposerPolicy` | 判断当前 Composer 可执行动作 | `ThreadStatus`, `DraftText`, target ids | `ComposerAction` |
+| `ComposerPolicy` | 判断当前 Composer 目标状态 | `ThreadStatus`, target ids | `ComposerAction` |
 | `NoticeClassifier` | 判断错误进入 timeline 还是 page notice | parsed error with thread scope | `timelineFailure` / `pageNotice` |
 
 ### TimelineClassifier
@@ -385,15 +371,14 @@ interface ConversationRecoveryService {
 
 | 条件 | 输出 |
 | --- | --- |
-| `idle` + 非空 `DraftText` + 可靠 `ThreadId` | `send` |
-| `active` + 非空 `DraftText` + 可靠 `ThreadId` + `ExpectedTurnId` | `steer` |
-| `active` + 空 `DraftText` + reliable `ThreadId` + reliable active `TurnId` + confirmed | `interrupt` |
+| `idle` + 可靠 `ThreadId` | `idle` |
+| `active` + 可靠 `ThreadId` + `ExpectedTurnId` + active `TurnId` | `active` |
 | 其他 | `disabled(reason)` |
 
 约束：
 
-- 空文本不能 send / steer。
-- 不修改草稿。
+- 不读取或修改客户端草稿。
+- 空文本不能 send / steer，由 command request validation 处理。
 - 不调用 app-server。
 
 ### NoticeClassifier

@@ -38,7 +38,7 @@ _Avoid_: Timeline item、Page notice、Composer input
 ### My-Code-X 产品概念
 
 **Conversation**:
-当前选中 Codex `Thread` 的可读工作现场投影。产品语境中它主要指 timeline 阅读内容；领域实现中可包含 `ThreadRef`、`Timeline item[]` 和当前 `Thread` 的 `Composer draft`。
+当前选中 Codex `Thread` 的可读工作现场投影。领域实现中包含 `ThreadRef` 和 `Timeline item[]`，不包含 `Composer draft`。
 _Avoid_: Thread、页面、完整聊天工作区
 
 **ThreadRef**:
@@ -80,10 +80,10 @@ Codex app-server 对当前 `Thread` 发出的待用户处理反向请求。
 _Avoid_: Timeline item、全局弹窗、Client notice、Composer input
 
 **Composer**:
-Conversation View 中绑定当前 Codex `Thread` 的输入控制台。它维护当前 `Thread` 的草稿，并根据可靠目标状态触发 `turn/start`、`turn/steer` 或 `turn/interrupt`。
+Conversation View 中绑定当前 Codex `Thread` 的输入控制台。前端 Composer 按 `Thread` 维护本地草稿，并根据可靠目标状态触发 `turn/start`、`turn/steer` 或 `turn/interrupt`。
 
 **Composer draft**:
-Composer 按 Codex `Thread` 保存的用户输入草稿。请求被接受后清空对应 `Thread` 的已发送草稿；请求失败时保留草稿。
+前端按 Codex `Thread` 保存的用户输入草稿。Conversation View API 不保存或返回 draft；`send` / `steer` 通过 request body `text` 提交当前输入。
 _Avoid_: Timeline item、pending message、browser input state
 
 **My-Code-X Workspace**:
@@ -116,7 +116,7 @@ _Avoid_: raw notification handler、UI mapper、string parser
 - 一个 **My-Code-X Workspace** 的 canonical cwd 可以作为 Codex `thread/list` 的 `cwd` 参数，从而形成一个 **Codex cwd scope**。
 - 一个 **Thread list** 属于 Codex app-server 的查询结果，不属于 **My-Code-X Workspace** registry。
 - **Conversation View** 围绕当前选中的 Codex **Thread** 展示一个 **Conversation**。
-- 一个 **Conversation** 由 **ThreadRef**、**Timeline item** 列表和当前 **Composer draft** 组成。
+- 一个 **Conversation** 由 **ThreadRef** 和 **Timeline item** 列表组成；**Composer draft** 属于 **Conversation View** 的前端交互状态。
 - **Composer** 可以触发 **Thread action**，但不用于响应 **Pending interaction**。
 - Codex `turn/start`、`turn/steer` 和 `turn/interrupt` 是 **Composer** 触发的 **Thread action**。
 - 一个 **Conversation** 投影当前选中的一个 Codex **Thread**。
