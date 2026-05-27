@@ -1,8 +1,10 @@
 # Feature-Conversation View
 
-Conversation View 是 My-Code-X 的核心移动端工作界面。它让用户在手机上阅读当前 Codex 工作现场，理解 Codex 正在做什么，并继续输入、纠偏或处理中断后的状态。
+Conversation View 是 My-Code-X 的核心移动端工作界面。它让用户在手机上阅读当前 agent cli 的工作现场，理解 agent cli 正在做什么，并继续输入、纠偏或处理中断后的状态。
 
-Conversation View 不重新设计 Codex agent 能力。它的目标是把 Codex 的对话内容、工作过程、失败信息和其他可见信息，以适合手机阅读和操作的方式呈现出来。
+Conversation View 不重新设计 agent cli 能力。它的目标是把 agent cli 的对话内容、工作过程、失败信息和其他可见信息，以适合手机阅读和操作的方式呈现出来。
+
+本文档中 "agent cli" 是 My-Code-X 当前对接的 cli 形态 agent 的统称，包括 codex 和 claude code。相关产品决策默认适用于所有 agent cli。
 
 ## Feature Capabilities
 
@@ -12,8 +14,8 @@ Conversation View shell 是承载当前工作现场的主界面。它包含阅�
 
 Functional Requirements:
 
-- 页面展示当前选中 Codex `Thread` 的可读内容。
-- 页面按发生顺序展示用户和 Codex 之间产生的信息。
+- 页面展示当前选中 agent cli `Thread` 的可读内容。
+- 页面按发生顺序展示用户和 agent cli 之间产生的信息。
 - 页面支持没有选中 `Thread` 的状态。
 - 页面支持内容恢复中、内容为空、读取失败和内容可能不是最新的状态。
 - 页面支持在已有内容上继续接收新信息。
@@ -23,34 +25,35 @@ UX Decisions:
 
 - 页面主体采用单列垂直布局，适合手机阅读。
 - 顶部保留轻量上下文区域，让用户知道当前正在看哪个工作现场。
-- 顶部区域显示当前选中 Codex `Thread`的标题与所在目录。
+- 顶部区域显示当前选中 agent cli `Thread`的标题与所在目录。
 - 顶部区域两侧显示两个按钮（不实现实际意义，后续功能需要，UI提前设计）。
 - 底部保留输入区域，让用户可以随时继续当前工作。
-- 页面状态不应让用户误以为 Codex 已经失败，除非确实需要用户处理失败。
+- 页面状态不应让用户误以为 agent cli 已经失败，除非确实需要用户处理失败。
 - 已有内容可读时，新的同步、重连或状态提示应非阻塞展示。
-- 每轮对话的第一条用户消息和最后一条Codex消息下方都有工具栏，用于放置时间信息，复制按钮以及未来的扩展功能按钮。
+- 每轮对话的第一条用户消息和最后一条 agent cli 消息下方都有工具栏，用于放置时间信息，复制按钮以及未来的扩展功能按钮。
 - 用户可以复制对应的第一条用户输入原文。
-- 用户可以复制对应的的最后一条 Codex 回复原文。
+- 用户可以复制对应的的最后一条 agent cli 回复原文。
 - 正在恢复且没有可读内容时，页面展示恢复中相关提示。
 - 恢复成功但没有可展示内容时，页面展示无可展示内容相关提示。
 - 恢复失败且没有可读内容时，页面展示恢复失败相关提示。
 - 已有内容可读但正在同步、重连或无法确认最新时，页面保留原有内容并展示非阻塞提示。
-- 没有选中 Codex `Thread` 时，页面展示无选中相关提示（即app首屏信息）。
+- 没有选中 agent cli `Thread` 时，页面展示无选中相关提示（即app首屏信息）。
 - 页面状态帮助用户判断自己能否继续阅读、是否需要等待、是否可以重试。
 - my-code-x自身的同步中、重新连接或内容可能过期等提示使用banner形式的轻提示。
-- 所有用户输入信息与Codex信息，My-code-x不额外添加自创文案。一切解释性内容，如类型标签，错误message等，全部沿用Codex已有信息。
 
 ### Typed conversation information
 
-Conversation View 需要把用户接收到的信息分类型展示。不同信息对用户的意义不同：普通对话内容用于阅读，工作过程用于理解 Codex 正在做什么，失败信息用于排查和决策，未知信息用于保证新类型内容不丢失。
+Conversation View 需要把用户接收到的信息分类型展示。不同信息对用户的意义不同：普通对话内容用于阅读，工作过程用于理解 agent cli 正在做什么，失败信息用于排查和决策，未知信息用于保证新类型内容不丢失。
 
 Functional Requirements:
 
 - 页面至少区分以下四类信息：
-  - 普通对话内容：用户输入和 Codex 回复。
-  - 工作过程信息：工具调用、工具结果、文件变更、网页搜索等 Codex 工作痕迹。
-  - 失败信息：当前工作中发生，来自Codex的明确失败。
+  - 普通对话内容：用户输入和 agent cli 回复。
+  - 工作过程信息：工具调用、工具结果、文件变更、网页搜索等 agent cli 工作痕迹。
+  - 失败信息：当前工作中发生，来自 agent cli 的明确失败。
   - 未识别信息：My-Code-X 暂时不能专门理解，但仍应让用户看到的内容。
+- 信息**分类**由 My-Code-X 的 agent cli 适配层决定。同一类信息（如"工作过程"）在不同 agent cli 中可能对应不同的原生事件类型，统一映射到上述四类后交由 Conversation View 渲染。
+- 信息**展示文案**（类型标签、错误 message、状态文字等）一律沿用 agent cli 原生内容，My-Code-X 不重写、不翻译、不二次封装。同类信息在不同 agent cli 下展示不同原生标签是预期行为。
 - 不同类型的信息有清晰的视觉区分。
 - 信息类型不应只依赖文本内容猜测；用户看到的分类稳定、可解释。
 - 未识别信息不能被静默丢弃。
@@ -67,14 +70,14 @@ UX Decisions:
 
 ### Message reading
 
-Message reading 负责展示用户输入和 Codex 回复，让主对话内容在手机端清晰、可读、可复制。
+Message reading 负责展示用户输入和 agent cli 回复，让主对话内容在手机端清晰、可读、可复制。
 
 Functional Requirements:
 
 - 用户的文字输入作为普通对话内容展示。
-- Codex 的文字回复作为普通对话内容展示。
-- Codex 正在输出时，页面可以更新当前回复内容。
-- Codex 最终回复完成后，页面展示最终内容。
+- agent cli 的文字回复作为普通对话内容展示。
+- agent cli 正在输出时，页面可以更新当前回复内容。
+- agent cli 最终回复完成后，页面展示最终内容。
 - 普通文本内容支持 Markdown阅读。
 - 代码块可以正常展示。
 - 表格可以正常展示。
@@ -83,7 +86,7 @@ Functional Requirements:
 
 UX Decisions:
 
-- 用户输入和 Codex 回复需要视觉上可区分。
+- 用户输入和 agent cli 回复需要视觉上可区分。
 - Message 使用文本块布局，优先保证阅读舒适度。
 - Message 不展示调试字段。
 - 复制入口是次要操作，不应干扰正文阅读。
@@ -93,23 +96,22 @@ UX Decisions:
 
 ### Work progress reading
 
-Work progress reading 让用户理解 Codex 正在做什么。它覆盖工具调用、工具结果、文件变更、网页搜索等工作过程信息。
+Work progress reading 让用户理解 agent cli 正在做什么。它覆盖工具调用、工具结果、文件变更、网页搜索等工作过程信息。
 
 Functional Requirements:
 
-- Codex 工作过程中的重要痕迹可以展示。
+- agent cli 工作过程中的重要痕迹可以展示。
 - 工作过程信息能表达来源或大致类型，例如命令、工具、搜索、文件变更等。
 - 工作过程信息可以显示状态，例如进行中、完成、失败或其他上游提供的状态。
 - 复杂内容以安全、可读的形式展示。
 - 工作过程信息默认不为每种来源设计专门 UI。
 - 用户可以展开查看更详细内容。
 - 展开细节后，用户的浏览位置不应突然跳动。
-- 当前已知类型，并识别为Work progress reading的thread item[hookPrompt, reasoning, commandExecution, fileChange, mcpToolCall, dynamicToolCall, collabAgentToolCall, webSearch, imageView, imageGeneration, enteredReviewMode, exitedReviewMode, contextCompaction]
-- 当前已知类型，不作为Work progress reading的thread item[plan]
+- 被识别为 work progress 的具体 thread item 类型集合，由 My-Code-X 对该 agent cli 的适配层决定，不在本文档枚举。
 
 UX Decisions:
 
-- 摘要优先显示Codex 传递的类型和状态。
+- 摘要优先显示 agent cli 传递的类型和状态。
 - 详情区域使用通用字段或结构化内容展示。
 
 ### Unknown information fallback
@@ -133,15 +135,15 @@ UX Decisions:
 
 ### Failure reading
 
-Failure reading 让用户理解Codex在当前工作中哪里失败了、失败原因是什么。
+Failure reading 让用户理解 agent cli 在当前工作中哪里失败了、失败原因是什么。
 
 Functional Requirements:
 
-- Codex 工作过程中归属于Codex Thread的异常信息，展示为失败信息。
+- agent cli 工作过程中归属于 agent cli Thread的异常信息，展示为失败信息。
 - 这类失败信息保留在 timeline 中，以表达它发生在当前工作过程里的具体位置。
 - 失败信息展示用户可理解的失败原因。
 - 如果同一个失败被上游重复报告，页面不应明显重复干扰用户。
-- 失败信息不应伪装成 Codex 普通回复。
+- 失败信息不应伪装成 agent cli 普通回复。
 - 失败信息不默认折叠。
 - 失败信息不需要为每种错误类型设计专门 UI。
 
@@ -150,7 +152,7 @@ UX Decisions:
 - 失败信息使用明确错误样式。
 - 失败信息优先展示错误 message。
 - 失败信息可以使用通用字段展示排查信息。
-- 失败信息与普通 Codex 输出明显区分。
+- 失败信息与普通 agent cli 输出明显区分。
 
 ### Conversation View notice
 
@@ -158,7 +160,7 @@ Conversation View notice 用于展示不适合放入 timeline 的提示、错误
 
 Functional Requirements:
 
-- 无法归属到具体Thread的Codex错误，或My-Code-X自身错误，作为页面提示展示。
+- 无法归属到具体Thread的 agent cli 错误，或My-Code-X自身错误，作为页面提示展示。
 
 UX Decisions:
 
@@ -168,11 +170,11 @@ UX Decisions:
 
 ### Live update
 
-Live update 让用户在 Codex 工作进行中持续看到新内容，并保持手机端阅读稳定。
+Live update 让用户在 agent cli 工作进行中持续看到新内容，并保持手机端阅读稳定。
 
 Functional Requirements:
 
-- Codex 工作期间，页面持续接收并展示新的信息。
+- agent cli 工作期间，页面持续接收并展示新的信息。
 - 已有信息可以被后续进展更新。
 - 更新过程中，已有信息的顺序应保持稳定。
 - 正在生成的内容应能表现为进行中状态。
@@ -190,18 +192,19 @@ UX Decisions:
 
 ### Composer
 
-Composer 是 Conversation View 底部的用户输入区域。它让用户继续当前 Codex 工作、补充上下文、或在需要时中断当前工作。
+Composer 是 Conversation View 底部的用户输入区域。它让用户继续当前 agent cli 工作、补充上下文、或在需要时中断当前工作。
 
 Functional Requirements:
 
-- Composer 绑定当前选中的 Codex `Thread`。
+- Composer 绑定当前选中的 agent cli `Thread`。
 - Composer 在前端按当前 `Thread` 保存输入草稿。
 - 用户可以输入多行文本。
 - 空文本不能发送。
 - 当前可以继续输入时，用户可以发送普通输入
 - 发送请求携带当前输入原文，不对用户原始输入进行任何删改。
-- 当前 Codex 正在工作时，用户可以发送补充指令信息。
-- 当前 Codex 正在工作时，用户可以中断当前工作。
+- 当前 agent cli 正在工作时，用户可以发送补充指令信息。
+- 当前 agent cli 正在工作时，用户可以中断当前工作。
+- Composer 的具体可用动作取决于当前 agent cli 是否支持。不支持的动作在 UI 上以禁用或隐藏方式自然降级，My-Code-X 不模拟该动作。
 - 发送请求被接受后，Composer 清空当前 `Thread` 的已发送草稿。
 - 发送请求失败时，Composer 保持当前 `Thread` 的原草稿不变。
 - 发送失败、连接异常或输入暂时不可用时，页面展示非阻塞错误提示。
@@ -216,16 +219,18 @@ UX Decisions:
 - 输入框默认低高度，随内容增长到最大高度。
 - 超过最大高度后，输入框内部滚动。
 - 主操作按钮固定在 Composer 右侧，保持单手可达。
-- 主操作按钮根据 Codex 状态和当前输入内容切换功能与样式。
-- 具体来说，Codex空闲时，按钮为发送；Codex工作时，若用户无输入内容，则按钮为中断，Codex工作时，若用户有输入内容，则按钮为追加。
+- 主操作按钮根据 agent cli 状态和当前输入内容切换功能与样式。
+- 目标行为：agent cli 空闲时，按钮为发送；agent cli 工作时，若用户无输入内容，则按钮为中断；agent cli 工作时，若用户有输入内容，则按钮为追加。各 agent cli 适配层尽量对齐此目标，不支持的动作以禁用或隐藏方式自然降级。
 
 ## Out of Scope
 
-- Codex agent 能力重设计。
+- agent cli 能力重设计。
 - `Pending interaction` 的完整处理流程。
-- codex `plan` 的处理逻辑。
+- agent cli 中 codex 的 `plan` 的处理。
 - 历史恢复的数据权威来源设计。
 - 文件引用点击后的完整文件浏览能力。
+- agent cli 的选择与切换。
+- 不同 agent cli 之间展示文案的统一规则（各自沿用原生文案，差异是预期行为）。
 
 ## Future Plans
 
