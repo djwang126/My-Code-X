@@ -43,7 +43,7 @@
 - `My-Code-X` 自身的同步中、重新连接或内容可能过期等提示使用 banner 形式的轻提示。
 - 初次打开对话时，页面定位到底部（最新内容）。
 
-### Typed conversation information
+### 不同类型的 conversation information
 
 `Conversation View` 需要把用户接收到的信息分类型展示。不同信息对用户的意义不同：普通对话内容用于阅读，工作过程用于理解 `agent cli` 正在做什么，失败信息用于排查和决策，未知信息用于保证新类型内容不丢失。
 

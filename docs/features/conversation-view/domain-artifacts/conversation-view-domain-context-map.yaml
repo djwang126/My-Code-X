@@ -1,0 +1,94 @@
+context-map:
+  project: conversation-view
+  version: final
+
+contexts:
+  - name: ConversationReading
+    type: core
+    owner: conversation-view-team
+    description: Owns conversation content lifecycle — selection, restore, ordered display, and classification of incoming information into the four canonical types (normal reply, work progress, failure, unrecognized). Hosts AgentCLIInboundACL and TurnCompletionPolicy.
+  - name: Composer
+    type: core
+    owner: conversation-view-team
+    description: Owns user input — draft persistence per conversation, send / supplement / interrupt actions, send-failure handling, and availability state coordinated with conversation restore status.
+  - name: Notice
+    type: supporting
+    owner: conversation-view-team
+    description: Owns page-level non-message banner prompts — lifecycle of transient and persistent notices, stacking limits, and resolution rules.
+  - name: AgentCLI
+    type: generic
+    owner: external
+    description: External CLI agent (codex / claude code) producing heterogeneous native events for replies, work progress, failures, and unrecognized information. ACL'd at the inbound boundary.
+  - name: LiveConnection
+    type: generic
+    owner: external
+    description: Real-time channel between My-Code-X frontend and its backend. Surfaces connect / disconnect / reconnect signals. Backend-to-AgentCLI health is absorbed by ConversationReading sync state and is not modeled here.
+
+relationships:
+  - upstream: AgentCLI
+    downstream: ConversationReading
+    type: conformist
+    integration: acl
+    async: true
+    events: [AgentReplyStarted, AgentReplyCompleted, WorkProgressReceived, WorkProgressStatusChanged, FailureReported, DuplicateFailureReported, UnrecognizedInformationReceived, UserMessageReceived, TurnCompletionSignal]
+    translation: |
+      heterogeneous agent-cli native event types → four canonical information categories (normal reply / work progress / failure / unrecognized);
+      TurnCompletion signal isolated and routed to TurnCompletionPolicy;
+      unmappable events routed to Unrecognized with raw payload preserved;
+      connection-level metadata dropped.
+    rationale: Different agent CLIs (codex vs claude code) emit structurally and semantically different native events for the same conceptual category. Without an ACL, every new agent CLI would distort ConversationReading's internal model. The ACL preserves the four-category invariant defined in the product spec.
+
+  - upstream: AgentCLI
+    downstream: Composer
+    type: conformist
+    integration: published-language
+    async: false
+    rationale: Composer reads agent working state (idle / working) and per-agent action support (send / supplement / interrupt) directly. The semantics are simple and stable; an ACL would add cost without protecting any concept. Unsupported actions degrade naturally per product spec — Composer never simulates unsupported behavior.
+
+  - upstream: LiveConnection
+    downstream: ConversationReading
+    type: conformist
+    integration: published-language
+    async: true
+    events: [LiveConnectionLost, LiveConnectionReconnected]
+    rationale: Connection state semantics (connected / disconnected) are minimal and stable. ConversationReading reacts by entering sync / restore states but does not need to translate the concept.
+
+  - upstream: LiveConnection
+    downstream: Composer
+    type: conformist
+    integration: published-language
+    async: true
+    events: [LiveConnectionLost, LiveConnectionReconnected]
+    rationale: Composer disables sending when the connection is unavailable per product spec line 215. The mapping is direct; no translation needed.
+
+  - upstream: LiveConnection
+    downstream: Notice
+    type: conformist
+    integration: published-language
+    async: true
+    events: [LiveConnectionLost, LiveConnectionReconnected]
+    rationale: Persistent notices for "syncing / reconnecting / content may be stale" are driven directly by connection state per product spec line 43, 172.
+
+  - upstream: Composer
+    downstream: Notice
+    type: customer-supplier
+    integration: published-language
+    async: true
+    events: [SendFailed]
+    rationale: SendFailed surfaces as a transient notice (product spec line 172, 214). Notice is a downstream consumer of Composer events; Composer's model is not shaped by Notice's needs.
+
+  - upstream: ConversationReading
+    downstream: Notice
+    type: customer-supplier
+    integration: published-language
+    async: true
+    events: [ConversationContentRestoreFailed]
+    rationale: Restore failure with no readable content surfaces as a notice or in-page state per product spec line 39. Notice consumes the event without altering ConversationReading's model.
+
+  - upstream: ConversationReading
+    downstream: Composer
+    type: customer-supplier
+    integration: published-language
+    async: true
+    events: [ConversationSelected, ConversationContentRestoreSucceeded, ConversationContentRestoreFailed]
+    rationale: Composer binds to the currently selected conversation per product spec line 203, and its availability depends on conversation content state (Restoring / RestoreFailed / Live / Empty). Composer reads Conversation state read-only to decide its own availability; ownership of selection and restore state lives in ConversationReading.
