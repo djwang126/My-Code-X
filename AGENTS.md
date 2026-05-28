@@ -11,9 +11,8 @@ Goal: An interactive mobile experience that is better than the Codex TUI experie
 ## Cowork Rule
 
 When investigating workspace, 先理解文件目录，再定向阅读。不要暴力搜全局
-It's my personal & monorepo project so breaking changes are acceptable
+It's my personal \& monorepo project so breaking changes are acceptable
 Main development is on Windows but the project should work cross-platform(Linux, macOS)
-Context glossary at [CONTEXT.md](./CONTEXT.md)
 
 ## Product Rule
 
