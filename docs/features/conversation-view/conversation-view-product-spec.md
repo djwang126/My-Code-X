@@ -1,6 +1,6 @@
 # Feature-Conversation View
 
-Conversation View 是 My-Code-X 的核心移动端工作界面。它让用户在手机上阅读当前 agent cli 的工作现场，理解 agent cli 正在做什么，并继续输入、纠偏或处理中断后继续工作。
+Conversation View 是 My-Code-X 的核心移动端工作界面。它让用户在手机上阅读当前 agent cli 的对话，理解 agent cli 正在做什么，并继续输入或中断后继续工作。
 
 Conversation View 不重新设计 agent cli 能力。它的目标是把 agent cli 的对话内容、工作过程、失败信息和其他可见信息，以适合手机阅读和操作的方式呈现出来。
 
@@ -10,38 +10,38 @@ Conversation View 不重新设计 agent cli 能力。它的目标是把 agent cl
 
 ### Conversation View shell
 
-Conversation View shell 是承载当前工作现场的主界面。它包含阅读区域、当前上下文提示、页面状态和底部输入区域。
+Conversation View shell 是承载当前对话的主界面。它包含阅读区域、当前上下文提示、页面状态和底部输入区域。
 
 Functional Requirements:
 
-- 页面展示当前选中 agent cli `Thread` 的可读内容。
+- 页面展示当前选中对话的可读内容。
 - 页面按发生顺序展示用户和 agent cli 之间产生的信息。
-- 页面支持没有选中 `Thread` 的状态。
+- 页面支持没有选中对话的状态。
 - 页面支持内容恢复中、内容为空、读取失败和内容可能不是最新的状态。
 - 页面支持在已有内容上继续接收新信息。
-- 页面在阅读区域外展示不适合插入 timeline 的提示或错误。
+- 页面在阅读区域外展示不适合插入 消息列表 的提示或错误。
 
 UX Decisions:
 
 - 页面主体采用单列垂直布局，适合手机阅读。
-- 顶部保留轻量上下文区域，让用户知道当前正在看哪个工作现场。
-- 顶部区域显示当前选中 agent cli `Thread`的标题与所在目录。标题或目录字段缺失时，各字段独立降级，缺失的字段不展示，不使用占位文案替代。
+- 顶部保留轻量上下文区域，让用户知道当前正在看哪个对话。
+- 顶部区域显示当前选中对话的标题与所在目录。标题或目录字段缺失时，各字段独立降级，缺失的字段不展示，不使用占位文案替代。
 - 顶部区域两侧显示两个按钮（占位按钮，供后续功能扩展使用）。
 - 底部保留输入区域，让用户可以随时继续当前工作。
 - 页面状态不应让用户误以为 agent cli 已经失败，除非确实需要用户处理失败。
 - 已有内容可读时，新的同步、重连或状态提示应非阻塞展示。
-- 每轮对话的第一条用户消息和最后一条 agent cli 消息下方都有工具栏，用于放置时间信息、复制按钮以及未来的扩展功能按钮。"一轮"的边界由当前 agent cli 的 response unit 定义，由适配层标记轮次起止。工具栏在该轮 response unit 完成后才显示，进行中的轮次不显示工具栏。
+- 每轮对话的第一条用户消息和最后一条 agent cli 消息下方都有工具栏，用于放置时间信息、复制按钮以及未来的扩展功能按钮。"一轮"指用户发出一条输入到 agent cli 完成回复之间的完整交互。工具栏在该轮交互完成后才显示，进行中的轮次不显示工具栏。
 - 工具栏中的时间信息使用绝对时间格式。
-- 通过工具栏复制按钮，可复制该轮第一条用户输入的 Markdown 源码。
-- 通过工具栏复制按钮，可复制该轮最后一条 agent cli 回复的 Markdown 源码。
+- 通过工具栏复制按钮，可复制该轮第一条用户输入的 Markdown 原文。
+- 通过工具栏复制按钮，可复制该轮最后一条 agent cli 回复的 Markdown 原文。
 - 正在恢复且没有可读内容时，页面展示恢复中相关提示。
 - 恢复成功但没有可展示内容时，页面展示无可展示内容相关提示。
 - 恢复失败且没有可读内容时，页面展示恢复失败相关提示。
 - 已有内容可读但正在同步、重连或无法确认最新时，页面保留原有内容并展示非阻塞提示。
-- 没有选中 agent cli `Thread` 时，页面展示无选中相关提示（即app首屏信息）。
+- 没有选中对话时，页面展示无选中相关提示（即app首屏信息）。
 - 页面状态帮助用户判断自己能否继续阅读、是否需要等待、是否可以重试。
 - my-code-x自身的同步中、重新连接或内容可能过期等提示使用banner形式的轻提示。
-- 初次打开 thread 时，页面定位到底部（最新内容）。
+- 初次打开对话时，页面定位到底部（最新内容）。
 
 ### Typed conversation information
 
@@ -51,10 +51,10 @@ Functional Requirements:
 
 - 页面至少区分以下四类信息：
   - 普通对话内容：用户输入和 agent cli 回复。
-  - 工作过程信息：工具调用、工具结果、文件变更、网页搜索等 agent cli 工作痕迹。
+  - 工作过程信息：reasoning、工具调用、工具结果、文件变更、网页搜索等 agent cli 工作痕迹。
   - 失败信息：当前工作中发生，来自 agent cli 的明确失败。
   - 未识别信息：My-Code-X 暂时不能专门理解，但仍应让用户看到的内容。
-- 信息**分类**由 My-Code-X 的 agent cli 适配层决定。同一类信息（如"工作过程"）在不同 agent cli 中可能对应不同的原生事件类型，统一映射到上述四类后交由 Conversation View 渲染。
+- 同一类信息（如"工作过程"）在不同 agent cli 中可能对应不同的原生事件类型，统一映射到上述四类后交由 Conversation View 渲染。
 - 信息**展示文案**（类型标签、错误 message、状态文字等）一律沿用 agent cli 原生内容，My-Code-X 不重写、不翻译、不封装。同类信息在不同 agent cli 下展示不同原生标签是预期行为。
 - 不同类型的信息有清晰的视觉区分。
 - 信息类型不应只依赖文本内容猜测；用户看到的分类稳定、可解释。
@@ -63,8 +63,7 @@ Functional Requirements:
 
 UX Decisions:
 
-- 普通对话内容是 timeline 的最高阅读优先级。
-- 工作过程与未知信息默认紧凑展示，可展开查看细节。
+- 工作过程与未知信息默认折叠展示，可展开查看细节。
 - 未识别信息使用轻微提醒样式，表达“可排查但不一定是错误”。
 - 普通对话内容和失败信息直接展开展示，不具备折叠能力。
 - 类型样式应帮助用户快速扫读，而不是增加调试噪音。
@@ -110,13 +109,13 @@ Functional Requirements:
 - 工作过程信息默认不为每种来源设计专门 UI。
 - 用户可以展开查看更详细内容。
 - 展开细节后，用户的浏览位置不应突然跳动。
-- 被识别为 work progress 的具体 thread item 类型集合，由 My-Code-X 对该 agent cli 的适配层决定，不在本文档枚举。
+- 被识别为 work progress 的具体消息类型集合，由 My-Code-X 对该 agent cli 的对接逻辑决定，不在本文档枚举。
 
 UX Decisions:
 
 - 摘要优先显示 agent cli 传递的类型和状态。
 - 详情区域使用通用字段或结构化内容展示。
-- 展开状态在 session 内持久；用户主动展开的条目不因 live update 或滚动而自动折叠。
+- 展开状态在对话打开期间持久；用户主动展开的条目不因 live update 或滚动而自动折叠。
 
 ### Unknown information fallback
 
@@ -143,8 +142,8 @@ Failure reading 让用户理解 agent cli 在当前工作中哪里失败了、�
 
 Functional Requirements:
 
-- 在 agent cli Thread 内发生的异常信息，展示为失败信息。
-- 这类失败信息保留在 timeline 中，以保留其在工作过程中的发生位置。
+- 在 agent cli 对话内发生的异常信息，展示为失败信息。
+- 这类失败信息保留在消息列表中，以保留其在工作过程中的发生位置。
 - 失败信息展示用户可理解的失败原因。
 - 如果同一个失败被上游重复报告，页面不应明显重复干扰用户。
 - 失败信息不应伪装成 agent cli 普通回复。
@@ -157,15 +156,15 @@ UX Decisions:
 - 失败信息优先展示错误 message。
 - 失败信息可以使用通用字段展示排查信息。
 - 失败信息与普通 agent cli 输出明显区分。
-- 同一失败被重复上报时，折叠为一条展示并标注重复次数，不在 timeline 中重复插入。
+- 同一失败被重复上报时，折叠为一条展示并标注重复次数，不在消息列表中重复插入。
 
 ### Conversation View notice
 
-Conversation View notice 用于展示不适合放入 timeline 的提示、错误或警告。
+Conversation View notice 用于展示不适合放入消息列表的提示、错误或警告。
 
 Functional Requirements:
 
-- 无法归属到具体Thread的 agent cli 错误，或My-Code-X自身错误，作为页面提示展示。
+- 无法归属到具体对话的 agent cli 错误，或My-Code-X自身错误，作为页面提示展示。
 
 UX Decisions:
 
@@ -189,7 +188,7 @@ Functional Requirements:
 
 UX Decisions:
 
-- 新内容进入 timeline 时，应尽量保持用户当前阅读位置稳定。
+- 新内容进入消息列表时，应尽量保持用户当前阅读位置稳定。
 - 如果用户正在查看旧内容，新内容不应强制把用户拉到底部。
 - 如果用户已经在底部阅读，页面可以自然跟随新内容。
 - 当前进行中的信息可以使用轻量动态状态。
@@ -201,8 +200,8 @@ Composer 是 Conversation View 底部的用户输入区域。它让用户继续�
 
 Functional Requirements:
 
-- Composer 绑定当前选中的 agent cli `Thread`。
-- Composer 在前端按当前 `Thread` 保存输入草稿。
+- Composer 绑定当前选中的对话。
+- Composer 按当前对话保存输入草稿。
 - 用户可以输入多行文本。
 - 空文本不能发送。
 - 当前可以继续输入时，用户可以发送普通输入
@@ -210,28 +209,28 @@ Functional Requirements:
 - 当前 agent cli 正在工作时，用户可以发送补充指令信息。
 - 当前 agent cli 正在工作时，用户可以中断当前工作。
 - Composer 的具体可用动作取决于当前 agent cli 是否支持。不支持的动作在 UI 上以禁用或隐藏方式自然降级，My-Code-X 不模拟该动作。
-- 发送请求被接受后，Composer 清空当前 `Thread` 的输入草稿。
-- 发送请求失败时，Composer 保持当前 `Thread` 的原草稿不变。
+- 发送请求被接受后，Composer 清空当前对话的输入草稿。
+- 发送请求失败时，Composer 保持当前对话的原草稿不变。
 - 发送失败、连接异常或输入暂时不可用时，页面展示非阻塞错误提示。
-- 当前没有选中 `Thread`、内容正在恢复、连接不可用或目标状态不明确时，Composer 保留当前 `Thread` 的草稿但禁用发送。
-- Composer 不把未被确认的输入伪装成已经进入 timeline 的正式内容。
+- 当前没有选中对话、内容正在恢复、连接不可用或目标状态不明确时，Composer 保留当前对话的草稿但禁用发送。
+- Composer 不把未被确认的输入伪装成已经进入 消息列表 的正式内容。
 - 中断当前工作是高影响动作，需要防误触处理。
 
 UX Decisions:
 
-- Composer 适配移动端 safe area 和软键盘。
+- Composer 适配移动端屏幕边界和软键盘。
 - Composer 使用移动端友好的多行输入框。
 - 输入框默认低高度，随内容增长到最大高度。
 - 超过最大高度后，输入框内部滚动。
 - 主操作按钮固定在 Composer 右侧，保持单手可达。
 - 主操作按钮根据 agent cli 状态和当前输入内容切换功能与样式。
-- 目标行为：agent cli 空闲时，按钮为发送；agent cli 工作时，若用户无输入内容，则按钮为中断；agent cli 工作时，若用户有输入内容，则按钮为追加。各 agent cli 适配层尽量对齐此目标，不支持的动作以禁用或隐藏方式自然降级。
+- 目标行为：agent cli 空闲时，按钮为发送；agent cli 工作时，若用户无输入内容，则按钮为中断；agent cli 工作时，若用户有输入内容，则按钮为追加。各 agent cli 尽量对齐此目标，不支持的动作以禁用或隐藏方式自然降级。
 - 中断操作使用 modal 确认；点击中断按钮后弹出确认 modal，用户二次确认后才执行中断。
 
 ## Out of Scope
 
 - agent cli 能力重设计。
-- `Pending interaction` 的处理与展示（timeline 中暂不展示任何 pending interaction 内容）。
+- `Pending interaction` 的处理与展示（消息列表 中暂不展示任何 pending interaction 内容）。
 - agent cli 中 codex 的 `plan` 的处理。
 - 历史恢复的数据权威来源设计。
 - 文件引用点击后的完整文件浏览能力。
