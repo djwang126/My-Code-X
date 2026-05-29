@@ -24,7 +24,7 @@ My-Code-X aims for a better user experience by providing extra utilities and use
 ## Core Code Principles
 
 * YAGNI
-* Go style / Rob pike-style simplicity
+* Rob pike-style simplicity
 * Unix philosophy
 * Hexagonal Architecture
 * separation of concerns

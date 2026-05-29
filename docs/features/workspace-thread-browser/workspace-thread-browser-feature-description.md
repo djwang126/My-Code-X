@@ -1,6 +1,6 @@
 # Feature-Workspace Thread Browser
 
-`Workspace Thread Browser` 让用户在手机端按 `My-Code-X Workspace` 查看、切换、整理和恢复 Codex `Thread`。它以 Workspace 为一级入口，在不引入独立 Active work 对象的前提下，帮助用户在 long-running `Turn` 等待期间继续处理其他工作，并快速找回需要关注的 `Thread`。
+`Workspace Thread Browser` 让用户在手机端按 `My-Code-X Workspace` 查看、切换、整理和恢复 agent CLI `Thread`。它以 Workspace 为一级入口，在不引入独立 Active work 对象的前提下，帮助用户在 long-running `Turn` 等待期间继续处理其他工作，并快速找回需要关注的 `Thread`。
 
 ## Feature Capabilities
 
