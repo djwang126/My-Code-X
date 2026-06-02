@@ -2,6 +2,10 @@
 
 `Conversation View` 让产品用户通过移动端友好的界面阅读当前 `agent cli` 对话、理解工作过程、继续输入、追加指令或中断当前工作。
 
+`Conversation View` 不重新设计 `agent cli` 能力。它的目标是把 `agent cli` 的对话内容、工作过程、失败信息和其他可见信息，以适合手机阅读和操作的方式呈现出来。
+
+`agent cli` 是 `My-Code-X` 当前对接的 cli 形态 agent 的统称，包括但不限于 codex 和 claude code。相关产品决策默认适用于所有 `agent cli`。
+
 本文档描述 `Conversation View` 自身的可验收行为。选中对话、取消选中对话、`agent cli` 切换、具体 `agent cli` 原生事件解析规则由其他功能或 adapter 提供。
 
 ## 背景
@@ -20,6 +24,8 @@
 四类信息分类不是用户可见文案。用户可见的 type、status、message 和错误内容默认沿用 `agent cli` 原生内容。只有当失败信息没有可展示 message 时，最终兜底文案可以使用 `Unknown error`。
 
 `turn` 边界由当前 `agent cli` 提供的 turn 相关信息决定。`Conversation View` 不自行推断 turn 边界。
+
+UI标准由 UImock 提供，UImock 只体现界面样式与布局，不代表任何代码设计、领域定义或实现细节。[conversation-view-UImock.html](./conversation-view-UImock.html)：
 
 ## Conversation View Shell
 
@@ -115,8 +121,7 @@ And 当前选中对话收到 `agent cli` 回复
 When 页面渲染消息列表
 Then 产品用户输入作为普通对话内容展示
 And `agent cli` 回复作为普通对话内容展示
-And 普通对话内容不默认折叠
-And 普通对话内容不展示调试字段
+And 普通对话内容不可折叠
 
 ### Scenario: 工作过程信息默认折叠
 
@@ -377,6 +382,15 @@ Then Composer 为对话 B 保存 `draft B`
 
 When 外部功能把当前选中对话切换回对话 A
 Then Composer 恢复展示对话 A 的 `draft A`
+
+### Scenario: Composer 支持多行输入
+
+Given 当前选中对话可以继续输入
+When 产品用户在 Composer 中输入多行文本
+Then Composer 保留产品用户输入中的换行
+And Composer 使用多行输入框展示该输入
+And 输入框随内容增长到最大高度
+And 输入超过最大高度后，输入框内部滚动
 
 ### Scenario: 空文本不能发送
 
