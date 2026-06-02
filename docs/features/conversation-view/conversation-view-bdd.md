@@ -6,7 +6,7 @@
 
 `agent cli` 是 `My-Code-X` 当前对接的 cli 形态 agent 的统称，包括但不限于 codex 和 claude code。相关产品决策默认适用于所有 `agent cli`。
 
-本文档描述 `Conversation View` 自身的可验收行为。选中对话、取消选中对话、`agent cli` 切换、具体 `agent cli` 原生事件解析规则由其他功能或 adapter 提供。
+本文档描述 `Conversation View` 自身的可验收行为。选中对话、取消选中对话、`agent cli` 切换由其他功能提供。
 
 ## 背景
 
@@ -22,6 +22,10 @@
 - 未识别信息
 
 四类信息分类不是用户可见文案。用户可见的 type、status、message 和错误内容默认沿用 `agent cli` 原生内容。只有当失败信息没有可展示 message 时，最终兜底文案可以使用 `Unknown error`。
+
+具体 native type 到工作过程信息的对应关系在各 `agent cli` 接入时确定，主要包含 reasoning，文件修改，命令运行等
+
+未识别信息只用于 `agent cli` 提供的不能安全归类的信息，不仅因为某个 `agent cli` native type 没有专门展示规则，就把该信息归为未识别信息。
 
 `turn` 边界由当前 `agent cli` 提供的 turn 相关信息决定。`Conversation View` 不自行推断 turn 边界。
 
@@ -125,7 +129,7 @@ And 普通对话内容不可折叠
 
 ### Scenario: 工作过程信息默认折叠
 
-Given 当前选中对话收到被 adapter 映射为工作过程的信息
+Given 当前选中对话收到类型为工作过程的信息
 And 该信息包含 `agent cli` 原生 type
 And 该信息包含 `agent cli` 原生 status
 When 页面渲染消息列表
@@ -136,7 +140,7 @@ And 产品用户可以展开查看详细内容
 
 ### Scenario: 工作过程信息缺少原生 type 或 status 时降级展示
 
-Given 当前选中对话收到被 adapter 映射为工作过程的信息
+Given 当前选中对话收到类型为工作过程的信息
 And 该信息缺少原生 type 或原生 status
 When 页面渲染消息列表
 Then 摘要展示可用字段
@@ -158,9 +162,22 @@ Then 该工作过程信息保持展开
 When 产品用户滚动消息列表后回到该工作过程信息
 Then 该工作过程信息仍保持展开
 
+When 页面刷新后恢复同一对话
+Then 该工作过程信息仍保持展开
+
+When app 断线重连后恢复同一对话
+Then 该工作过程信息仍保持展开
+
+### Scenario: 切换对话后不保留工作过程展开状态
+
+Given 产品用户在对话 A 中已展开一条工作过程信息
+When 外部功能把当前选中对话切换为对话 B
+And 外部功能把当前选中对话切换回对话 A
+Then 对话 A 中该工作过程信息恢复为默认折叠状态
+
 ### Scenario: 未识别信息不丢失
 
-Given 当前选中对话收到 adapter 暂时不能专门理解的信息
+Given 当前选中对话收到 `agent cli` 不能安全归类的信息
 When 页面渲染消息列表
 Then 页面展示该未识别信息
 And 该信息不被当作失败信息展示
@@ -381,7 +398,7 @@ Then 多个 banner 垂直堆叠展示
 
 ## Composer
 
-### Scenario: Composer 按对话保存 draft
+### Scenario: Composer 在本地客户端按对话保存 draft
 
 Given 当前选中对话为对话 A
 When 产品用户在 Composer 中输入文本 `draft A`
@@ -393,6 +410,9 @@ Then Composer 为对话 B 保存 `draft B`
 
 When 外部功能把当前选中对话切换回对话 A
 Then Composer 恢复展示对话 A 的 `draft A`
+
+When 产品用户在另一个客户端中打开对话 A
+Then Composer 不恢复前一个客户端的 `draft A`
 
 ### Scenario: Composer 支持多行输入
 
@@ -426,9 +446,9 @@ And Composer 在等待发送结果期间禁用重复发送
 Given 当前选中对话可以继续输入
 And Composer 中有产品用户输入原文
 When 产品用户发送普通输入
-And 发送请求被接受
+And 发送请求被 `agent cli` 接受
 Then Composer 清空当前对话 draft
-And Composer 不把未被确认的输入伪装成已经进入消息列表的正式内容
+And Composer 不把任何信息作为消息列表的正式内容
 
 ### Scenario: 发送请求失败时保留当前对话 draft
 
@@ -505,16 +525,15 @@ And 两端展示内容一致
 
 Given 产品用户在设备 A 和设备 B 同时打开同一个对话
 When 产品用户在设备 A 发送普通输入
-And 发送请求被接受
+And 发送请求被 `agent cli` 接受
 Then 设备 A 通过 live update 看到该输入进入消息列表
 And 设备 B 通过 live update 看到该输入进入消息列表
 
-### Scenario: draft 不跨连接同步
+### Scenario: draft 不跨客户端同步
 
 Given 产品用户在设备 A 的 Composer 中输入 `draft text`
 When 产品用户在设备 B 打开同一个对话
 Then 设备 B 的 Composer 为空
-And 设备 A 的 draft 不受设备 B 连接影响
 
 ### Scenario: 重连时恢复对话内容而非其他连接的操作状态
 
