@@ -134,6 +134,14 @@ And 摘要优先展示原生 type 和原生 status
 And 该信息默认折叠
 And 产品用户可以展开查看详细内容
 
+### Scenario: 工作过程信息缺少原生 type 或 status 时降级展示
+
+Given 当前选中对话收到被 adapter 映射为工作过程的信息
+And 该信息缺少原生 type 或原生 status
+When 页面渲染消息列表
+Then 摘要展示可用字段
+And 缺失字段不使用占位文案
+
 ### Scenario: 展开工作过程详情时阅读位置稳定
 
 Given 产品用户正在查看消息列表中的一条工作过程信息
@@ -261,7 +269,8 @@ And 该 turn 包含至少一条 `agent cli` 回复
 When 页面渲染该 turn
 Then 页面在该 turn 第一条产品用户消息下方展示工具栏
 And 页面在该 turn 最后一条 `agent cli` 消息下方展示工具栏
-And 工具栏展示绝对时间
+And 用户消息工具栏展示该 turn 用户输入时间
+And agent 消息工具栏展示该 turn 最后回复完成时间
 
 ### Scenario: 进行中的 turn 展示工具栏
 
@@ -284,11 +293,13 @@ And 该 turn 的最后一条 `agent cli` 回复包含 Markdown 原文
 When 产品用户点击该 `agent cli` 消息工具栏中的复制按钮
 Then 页面复制该 turn 最后一条 `agent cli` 回复的 Markdown 原文
 
-### Scenario: 进行中的 turn 不展示工具栏
+### Scenario: 进行中的 turn 不展示 agent 回复侧工具栏
 
 Given 当前 `agent cli` 提供一个进行中的 turn
+And 该 turn 的 `agent cli` 回复尚未完成
 When 页面渲染该 turn
-Then 页面不展示该 turn 的 turn 工具栏
+Then 页面不在 agent 回复下方展示工具栏
+And 页面在该 turn 第一条产品用户消息下方仍展示工具栏
 
 ## Live Update
 
@@ -408,6 +419,7 @@ When 产品用户点击主操作按钮
 Then Composer 发送普通输入请求
 And 发送请求携带当前输入原文
 And 发送请求不删改产品用户原始输入
+And Composer 在等待发送结果期间禁用重复发送
 
 ### Scenario: 发送请求被接受后清空当前对话 draft
 
@@ -436,6 +448,7 @@ When 产品用户点击主操作按钮
 Then Composer 发送补充指令请求
 And 发送请求携带当前输入原文
 And 发送请求不删改产品用户原始输入
+And Composer 在等待发送结果期间禁用重复发送
 
 ### Scenario: 工作中无输入时中断当前工作
 
@@ -447,6 +460,11 @@ Then 页面展示中断确认 modal
 
 When 产品用户在 modal 中二次确认
 Then Composer 发送中断当前工作请求
+
+When 产品用户在 modal 中取消
+Then 页面关闭 modal
+And Composer 状态不变
+And 不发送中断请求
 
 ### Scenario: 不支持的 Composer 动作自然降级
 
@@ -470,6 +488,120 @@ Given 当前没有选中对话
 When 产品用户查看 Composer
 Then Composer 显示但发送禁用
 And Composer 不绑定任何对话 draft
+
+## Multiple Connections
+
+多个前端实例（不同设备、不同 tab）可以同时连接同一个后端。所有连接对等，不引入会话独占或"活跃设备"概念。
+
+### Scenario: 多个前端同时接收 live update
+
+Given 产品用户在设备 A 和设备 B 同时打开同一个对话
+And 当前选中对话正在工作
+When 页面收到新的对话信息
+Then 设备 A 和设备 B 都收到该 live update
+And 两端展示内容一致
+
+### Scenario: 任一前端发送成功后所有连接可见
+
+Given 产品用户在设备 A 和设备 B 同时打开同一个对话
+When 产品用户在设备 A 发送普通输入
+And 发送请求被接受
+Then 设备 A 通过 live update 看到该输入进入消息列表
+And 设备 B 通过 live update 看到该输入进入消息列表
+
+### Scenario: draft 不跨连接同步
+
+Given 产品用户在设备 A 的 Composer 中输入 `draft text`
+When 产品用户在设备 B 打开同一个对话
+Then 设备 B 的 Composer 为空
+And 设备 A 的 draft 不受设备 B 连接影响
+
+### Scenario: 重连时恢复对话内容而非其他连接的操作状态
+
+Given 产品用户在设备 A 操作对话期间，设备 B 断开连接
+When 设备 B 重新连接
+Then 设备 B 恢复到当前最新对话内容
+And 设备 B 不继承设备 A 的 Composer draft 或展开状态
+
+## Pending Interaction
+
+`agent cli` 在工作过程中可能产生需要产品用户响应的交互请求（如权限审批、确认操作等），称为 `pending interaction`。
+
+同一对话在同一时刻可能存在多个 pending interaction。多个对话可能各自有独立的 pending interaction。
+
+所有连接对等：任何前端都能看到 pending interaction，任何前端都能响应。后端对响应做幂等去重，接受第一个有效响应，忽略后续重复响应。
+
+响应方式由 interaction 自身决定，包括：选项选择、文字输入（作为某个选项的补充）。`Conversation View` 按 interaction 提供的方式渲染响应控件，不自行推断响应方式。
+
+### Scenario: pending interaction 在消息列表中展示
+
+Given 当前选中对话产生一个 pending interaction
+When 页面渲染消息列表
+Then 页面在该 interaction 发生位置展示待响应卡片
+And 待响应卡片比普通信息更醒目
+And 待响应卡片展示 `agent cli` 提供的交互内容
+
+### Scenario: 同一对话多个 pending interaction 并存
+
+Given 当前选中对话同时存在多个未响应的 pending interaction
+When 页面渲染消息列表
+Then 页面按各 interaction 的发生顺序分别展示
+And 每个 interaction 可独立响应
+And 响应某个 interaction 不影响其他 interaction 的状态
+
+### Scenario: 切换到有 pending interaction 的对话
+
+Given 对话 A 存在未响应的 pending interaction
+And 产品用户当前查看的是对话 B
+When 外部功能把当前选中对话切换为对话 A
+Then 页面展示对话 A 的所有未响应 pending interaction
+And 待响应卡片可操作
+
+### Scenario: 通过选项选择响应 pending interaction
+
+Given 页面展示一个待响应的 pending interaction
+And 该 interaction 提供选项列表
+When 产品用户选择其中一个选项并提交
+Then 页面发送包含所选选项的响应请求
+And 页面在等待结果期间禁用重复响应
+
+### Scenario: 通过文字输入响应 pending interaction
+
+Given 页面展示一个待响应的 pending interaction
+And 该 interaction 的某个选项需要文字输入作为补充
+When 产品用户选择该选项并输入文字后提交
+Then 页面发送包含所选选项和文字内容的响应请求
+And 页面在等待结果期间禁用重复响应
+
+### Scenario: 响应被后端接受
+
+Given 产品用户已提交一个 pending interaction 的响应
+When 响应被后端接受
+Then 页面更新该 interaction 状态为已响应
+And 该 interaction 不再可操作
+
+### Scenario: 多连接下先到先得
+
+Given 设备 A 和设备 B 同时展示同一个 pending interaction
+When 产品用户在设备 A 提交响应
+And 响应被后端接受
+Then 设备 A 的该 interaction 更新为已响应
+And 设备 B 通过 live update 收到该 interaction 已被响应
+And 设备 B 的该 interaction 更新为已响应且不再可操作
+
+### Scenario: 重复响应被后端拒绝
+
+Given 设备 A 已成功响应一个 pending interaction
+When 设备 B 在收到已响应更新前也提交响应
+Then 后端拒绝设备 B 的重复响应
+And 设备 B 展示非阻塞提示表明该 interaction 已被处理
+
+### Scenario: pending interaction 超时或取消
+
+Given 页面展示一个待响应的 pending interaction
+When 该 interaction 因超时或 `agent cli` 取消而失效
+Then 页面更新该 interaction 状态为已失效
+And 该 interaction 不再可操作
 
 ## Non-Functional Acceptance
 
@@ -504,7 +636,6 @@ Then 页面展示的内容保持字符不损坏
 
 - 创建、选中、取消选中对话。
 - `agent cli` 能力重设计。
-- `Pending interaction` 的处理与展示。
 - codex `plan` 的处理。
 - 图片展示/输入。
 - 文件引用点击后的完整文件浏览能力。
