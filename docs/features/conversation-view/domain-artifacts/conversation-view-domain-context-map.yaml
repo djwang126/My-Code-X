@@ -83,7 +83,6 @@ relationships:
     integration: none
     async: true
     events: [ConversationContentRestored, ConversationContentRestoredEmpty]
-    translation: ""
     rationale: >
       ContentSync 供给恢复出的 raw native 批次,Transcript 用同一分类入口装配;Transcript 作为 customer 定义所需信息粒度。
       恢复批次与 live 增量互斥到达,Transcript 统一处理两通道。integration=none:无独立跨边界翻译,共用 AgentCliACL 的分类入口。
@@ -92,7 +91,6 @@ relationships:
     type: customer-supplier
     integration: none
     async: false
-    translation: ""
     rationale: >
       Transcript 投影 TurnInProgress(busy/idle)状态喂入 ComposerState(读侧投影,非可写共享),决定主操作三态。
       Customer-Supplier 而非 Shared-Kernel:只读投影,无共享可写模型,避免最贵模式。integration=none:只读状态投影,无技术翻译层。
@@ -101,7 +99,6 @@ relationships:
     type: customer-supplier
     integration: none
     async: false
-    translation: ""
     rationale: >
       ContentSync 投影可得性状态(恢复中/连接不可用/目标不明确)喂入 ComposerState 作"禁用发送"gate。
       只读投影,Customer-Supplier,integration=none。
@@ -110,7 +107,6 @@ relationships:
     type: separate-ways
     integration: none
     async: false
-    translation: ""
     rationale: >
       用户输入不本地直塞 transcript,经 agent round-trip(发送→accept→live 回流→分类成 UserInput)。
       两个 Core Context 间无直接领域数据流,从根上避免 UserInput 被两聚合共享这一常见跨 Context 聚合错误。刻意不连,非缺边。

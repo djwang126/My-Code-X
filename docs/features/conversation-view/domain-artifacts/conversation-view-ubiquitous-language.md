@@ -57,11 +57,6 @@
 - **Definition**: TurnInProgress 时追加的补充指令请求,携带原文不删改;需 AgentCapabilities 支持。
 - **Aliases / Disambiguation**: 不是新 NormalInput;由对话 busy 决定走此路径。
 
-#### Domain Errors (Interaction)
-- **InteractionAlreadyResolved** — 对已 Resolved 的 interaction 再提交响应;业务结果:已被(某连接)成功响应,重复响应被拒(多连接先到先得)。
-- **InteractionNoLongerPending** — 对 Expired/Cancelled 的 interaction 提交响应;业务结果:已失效,无法再响应。
-- **PendingInteractionNotFound** — 对未知 interactionId 响应/expire/cancel。
-
 ## PageNotification
 
 ### PageNotice
@@ -73,6 +68,10 @@
 - **Aliases / Disambiguation**: 区别于 Failure(归属对话内某位置、进 transcript)。
 
 ## Transcript
+
+### AgentCliACL
+- **Definition**: 对唯一外部系统 AgentCLI 的 Anti-Corruption Layer;port 在 domain layer(InformationClassificationPort / TurnSignalPort / InteractionSignalPort / AgentRequestPort / ContentRestorePort / UnattributedErrorPort),adapter 每 agent cli 一个、在 infrastructure。
+- **Aliases / Disambiguation**: 一外部 Context 一 ACL,不跨系统共享;内部代码不 import native 类型。
 
 ### AgentReply
 - **Definition**: agent cli 产生的一条普通对话消息,可流式(`ReplyStreamState`: InProgress → Completed,单向);`Message` 的一种。
@@ -86,13 +85,17 @@
 - **Definition**: agent 给出的、归属对话内某发生位置的失败;TranscriptEntry 一类。进 transcript、不折叠、更醒目;`FailureMessage` 构造即落兜底(缺 native message → `Unknown error`)。
 - **Aliases / Disambiguation**: 区别于 PageNotice(不归属对话、不进 transcript)与 Unrecognized(不能安全归类、不当失败)。多条 Failure 不合并。
 
+### InformationClassificationPolicy
+- **Definition**: 领域 Policy,把 `NativeDescriptor` 判为四类 `ClassificationDecision`;实现按 agent cli 一个(`CodexClassificationPolicy`/`ClaudeCodeClassificationPolicy`…),未知 native type 默认 `Unrecognized`。
+- **Aliases / Disambiguation**: 只决定类别,不构造 entry(构造/兜底/流式映射在 ACL adapter);按当前 agent cli 身份选择实现。
+
 ### Message
 - **Definition**: 普通对话消息;TranscriptEntry 一类,与 WorkProgress/Failure/Unrecognized 平级。细分 `UserInput` / `AgentReply`。不可折叠。
 - **Aliases / Disambiguation**: 拒绝当全体条目总称(总称是 TranscriptEntry);「消息列表」指 ConversationTranscript。
 
 ### TranscriptEntry
 - **Definition**: 聚合根,身份 `EntryId`(agent/后端提供的稳定标识),带不可变 `Sequence`。判别联合 body:`Message`/`WorkProgress`/`Failure`/`Unrecognized`(恰属其一)。同一信息后续进展更新原条目而非新增。
-- **Aliases / Disambiguation**: 展开/折叠状态不进 entry(UI)。
+- **Aliases / Disambiguation**: 总称,与 `Message`/`WorkProgress`/`Failure`/`Unrecognized` 四变体形成层级关系;BDD 口语「消息」指其中 `Message` 那一类,不指总称。
 
 ### Turn
 - **Definition**: 聚合根,身份 `TurnId`;边界**由 agent cli 提供不自行推断**。`TurnStatus`: `InProgress`(带 firstUserInputRef/userInputTime)→ `Completed`(再带 lastAgentReplyRef/lastReplyCompletedTime)。by ID 引用 entry。
@@ -112,47 +115,24 @@
 
 ### WorkProgress
 - **Definition**: 工作过程信息(reasoning/文件修改/命令运行等);TranscriptEntry 一类。携带 `NativeType`+`NativeStatus`(均 Option,缺失降级不占位)+ `GenericFields`;默认折叠可展开。
-- **Aliases / Disambiguation**: 工作过程信息(reasoning/文件修改/命令运行等)的规范名。
-
-#### Domain Errors (Transcript)
-- **TranscriptEntryNotFound** — 对未知 EntryId 施加流式增量或进展更新。乱序到达时由应用层缓冲/丢弃,不视为致命。
-- **ReplyAlreadyCompleted** — 对已 Completed 的 AgentReply 再增量或重复完成。
-- **TurnNotFound** — 对未知 TurnId 完成/更新。
-- **TurnAlreadyCompleted** — 对已 Completed 的 Turn 再次 conclude。
+- **Aliases / Disambiguation**: 拒绝旧名 "WorkProgressInformation";不是聚合,是 TranscriptEntry 的变体。
 
 ## Cross-Context Terms
 
-<!-- 来自外部系统 AgentCLI、经 AgentCliACL 翻译进入各 Context 的概念;
-     以及由外部「选择对话」功能提供、被多个 Context 共同消费的根标识 -->
-
-### Conversation
-- **Definition**: 一段产品用户与 agent cli 的对话;有 `title: Option`(可缺)、`workingDirectory: Option`(可缺)。是 Transcript/Interaction/ContentSync 三个 Context 共同围绕的根对话实体。
-- **Consumed by**: Transcript(其 transcript)、Interaction(其 composer/interaction)、ContentSync(其恢复状态)。
-- **Resolution / Optionality**: title/directory 缺失 = 字段**不展示、无占位文案**(对应 shell scenario),不是空串;由外部「选择对话」功能提供,本特性只消费。
-
-### SelectedConversation
-- **Definition**: 当前被选中、正在 Conversation View 消费的 Conversation;`SelectedConversationContext { title: Option<Title>, directory: Option<Directory> }`。选择/取消选择动作本身 out-of-scope(外部功能提供)。
-- **Consumed by**: 全 Context;喂入 `ComposerState`(是否存在选中对话)、驱动 `SelectedConversationChanged` → ContentRestore 启动。
-- **Resolution / Optionality**: 无选中对话 = 合法 shell 状态(展示空态、Composer 不可发送);title/directory optionality 同 Conversation。
+<!-- 来自外部系统 AgentCLI、经 AgentCliACL 翻译后在多个 Context 出现的概念 -->
 
 ### native type / native status / native message
 - **In AgentCLI**: agent cli 原生输出字段,语义各自定义。
 - **In Transcript**: native type 经 InformationClassificationPolicy 映射四类;native status → NativeStatus(原样,缺失不占位);native message → MarkdownText/FailureMessage(Failure 缺失兜底 `Unknown error`)。用户可见文案默认沿用 native。
 - **Resolution**: `native` 前缀标来源边界;翻译在 AgentCliACL。
 
-### AgentCliACL
-- **Definition**: 对唯一外部系统 AgentCLI 的 Anti-Corruption Layer;port 在 domain layer(InformationClassificationPort/TurnSignalPort/InteractionSignalPort/AgentRequestPort/ContentRestorePort/UnattributedErrorPort),adapter 每 agent cli 一个、在 infrastructure。
-- **Aliases / Disambiguation**: 一外部 Context 一 ACL,不跨系统共享;内部代码不 import native 类型。
+### Conversation
+- **In AgentCLI**: 由 agent cli 维护的会话身份与历史。
+- **In Transcript / Interaction / ContentSync**: 三个 Context 共同围绕的根对话实体;有 `title: Option`、`workingDirectory: Option`(均可缺,缺失不展示占位文案);由外部「选择对话」功能提供,本特性只消费。
+- **Resolution**: 单一 `Conversation` 实体跨 Context 引用;optionality 是真实领域态,缺失字段不渲染。
 
-### InformationClassificationPolicy
-- **Definition**: 领域 Policy,把 `NativeDescriptor` 判为四类 `ClassificationDecision`;实现按 agent cli 一个(`CodexClassificationPolicy`/`ClaudeCodeClassificationPolicy`…),未知 native type 默认 `Unrecognized`。
-- **Aliases / Disambiguation**: 只决定类别,不构造 entry(构造/兜底/流式映射在 ACL adapter);按当前 agent cli 身份选择实现。
+### SelectedConversation
+- **In Transcript / Interaction / ContentSync**: 当前被选中、正在 Conversation View 消费的 Conversation;喂入 ComposerState、驱动 SelectedConversationChanged → ContentRestore 启动;无选中对话 = 合法空态。
+- **In AgentCLI**: 不直接消费;选择/取消选择 out-of-scope。
+- **Resolution**: 仅本系统跨 Context 概念;由外部功能提供选中事实。
 
-## Out-of-Domain Terms(登记,排除出领域模型)
-
-> 以下为表现层/连接层关注点,不进领域模型,仅登记防误用。
-
-- **Draft** — Composer 按对话保存的本地输入草稿;本地私有、不跨连接。"接受→清空 / 失败→保留"是应用层对 NormalInputAccepted/SendFailed 的 reaction。
-- **PageNotice 的 banner 表现** — 一次性/持续状态、自动消失计时、垂直堆叠(领域事实是 UnattributedAgentError)。
-- **Freshness(内容可能过期)** — 连接级视图自评;触发"禁用发送/非阻塞提示"的应用层 guard。
-- **滚动跟随 / 展开折叠状态 / 输入框高度增长 / 二次确认 modal** — 纯 UI 交互。

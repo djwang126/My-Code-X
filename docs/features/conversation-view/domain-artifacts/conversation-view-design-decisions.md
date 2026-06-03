@@ -186,8 +186,6 @@ PendingInteraction 的响应(选项选择 / 选项+文字补充)是否需要在 
 
 agent cli 是交互的定义者与最终裁决者,有效性规则应由它持有。My-Code-X 只负责按 interaction 提供的方式渲染控件、提交响应、做幂等去重(HS-007)。
 
-> 注:此决策对应一个未写入 BDD 的产品行为("无效响应由 agent cli 拒绝并以失败呈现")。因 BDD 未描述该场景且属推导结论,故仅记于此,不作为验收点。
-
 ## DD-008: 内容恢复与 live update 互斥,不引入对账去重机制
 
 **Status**: accepted
@@ -291,8 +289,5 @@ Phase 4 可选战术需逐一核对触发条件。8 个战术中,ACL(强触发,�
 ### Rationale
 
 战术按需引入(skill 原则 + YAGNI)。ACL/Policy 有明确触发与变化依据;CQRS/Saga 的所谓需求都已被更轻的手段覆盖(list finder、Policy 链 + Separate Ways),现在固化只增复杂度。
-
-
-
 
 

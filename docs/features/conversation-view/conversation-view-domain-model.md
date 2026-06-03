@@ -352,8 +352,6 @@ interface PendingInteractionRepository {         // domain layer
 - **Severity**: conflict
 - **Raised by**: PendingInteraction.accept
 
-> **Composer 发送语义不构成持久聚合**:`ComposerState` 是读侧投影(Read Model,投影自 Transcript 的 TurnInProgress + ContentSync 的可得性 + AgentCapabilities);`NormalInput`/`SupplementaryInstruction`/`InterruptCurrentWork` 是出站请求 VO,经 AgentCliACL.AgentRequestPort 发出,返回 `SendOutcome`(Accepted|SendFailed)。输入经 agent round-trip 回流后由 Transcript 装配为 UserInput,不本地入 transcript。
-
 ---
 
 ## Bounded Context: ContentSync

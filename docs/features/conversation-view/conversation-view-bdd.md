@@ -555,12 +555,11 @@ And 设备 B 不继承设备 A 的 Composer draft 或展开状态
 
 响应方式由 interaction 自身决定，包括：选项选择、文字输入（作为某个选项的补充）。`Conversation View` 按 interaction 提供的方式渲染响应控件，不自行推断响应方式。
 
-### Scenario: pending interaction 在消息列表中展示
+### Scenario: pending interaction 展示
 
 Given 当前选中对话产生一个 pending interaction
-When 页面渲染消息列表
-Then 页面在该 interaction 发生位置展示待响应卡片
-And 待响应卡片比普通信息更醒目
+When 页面渲染conversation view
+Then 页面展示待响应弹窗
 And 待响应卡片展示 `agent cli` 提供的交互内容
 
 ### Scenario: 同一对话多个 pending interaction 并存
