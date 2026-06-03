@@ -1,13 +1,6 @@
 import { z } from "zod";
 
-export const apiErrorCodeSchema = z.enum([
-  "INVALID_REQUEST",
-  "INVALID_WORKSPACE_PATH",
-  "DUPLICATE_WORKSPACE",
-  "STATE_READ_FAILED",
-  "STATE_WRITE_FAILED",
-  "INTERNAL_ERROR"
-]);
+export const apiErrorCodeSchema = z.enum(["INTERNAL_ERROR"]);
 
 export type ApiErrorCode = z.infer<typeof apiErrorCodeSchema>;
 
