@@ -20,7 +20,7 @@ contexts:
     responsibility: 产品用户对 agent 的操控——发送语义与 PendingInteraction 响应、状态机、幂等裁决。
   - name: ContentSync
     type: supporting
-    responsibility: 让 transcript 在移动/远程/多连接下可得且尽量最新——内容恢复生命周期与可得性状态。
+    responsibility: 让 transcript 在首次进入对话/切换对话/agent 重启等场景下从 agent cli 装载历史内容——历史装载生命周期与可得性状态。
   - name: PageNotification
     type: generic
     responsibility: 无法归属到具体对话的 agent 错误,以通用页面提示呈现,不入 transcript。
@@ -41,8 +41,9 @@ contexts:
 root: TranscriptEntry
 members:
   - { name: TranscriptEntry, role: root, type: Entity }
+  - { name: ConversationId, role: reference-vo, type: VO, semantics: "归属对话身份;跨 BC 引用,定义见 Cross-Context Terms" }
   - { name: EntryId,        role: vo, type: VO, semantics: "agent/后端提供的稳定标识,不透明" }
-  - { name: Sequence,       role: vo, type: VO, semantics: "不可变发生序,排序与定位" }
+  - { name: EntrySequence,  role: vo, type: VO, semantics: "不可变发生序,排序与定位;Transcript BC 内部" }
   - { name: EntryBody,      role: vo, type: VO, semantics: "判别联合:Message|WorkProgress|Failure|Unrecognized" }
   - { name: MarkdownText,   role: vo, type: VO, semantics: "保真原文,UTF-8/CJK/emoji 不损坏" }
   - { name: NativeStatus,   role: vo, type: VO, semantics: "agent 原生 status,原样展示" }
@@ -60,8 +61,12 @@ fields:
     type: EntryId
     constraints: [required, immutable]
     note: identity(由 agent/后端提供的稳定标识)
+  - name: conversationId
+    type: ConversationId
+    constraints: [required, immutable]
+    note: 归属对话;支撑 list_by_conversation
   - name: sequence
-    type: Sequence
+    type: EntrySequence
     constraints: [required, immutable]
     note: 发生序;保证顺序稳定不重排
   - name: body
@@ -106,21 +111,21 @@ invariants:
     enforced_at: "AgentReply.appendDelta / complete 守卫"
   - id: INV-7
     rule: "已有 entry 顺序稳定不重排"
-    enforced_at: "不可变 Sequence"
+    enforced_at: "不可变 EntrySequence"
 ```
 
 #### Boundary Rationale
 
-每条信息一个独立聚合(根 = TranscriptEntry):INV-1/4/5/6 都是单条 entry 的内部规则;INV-3 在"每条独立"下天然成立(无合并入口);INV-7 由不可变 Sequence 保证。小聚合支撑数百条消息不锁一起、流式增量不整列表重排。`ConversationTranscript` 是按 Sequence 排序的 Read Model,非聚合。
+每条信息一个独立聚合(根 = TranscriptEntry):INV-1/4/5/6 都是单条 entry 的内部规则;INV-3 在"每条独立"下天然成立(无合并入口);INV-7 由不可变 EntrySequence 保证。小聚合支撑数百条消息不锁一起、流式增量不整列表重排。`ConversationTranscript` 是按 EntrySequence 排序的 Read Model,非聚合。
 
 #### Domain Events
 
 ```yaml
 events:
-  - { name: InformationClassifiedAsConversation, payload: [entryId, sequence], emitted_when: "归类为 Message" }
-  - { name: InformationClassifiedAsWorkProgress,  payload: [entryId, sequence], emitted_when: "归类为 WorkProgress" }
-  - { name: InformationClassifiedAsFailure,       payload: [entryId, sequence], emitted_when: "归类为 Failure" }
-  - { name: InformationClassifiedAsUnrecognized,  payload: [entryId, sequence], emitted_when: "不能安全归类" }
+  - { name: InformationClassifiedAsConversation, payload: [entryId, entrySequence], emitted_when: "归类为 Message" }
+  - { name: InformationClassifiedAsWorkProgress,  payload: [entryId, entrySequence], emitted_when: "归类为 WorkProgress" }
+  - { name: InformationClassifiedAsFailure,       payload: [entryId, entrySequence], emitted_when: "归类为 Failure" }
+  - { name: InformationClassifiedAsUnrecognized,  payload: [entryId, entrySequence], emitted_when: "不能安全归类" }
   - { name: AgentReplyStreamStarted,  payload: [entryId], emitted_when: "AgentReply 开始流式" }
   - { name: AgentReplyDeltaReceived,  payload: [entryId, delta], emitted_when: "收到增量" }
   - { name: AgentReplyCompleted,      payload: [entryId], emitted_when: "回复完成" }
@@ -131,9 +136,9 @@ events:
 
 ```pseudo
 interface TranscriptEntryRepository {            // domain layer
-  find_by_id(conversationId: ConversationId, entryId: EntryId): TranscriptEntry  // raises TranscriptEntryNotFound
+  find_by_id(entryId: EntryId): TranscriptEntry  // raises TranscriptEntryNotFound
   save(entry: TranscriptEntry): void
-  list_by_conversation(conversationId: ConversationId): List<TranscriptEntry>    // 按 Sequence 有序;空集合合法
+  list_by_conversation(conversationId: ConversationId): List<TranscriptEntry>    // 按 EntrySequence 有序;空集合合法
 }
 ```
 
@@ -159,6 +164,7 @@ interface TranscriptEntryRepository {            // domain layer
 root: Turn
 members:
   - { name: Turn,       role: root, type: Entity }
+  - { name: ConversationId, role: reference-vo, type: VO, semantics: "归属对话身份;跨 BC 引用" }
   - { name: TurnId,     role: vo, type: VO, semantics: "agent cli 提供的回合标识" }
   - { name: TurnStatus, role: vo, type: VO, semantics: "判别联合 InProgress|Completed" }
   - { name: Timestamp,  role: vo, type: VO, semantics: "用户输入时间 / 最后回复完成时间" }
@@ -172,6 +178,10 @@ fields:
     type: TurnId
     constraints: [required, immutable]
     note: identity;边界由 agent cli 提供
+  - name: conversationId
+    type: ConversationId
+    constraints: [required, immutable]
+    note: 归属对话;支撑 find_in_progress / list_by_conversation
   - name: status
     type: TurnStatus
     constraints: [required]
@@ -249,8 +259,9 @@ interface TurnRepository {                       // domain layer
 root: PendingInteraction
 members:
   - { name: PendingInteraction, role: root, type: Entity }
+  - { name: ConversationId,     role: reference-vo, type: VO, semantics: "归属对话身份;跨 BC 引用" }
   - { name: InteractionId,      role: vo, type: VO, semantics: "agent cli 提供的交互标识" }
-  - { name: Sequence,           role: vo, type: VO, semantics: "transcript 内发生位置" }
+  - { name: InteractionSequence, role: vo, type: VO, semantics: "Interaction BC 内部发生序,用于多个 pending interaction 之间的排序;不与 Transcript 的 EntrySequence 共享空间" }
   - { name: InteractionContent, role: vo, type: VO, semantics: "native 交互内容 + OptionSet" }
   - { name: OptionSet,          role: vo, type: VO, semantics: "InteractionOption 列表" }
   - { name: InteractionOption,  role: vo, type: VO, semantics: "选项;requiresTextSupplement 渲染提示" }
@@ -266,10 +277,14 @@ fields:
     type: InteractionId
     constraints: [required, immutable]
     note: identity
-  - name: sequence
-    type: Sequence
+  - name: conversationId
+    type: ConversationId
     constraints: [required, immutable]
-    note: 发生位置;按位置在 transcript 流中渲染
+    note: 归属对话;支撑 list_by_conversation
+  - name: sequence
+    type: InteractionSequence
+    constraints: [required, immutable]
+    note: Interaction BC 内部发生序;在 transcript 流中的展示位置由表现层根据时间戳/其他线索拼接,不依赖 TranscriptEntry.EntrySequence
   - name: content
     type: InteractionContent
     constraints: [required]
@@ -317,7 +332,7 @@ invariants:
 
 ```yaml
 events:
-  - { name: PendingInteractionRaised, payload: [interactionId, sequence, content], emitted_when: "agent 产生待响应交互" }
+  - { name: PendingInteractionRaised, payload: [interactionId, interactionSequence, content], emitted_when: "agent 产生待响应交互" }
   - { name: InteractionResponseAccepted, payload: [interactionId, response], emitted_when: "首个有效响应被接受" }
   - { name: InteractionResponseRejected, payload: [interactionId], emitted_when: "重复/失效后响应被拒(对应 Domain Error)" }
   - { name: PendingInteractionResolved,  payload: [interactionId], emitted_when: "转 Resolved" }
@@ -331,7 +346,7 @@ events:
 interface PendingInteractionRepository {         // domain layer
   find_by_id(interactionId: InteractionId): PendingInteraction   // raises PendingInteractionNotFound
   save(interaction: PendingInteraction): void
-  list_by_conversation(conversationId: ConversationId): List<PendingInteraction>  // 按 Sequence 有序,含已 Resolved
+  list_by_conversation(conversationId: ConversationId): List<PendingInteraction>  // 按 InteractionSequence 有序,含已 Resolved
 }
 ```
 
@@ -387,8 +402,8 @@ fields:
 ```yaml
 invariants:
   - id: INV-15
-    rule: "恢复完成必为 idle 态;与 LiveUpdate 互斥(不同时发生)"
-    enforced_at: "RestoreStatus 转移守卫(idle 才 restore)"
+    rule: "ContentRestore 的 Restoring 仅发生在 agent cli 空闲态(产品事实:agent cli 仅允许在 idle 时返回历史,选中对话后才能开新 turn)。my-code-x 不内部 guard 对话状态;互斥由 agent cli 端保证。"
+    enforced_at: "AgentCliACL.ContentRestorePort 由 agent cli 强制;my-code-x 不复刻校验"
   - id: INV-16
     rule: "空内容恢复结果 ≠ 失败(RestoredEmpty 与 RestoreFailed 互斥不可混淆)"
     enforced_at: "RestoreStatus 判别联合 + AgentCliACL.ContentRestorePort 判定"
@@ -396,7 +411,11 @@ invariants:
 
 #### Boundary Rationale
 
-ContentRestore 是有明确状态机的可得性一致性单元,per 对话。INV-16(空≠失败)的权威归属在此(Transcript 侧仅为展示投影)。重连后"尽量最新、非阻塞、保留既有内容"(eventual)不落此聚合,由重连 Policy + 应用层 freshness guard 承载。
+ContentRestore 是「对 agent cli 历史装载」的状态机,per 对话。触发场景:首次进入对话、切换对话、agent 重启后恢复——这些场景下 agent cli 必处 idle(产品事实)。INV-16(空≠失败)的权威归属在此(Transcript 侧仅为展示投影)。
+
+明确不属此聚合:
+- **前端弱网重连刷新**:my-code-x 后端是模型内部组件(DD-002),前端断线重连后从后端拉快照/续 live 是前后端传输细节,由表现层 freshness banner + 应用层重连 Policy 承载,不经 agent cli ContentRestorePort,不落 ContentRestore 状态机。
+- **对话进行中的实时更新**:由 LiveUpdate 路径承载,与 ContentRestore 分属两条入站通道。
 
 #### Domain Events
 
@@ -419,7 +438,7 @@ interface ContentRestoreRepository {             // domain layer
 
 #### Domain Errors
 
-无。所有恢复结果(Restored/RestoredEmpty/RestoreFailed)都是状态机合法终态、领域数据,不抛异常。互斥(INV-15)由应用层路由保证(idle 才 restore)。
+无。所有恢复结果(Restored/RestoredEmpty/RestoreFailed)都是状态机合法终态、领域数据,不抛异常。INV-15 的互斥由 agent cli 端保证(产品事实),my-code-x 不内部 guard。
 
 ---
 
@@ -444,7 +463,7 @@ interface ContentRestoreRepository {             // domain layer
 2. 分类 — `classificationPolicyRegistry.policyFor(agentCliId).classify(descriptor) → ClassificationDecision`(领域 Policy)
 3. 构造 — `AgentCliACL.buildEntryBody(decision, raw) → EntryBody`;`new TranscriptEntry(id, sequence, body)`
 4. 持久 — `TranscriptEntryRepository.save`
-5. 发布 — `InformationClassifiedAs*`
+5. 发布 — `InformationClassifiedAs*`;若分类为 AgentReply 且 stream=InProgress,同事务追加发布 `AgentReplyStreamStarted`
 
 **Error propagation**: 无(分类不抛错)。
 
@@ -515,11 +534,13 @@ interface ContentRestoreRepository {             // domain layer
 
 **Output**: void | (无 Domain Error)
 
-**Steps**: Restore → `new ContentRestore(Restoring)` → save → `ConversationContentRestoreStarted` → `AgentCliACL.ContentRestorePort.fetchHistory`;Complete → `find_by_id` → `restore.complete(outcome)`(INV-15/16)→ save → 发布对应事件 → 若 Restored/Empty,raw 批次转交 IngestAndClassify
+**Steps**: Restore → `new ContentRestore(Restoring)` → save → `ConversationContentRestoreStarted` → `AgentCliACL.ContentRestorePort.fetchHistory`;Complete → `find_by_id` → `restore.complete(outcome)`(INV-16)→ save → 发布对应事件 → 若 Restored/Empty,raw 批次转交 IngestAndClassify
 
 **Error propagation**: 无(失败是 RestoreFailed 数据)。
 
 **Transaction boundary**: 单聚合(ContentRestore);后续每条 entry 装配各自独立事务(eventual,无 Saga)。
+
+**Note**: 此服务仅覆盖从 agent cli 装载历史;前端弱网重连后从 my-code-x 后端拉快照/续 live 不经此路径。
 
 ### ReportUnattributedAgentErrorService
 

@@ -210,7 +210,7 @@ agent cli 是交互的定义者与最终裁决者,有效性规则应由它持有
 
 ### Rationale
 
-恢复完成必为 idle、live update 仅 turn 进行中发生,二者时间上互斥(已写入 BDD 背景)。不存在需要去重的重叠场景,YAGNI(HS-010)。
+恢复完成必为 idle、live update 仅 turn 进行中发生,二者时间上互斥(已写入 BDD 背景)。该互斥是 agent cli 端事实(选中对话后才能开新 turn,fetchHistory 仅在 idle 时返回),my-code-x 不内部 guard 也不需对账。本决策范围限于「ContentRestore = 对 agent cli 历史装载」与 LiveUpdate 之间;前端弱网重连后从 my-code-x 后端拉快照/续 live 不在此命题内,由表现层 freshness banner 与应用层重连 Policy 处理。YAGNI(HS-010)。
 
 ## DD-009: TranscriptEntry 凭稳定标识对账,定为 Entity
 
@@ -254,15 +254,15 @@ BC-1 的可读内容是「一个对话内按序排列的全部 entry」。最直
 
 **Option B — TranscriptEntry 每条独立聚合,ConversationTranscript 为 Read Model**
 - Pros: 一条信息到达 = 一事务改一个小聚合(Vernon);流式增量/进展只动单条,天然不重排;"各自独立保留"在独立聚合下自然成立;契合单向事件流 append+投影。
-- Cons: 集合顺序由 entry 携带不可变 Sequence + 读侧投影保证,而非聚合内显式持有;ConversationTranscript 需 list finder(或后续 CQRS)实现。
+- Cons: 集合顺序由 entry 携带不可变 EntrySequence + 读侧投影保证,而非聚合内显式持有;ConversationTranscript 需 list finder(或后续 CQRS)实现。
 
 ### Decision
 
-采用 Option B。`TranscriptEntry` 为聚合根(每条独立);`Turn` 为独立聚合,by ID 引用 entry;`ConversationTranscript` 是按 Sequence 排序的 Read Model,非聚合。
+采用 Option B。`TranscriptEntry` 为聚合根(每条独立);`Turn` 为独立聚合,by ID 引用 entry;`ConversationTranscript` 是按 EntrySequence 排序的 Read Model,非聚合。
 
 ### Rationale
 
-不变量驱动边界:BC-1 不变量绝大多数是单条 entry 的,集合层只有「顺序稳定」且由不可变 Sequence 保证。小聚合直接满足非功能要求(数百条不卡顿、流式增量不整列表重排)与「多条 Failure 不合并」。这是 Phase 3 影响整个 BC-1 的结构性决策(step 3.2)。
+不变量驱动边界:BC-1 不变量绝大多数是单条 entry 的,集合层只有「顺序稳定」且由不可变 EntrySequence 保证。小聚合直接满足非功能要求(数百条不卡顿、流式增量不整列表重排)与「多条 Failure 不合并」。这是 Phase 3 影响整个 BC-1 的结构性决策(step 3.2)。
 
 ## DD-011: Phase 4 只采纳 ACL + Policy,拒绝 CQRS 与 Saga(YAGNI)
 

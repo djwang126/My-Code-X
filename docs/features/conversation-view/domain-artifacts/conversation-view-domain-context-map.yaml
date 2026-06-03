@@ -13,7 +13,7 @@ contexts:
   - name: ContentSync
     type: supporting
     owner: my-code-x
-    description: 让 transcript 在移动/远程/多连接下可得且尽量最新——内容恢复生命周期与可得性状态。
+    description: 让 transcript 在首次进入对话/切换对话/agent 重启等场景下从 agent cli 装载历史内容——历史装载生命周期与可得性状态。
   - name: PageNotification
     type: generic
     owner: my-code-x
@@ -29,7 +29,7 @@ relationships:
     type: upstream-downstream
     integration: acl
     async: true
-    events: [ConversationInformationReceived, InformationClassifiedAsConversation, InformationClassifiedAsWorkProgress, InformationClassifiedAsFailure, InformationClassifiedAsUnrecognized, AgentReplyStreamStarted, AgentReplyDeltaReceived, AgentReplyCompleted, WorkProgressInformationProgressed, FailureInformationReceived, UnrecognizedInformationReceived, TurnStarted, TurnCompleted]
+    events: [InformationClassifiedAsConversation, InformationClassifiedAsWorkProgress, InformationClassifiedAsFailure, InformationClassifiedAsUnrecognized, AgentReplyStreamStarted, AgentReplyDeltaReceived, AgentReplyCompleted, WorkProgressInformationProgressed, TurnStarted, TurnCompleted]
     translation: >
       native type → Classification 四类判别(经 InformationClassificationPolicy,未知 type→Unrecognized);
       native status → NativeStatus(原样,缺失→None 不占位);native message → MarkdownText/FailureMessage(Failure 缺失→兜底 Unknown error);

@@ -8,8 +8,8 @@
 ## ContentSync
 
 ### ContentRestore
-- **Definition**: per 对话的内容恢复/可得性状态聚合,身份 `ConversationId`;状态机 `Restoring → {Restored | RestoredEmpty | RestoreFailed}`。恢复完成必为 idle 态,与 LiveUpdate 互斥。
-- **Aliases / Disambiguation**: 所有结果都是合法领域数据,**不**抛 Domain Error;RestoreFailed 是值非异常。
+- **Definition**: per 对话的 agent cli 历史装载状态聚合,身份 `ConversationId`;状态机 `Restoring → {Restored | RestoredEmpty | RestoreFailed}`。触发场景:首次进入对话、切换对话、agent 重启。装载仅发生在 agent cli 空闲态(产品事实:agent cli 仅允许 idle 时返回历史;选中对话后才能开新 turn)。与 LiveUpdate 互斥由 agent cli 端保证,my-code-x 不内部 guard。
+- **Aliases / Disambiguation**: 所有结果都是合法领域数据,**不**抛 Domain Error;RestoreFailed 是值非异常。明确不含前端弱网重连刷新(那是 my-code-x 前后端传输细节,不经此聚合)。
 
 ### LiveUpdate
 - **Definition**: TurnInProgress 期间增量到达的对话信息流(新 entry、回复增量、信息进展、interaction 状态变更);所有对等连接都接收。
@@ -50,7 +50,7 @@
 - **Aliases / Disambiguation**: 与 SupplementaryInstruction 互斥(由 busy/idle 区分);空文本不能发送。
 
 ### PendingInteraction
-- **Definition**: 聚合根,身份 `InteractionId`,带 `Sequence`(transcript 内发生位置)。agent 工作中产生的待响应交互;状态机 `Pending → {Resolved | Expired | Cancelled}`,终态不可逆不可操作。多个各自独立。
+- **Definition**: 聚合根,身份 `InteractionId`,带 `InteractionSequence`(Interaction BC 内部发生序,用于多个 pending interaction 之间的排序;不与 Transcript 的 `EntrySequence` 共享空间)。agent 工作中产生的待响应交互;状态机 `Pending → {Resolved | Expired | Cancelled}`,终态不可逆不可操作。多个各自独立。
 - **Aliases / Disambiguation**: 存在时必处 TurnInProgress(该从属关系不建模);超时/取消由 agent 触发,MyCodeX 不自行计时失效。
 
 ### SupplementaryInstruction
@@ -78,7 +78,7 @@
 - **Aliases / Disambiguation**: 拒绝 "response"(留给 InteractionResponse)。
 
 ### ConversationTranscript
-- **Definition**: 一个 Conversation 内按 `Sequence` 排序的全部 TranscriptEntry(+ PendingInteraction 按发生位置)集合。BDD 口语「消息列表」即指它。**Read Model**(非聚合),由 list finder 服务。
+- **Definition**: 一个 Conversation 内按 `EntrySequence` 排序的全部 TranscriptEntry 集合(PendingInteraction 在 transcript 流中的展示位置由表现层另行拼接,不参与 EntrySequence 排序)。BDD 口语「消息列表」即指它。**Read Model**(非聚合),由 list finder 服务。
 - **Aliases / Disambiguation**: 拒绝把 "content"(歧义)、"message list" 作类型名。
 
 ### Failure
@@ -94,7 +94,7 @@
 - **Aliases / Disambiguation**: 拒绝当全体条目总称(总称是 TranscriptEntry);「消息列表」指 ConversationTranscript。
 
 ### TranscriptEntry
-- **Definition**: 聚合根,身份 `EntryId`(agent/后端提供的稳定标识),带不可变 `Sequence`。判别联合 body:`Message`/`WorkProgress`/`Failure`/`Unrecognized`(恰属其一)。同一信息后续进展更新原条目而非新增。
+- **Definition**: 聚合根,身份 `EntryId`(agent/后端提供的稳定标识),带不可变 `EntrySequence`。判别联合 body:`Message`/`WorkProgress`/`Failure`/`Unrecognized`(恰属其一)。同一信息后续进展更新原条目而非新增。
 - **Aliases / Disambiguation**: 总称,与 `Message`/`WorkProgress`/`Failure`/`Unrecognized` 四变体形成层级关系;BDD 口语「消息」指其中 `Message` 那一类,不指总称。
 
 ### Turn
@@ -130,6 +130,10 @@
 - **In AgentCLI**: 由 agent cli 维护的会话身份与历史。
 - **In Transcript / Interaction / ContentSync**: 三个 Context 共同围绕的根对话实体;有 `title: Option`、`workingDirectory: Option`(均可缺,缺失不展示占位文案);由外部「选择对话」功能提供,本特性只消费。
 - **Resolution**: 单一 `Conversation` 实体跨 Context 引用;optionality 是真实领域态,缺失字段不渲染。
+
+### ConversationId
+- **In Transcript / Interaction / ContentSync**: 跨 BC 引用 VO,标识归属对话。由外部「选择对话」功能颁发,三个 BC 各自作为 reference-vo 持有(TranscriptEntry.conversationId / Turn.conversationId / PendingInteraction.conversationId / ContentRestore.id)。不透明,不携带语义。
+- **Resolution**: 无单一 owning BC;三方独立持有,与 `Conversation` 实体共同构成 Cross-Context 引用。
 
 ### SelectedConversation
 - **In Transcript / Interaction / ContentSync**: 当前被选中、正在 Conversation View 消费的 Conversation;喂入 ComposerState、驱动 SelectedConversationChanged → ContentRestore 启动;无选中对话 = 合法空态。
