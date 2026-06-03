@@ -5,6 +5,7 @@
 - Ubiquitous Language: [link](./domain-artifacts/conversation-view-ubiquitous-language.md)
 - Context Map: [link to YAML](./domain-artifacts/conversation-view-domain-context-map.yaml)
 - Design Decisions: [link](./domain-artifacts/conversation-view-design-decisions.md)
+- Discovery Note: [link](./domain-artifacts/conversation-view-domain-discovery-note.md)
 - BDD Source: [link](./conversation-view-bdd.md)
 
 ## Context Overview
@@ -26,7 +27,7 @@ contexts:
 ```
 
 > **唯一外部系统**: AgentCLI(codex/claude code 等),经 AgentCliACL 翻译。
-> **建模边界**(DD-001): 聚焦业务领域;纯 UI 交互状态(滚动/折叠/banner 计时/Draft 持久化)排除在外,仅作约束登记。
+> **建模边界**: 聚焦业务领域;纯 UI 交互状态(滚动/折叠/banner 计时/Draft 持久化)排除在外,仅作约束登记。
 
 ---
 
@@ -58,7 +59,7 @@ fields:
   - name: id
     type: EntryId
     constraints: [required, immutable]
-    note: identity (HS-009;agent/后端提供)
+    note: identity(由 agent/后端提供的稳定标识)
   - name: sequence
     type: Sequence
     constraints: [required, immutable]
@@ -287,7 +288,7 @@ InteractionStatus:
   Resolved:  { acceptedResponse: InteractionResponse }
   Expired:   {}
   Cancelled: {}
-InteractionResponse: { selectedOption: OptionId, textSupplement: Optional<Text> }   # 不做必填校验(HS-007)
+InteractionResponse: { selectedOption: OptionId, textSupplement: Optional<Text> }   # 不做必填校验,交 agent cli
 ```
 
 #### Invariants
@@ -351,7 +352,7 @@ interface PendingInteractionRepository {         // domain layer
 - **Severity**: conflict
 - **Raised by**: PendingInteraction.accept
 
-> **Composer 发送语义不构成持久聚合**:`ComposerState` 是读侧投影(Read Model,投影自 Transcript 的 TurnInProgress + ContentSync 的可得性 + AgentCapabilities);`NormalInput`/`SupplementaryInstruction`/`InterruptCurrentWork` 是出站请求 VO,经 AgentCliACL.AgentRequestPort 发出,返回 `SendOutcome`(Accepted|SendFailed)。输入经 agent round-trip 回流后由 Transcript 装配为 UserInput(CM-8 Separate Ways),不本地入 transcript。
+> **Composer 发送语义不构成持久聚合**:`ComposerState` 是读侧投影(Read Model,投影自 Transcript 的 TurnInProgress + ContentSync 的可得性 + AgentCapabilities);`NormalInput`/`SupplementaryInstruction`/`InterruptCurrentWork` 是出站请求 VO,经 AgentCliACL.AgentRequestPort 发出,返回 `SendOutcome`(Accepted|SendFailed)。输入经 agent round-trip 回流后由 Transcript 装配为 UserInput,不本地入 transcript。
 
 ---
 
@@ -426,7 +427,7 @@ interface ContentRestoreRepository {             // domain layer
 
 ## Bounded Context: PageNotification
 
-无持久聚合(Generic 子域)。`UnattributedAgentError`(仅取 native message)经 AgentCliACL.UnattributedErrorPort 翻译为 `PageNotice` 值,交表现层 banner。I4-1:绝不插入 transcript。无 Repository、无 Domain Error。
+无持久聚合(Generic 子域)。`UnattributedAgentError`(仅取 native message)经 AgentCliACL.UnattributedErrorPort 翻译为 `PageNotice` 值,交表现层 banner。绝不插入 transcript。无 Repository、无 Domain Error。
 
 ---
 
@@ -481,7 +482,7 @@ interface ContentRestoreRepository {             // domain layer
 
 ### RespondToPendingInteractionService
 
-**Input**: `InteractionId`, `InteractionResponse`(不校验有效性,HS-007)
+**Input**: `InteractionId`, `InteractionResponse`(不校验有效性,交 agent cli)
 
 **Output**: void | raises [PendingInteractionNotFound, InteractionAlreadyResolved, InteractionNoLongerPending]
 
@@ -499,7 +500,7 @@ interface ContentRestoreRepository {             // domain layer
 
 **Input**: `MarkdownText`(发送类;保真不删改)/ 无(中断)
 
-**Output**: SendOutcome(Accepted | SendFailed);中断无 ack(HS-002)
+**Output**: SendOutcome(Accepted | SendFailed);中断无 ack
 
 **Steps**:
 1. 准入(应用层 guard,读 ComposerState 投影):目标状态明确、文本非空、无在途请求 — 非业务规则
@@ -508,7 +509,7 @@ interface ContentRestoreRepository {             // domain layer
 
 **Error propagation**: agent 失败 = SendFailed 数据(非 Domain Error);Accepted→ClearDraft、SendFailed→保留 Draft + 非阻塞提示(应用层 reaction)。
 
-**Transaction boundary**: 无领域事务(纯出站;无本地聚合)。输入经 round-trip 回流后由 IngestAndClassify 装配为 UserInput(CM-8)。
+**Transaction boundary**: 无领域事务(纯出站;无本地聚合)。输入经 round-trip 回流后由 IngestAndClassify 装配为 UserInput。
 
 ### RestoreConversationContentService / CompleteContentRestoreService
 
@@ -530,7 +531,7 @@ interface ContentRestoreRepository {             // domain layer
 
 **Steps**: `AgentCliACL.UnattributedErrorPort.interpret` → `PageNotice` 值 → 交表现层 banner
 
-**Transaction boundary**: 无(无聚合、无持久化;I4-1 绝不入 transcript)。
+**Transaction boundary**: 无(无聚合、无持久化;绝不入 transcript)。
 
 ---
 
@@ -538,23 +539,14 @@ interface ContentRestoreRepository {             // domain layer
 
 ### Anti-Corruption Layer — AgentCliACL
 
-- **Trigger reason**: 闭环 HS-005+008。agent cli 的 native type/status/message、turn 信令、interaction 信令异构且不可控;无 ACL 则污染四类分类与 Turn/Interaction 语义,并滋生 if-by-vendor。
-- **Scope**: 唯一外部系统 AgentCLI;覆盖全部 4 个 Context 的外部边界(CM-1/2/3/4)。
-- **Design summary**: 一个 ACL,按 BC 拆 6 个领域层 port(InformationClassificationPort / TurnSignalPort / InteractionSignalPort / AgentRequestPort / ContentRestorePort / UnattributedErrorPort);adapter 每 agent cli 一个、在 infrastructure。外部失败翻译为领域数据(SendFailed/Failure/RestoreFailed/Unrecognized)或 Domain Error,内部不见 native 类型/错误码。稳定 id 不透明保留(HS-009);"空≠失败"判定在 ContentRestorePort 确立。
+- **Trigger reason**: agent cli 的 native type/status/message、turn 信令、interaction 信令异构且不可控;无 ACL 则污染四类分类与 Turn/Interaction 语义,并滋生 if-by-vendor 分支。
+- **Scope**: 唯一外部系统 AgentCLI;覆盖全部 4 个 Context 的外部边界。
+- **Design summary**: 一个 ACL,按 BC 拆 6 个领域层 port(InformationClassificationPort / TurnSignalPort / InteractionSignalPort / AgentRequestPort / ContentRestorePort / UnattributedErrorPort);adapter 每 agent cli 一个、在 infrastructure。外部失败翻译为领域数据(SendFailed/Failure/RestoreFailed/Unrecognized)或 Domain Error,内部不见 native 类型/错误码。稳定 id 不透明保留;"空≠失败"判定在 ContentRestorePort 确立。
 
 ### Policy — InformationClassificationPolicy
 
-- **Trigger reason**: native type→四类映射"在各 agent cli 接入时确定"(HS-005)。真实变化:codex/claude code 已两种,未来更多;写死会把领域规则漏进基础设施并迫使改核心。
+- **Trigger reason**: native type→四类映射在各 agent cli 接入时确定,随 agent cli 而异(codex/claude code 已两种,未来更多);写死会把领域规则漏进基础设施并迫使改核心。
 - **Scope**: Transcript Context 的分类决策。
 - **Design summary**: 领域层 port `classify(NativeDescriptor) → ClassificationDecision`;实现按 agent cli 一个(CodexClassificationPolicy / ClaudeCodeClassificationPolicy…),未知 native type 默认 Unrecognized。按当前 agent cli 身份经 registry 选择。只决定类别,构造/兜底/流式映射留在 ACL adapter。
 
-> **未采纳**(YAGNI / 未触发):CQRS(list finder 已顶住 transcript 读)、Saga(内容恢复装配是 Policy 链、无补偿)、Domain Service / Specification / Factory / Event Sourcing(未触发)。详见 design-decisions。
-
----
-
-## Modeling Completeness
-
-- **Hotspots**: 13 条全部 resolved(HS-011 downgrade 后 resolved),0 carried-forward,0 静默丢弃。
-- **Aggregates**: 4(TranscriptEntry / Turn / PendingInteraction / ContentRestore),各 1 Repository port;PageNotification 无聚合。
-- **Invariants**: INV-1..16 全部映射到聚合的构造/方法/守卫或结构保证。
-- **建模边界**(DD-001): 纯 UI 交互状态(滚动/折叠/banner 计时/Draft/freshness/二次确认 modal)排除,登记于 Ubiquitous Language 的 Out-of-Domain Terms。
+> **未采纳战术**:CQRS、Saga、Domain Service、Specification、Factory、Event Sourcing。理由见 Design Decisions。
