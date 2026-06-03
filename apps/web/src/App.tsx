@@ -1,11 +1,7 @@
 import { useEffect, useState } from "react";
 import type { ConversationHostView } from "@my-code-x/app-types";
-import {
-  getCurrentConversation,
-  restoreConversation
-} from "./api-client";
+import { getCurrentConversation } from "./api-client";
 import { ConversationHost } from "./conversation-view/ConversationHost";
-import { loadInitialConversationHost } from "./load-initial-conversation-host";
 
 type AppState =
   | { status: "loading" }
@@ -18,10 +14,7 @@ export function App() {
   useEffect(() => {
     let active = true;
 
-    loadInitialConversationHost({
-      getCurrentConversation,
-      restoreConversation
-    })
+    getCurrentConversation()
       .then((conversationHost) => {
         if (active) {
           setState({ status: "ready", conversationHost });

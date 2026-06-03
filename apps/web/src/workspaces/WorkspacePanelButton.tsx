@@ -1,9 +1,9 @@
-import { Menu } from "lucide-react";
+import { FolderOpen } from "lucide-react";
 
 export function WorkspacePanelButton() {
   return (
     <button className="icon-button" type="button" aria-label="Open workspace panel">
-      <Menu size={20} aria-hidden="true" />
+      <FolderOpen size={20} aria-hidden="true" />
     </button>
   );
 }

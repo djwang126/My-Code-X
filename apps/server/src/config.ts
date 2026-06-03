@@ -5,7 +5,6 @@ export interface ServerConfig {
   host: string;
   port: number;
   dataDir: string;
-  defaultCodexCwd?: string;
 }
 
 export interface LoadConfigInput {
@@ -21,7 +20,6 @@ export function loadConfig(input: LoadConfigInput = {}): ServerConfig {
   return {
     host: env.MY_CODE_X_HOST ?? "127.0.0.1",
     port: Number.isFinite(port) ? port : 60120,
-    dataDir: env.MY_CODE_X_DATA_DIR ?? path.join(homeDir, ".my-code-x"),
-    defaultCodexCwd: env.MY_CODE_X_DEFAULT_CWD ?? env.INIT_CWD ?? process.cwd()
+    dataDir: env.MY_CODE_X_DATA_DIR ?? path.join(homeDir, ".my-code-x")
   };
 }
