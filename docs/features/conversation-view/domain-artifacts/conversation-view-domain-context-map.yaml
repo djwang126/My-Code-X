@@ -1,5 +1,8 @@
 # Context Map (final) — Conversation View
 # 基于已确认的 4 聚合结构与 Phase 4 战术(AgentCliACL + InformationClassificationPolicy)修订自 2.4 draft。
+# 字段遵循 context-map-FORMAT(已修正:type=权力结构 / integration=集成策略,两维正交;acl 与 conformist
+# 同为 integration 下的互斥下游策略,不再误置于 type)。对 AgentCLI 的边界:type=upstream-downstream(不可控外部上游)
+# + integration=acl|conformist。详见 DD-012。
 
 context-map:
   project: conversation-view
@@ -28,12 +31,12 @@ contexts:
 
 relationships:
   # ===== 外部边界:对 AgentCLI(单一 AgentCliACL,按 BC 拆 port) =====
-  # 关系模式 = anti-corruption-layer:下游翻译 agent native 模型以保护 Core 语言。
-  # 注意:ACL 与 conformist 互斥(conformist=不翻译直接顺从)。本边界皆需翻译,故为 ACL,非 conformist。
+  # type=upstream-downstream:agent cli 不可控,我们只能适配,upstream 不为我们改。
+  # integration=acl:我们用翻译层自保(acl 与 conformist 是两种互斥下游策略,见 FORMAT schema 修正)。
   - upstream: AgentCLI
     downstream: Transcript
-    type: anti-corruption-layer
-    mechanism: async-event-stream
+    type: upstream-downstream
+    integration: acl
     async: true
     events: [ConversationInformationReceived, InformationClassifiedAsConversation, InformationClassifiedAsWorkProgress, InformationClassifiedAsFailure, InformationClassifiedAsUnrecognized, AgentReplyStreamStarted, AgentReplyDeltaReceived, AgentReplyCompleted, WorkProgressInformationProgressed, FailureInformationReceived, UnrecognizedInformationReceived, TurnStarted, TurnCompleted]
     translation: >
@@ -43,77 +46,79 @@ relationships:
       native turn 信令 → TurnBoundaryEvent(边界由 agent 提供不推断)。丢弃:vendor 专属元数据(整条不可安全归类者完整落 Unrecognized,不丢失)。
     rationale: >
       闭环 HS-005+008(Phase 4 已 resolved)。agent native 语义异构且不可控,无 ACL 则污染四类分类与 Turn 语义、滋生 if-by-vendor。
-      ACL 在边界翻译 native 模型,保护 Core 的 Ubiquitous Language;不采用 conformist,因我们绝不让 native 概念裸进 Core。
+      type=upstream-downstream:agent cli 不响应我方需求、我方只能适配(权力结构);integration=acl:在边界翻译 native 模型以保护 Core 语言。
+      schema 的 type 旧枚举曾把 conformist 误列为权力结构,导致"不可控上游+ACL"无法表达;FORMAT 已修正两维正交(见 DD-012)。
   - upstream: AgentCLI
     downstream: Interaction
-    direction: both                 # 下行 interaction 信令 + 上行发送/响应请求(CM-2)
-    type: anti-corruption-layer
-    mechanism: async-inbound + sync-outbound   # 下行异步信令;上行同步请求-裁决
+    type: upstream-downstream
+    integration: acl
     async: true
     events: [PendingInteractionRaised, PendingInteractionResolved, PendingInteractionExpired, PendingInteractionCancelled, InteractionResponseAccepted, InteractionResponseRejected, NormalInputAccepted, NormalInputSendFailed, SupplementaryInstructionAccepted, SupplementaryInstructionSendFailed]
     translation: >
       下行:native interaction 信令 → PendingInteraction/InteractionEvent(Raised 携 OptionSet,响应方式由 interaction 自身决定);
-      上行:NormalInput/SupplementaryInstruction/Interrupt/Response → agent native 请求,返回 SendOutcome(Accepted|SendFailed,中断无 ack);
-      被拒/失败 → 领域数据(SendFailed/Failure),不抛 native 错误码。
+      上行(经 AgentRequestPort):NormalInput/SupplementaryInstruction/Interrupt/Response → agent native 请求,返回 SendOutcome(Accepted|SendFailed,中断无 ack);
+      被拒/失败 → 领域数据(SendFailed/Failure)或 Domain Error,不抛 native 错误码。
     rationale: >
-      双向边界(both),interaction 概念与请求裁决均来自不可控 agent;ACL 把"被拒/超时/取消"驯化为领域数据与 Domain Error
+      双向 ACL 边界(下行 interaction 信令异步、上行发送/响应请求同步,方向由各 port 承载;此关系记入站事实)。
+      interaction 概念与请求裁决均来自不可控 agent;ACL 把"被拒/超时/取消"驯化为领域数据与 Domain Error
       (InteractionAlreadyResolved/NoLongerPending),内部不见 native 错误码。响应有效性不校验(HS-007),交 agent。
   - upstream: AgentCLI
     downstream: ContentSync
-    type: anti-corruption-layer
-    mechanism: sync-request-response
+    type: upstream-downstream
+    integration: acl
     async: false
     translation: >
       出站 fetchHistory(convId);入站 native 历史批次 → RestoreOutcome:有内容→Restored(raw 批次转交 Transcript 分类装配),
       空批次→RestoredEmpty(空≠失败,I3-2/I1-4 权威在此),取不到→RestoreFailed。
     rationale: >
-      历史恢复内容形态由 agent 决定;ACL 在此边界确立"空≠失败"判定,避免把空内容误判为失败渗入 Core。同步调用(请求-响应式取历史)。
+      历史恢复内容形态由 agent 决定;ACL 在此边界确立"空≠失败"判定,避免把空内容误判为失败渗入 Core。同步调用(请求-响应式取历史),故 async:false。
   - upstream: AgentCLI
     downstream: PageNotification
-    type: conformist
-    mechanism: async-event
+    type: upstream-downstream
+    integration: conformist
     async: true
     events: [UnattributedAgentErrorReceived]
     translation: >
       native 无法归属对话的错误 → UnattributedAgentError(仅取 native message);展示为通用 banner,不为类型设计专门视觉。
     rationale: >
-      Generic 子域,概念无扭曲(仅 message),故关系模式为 conformist——下游直接顺从 native message,不做语义翻译。
-      物理上仍经 AgentCliACL 的 UnattributedErrorPort 透传(保持"一外部 Context 一 ACL"的单一边界),
-      但这是透传适配,非概念翻译,关系模式仍是 conformist 而非 ACL。承载领域事实是 UnattributedAgentError,banner 属表现层。
+      Generic 子域,概念无扭曲(仅 message),故下游策略 integration=conformist——直接顺从 native message,不做语义翻译。
+      type=upstream-downstream:agent 不可控、我方适配。物理上仍经 AgentCliACL 的 UnattributedErrorPort 透传
+      (保持"一外部 Context 一 ACL"的单一边界),但那是透传适配而非概念翻译,故 integration 标 conformist 而非 acl。
+      承载领域事实是 UnattributedAgentError,banner 属表现层。
 
   # ===== 内部边界 =====
   - upstream: ContentSync
     downstream: Transcript
     type: customer-supplier
-    mechanism: async-event
+    integration: none
     async: true
     events: [ConversationContentRestored, ConversationContentRestoredEmpty]
     translation: ""
     rationale: >
       ContentSync 供给恢复出的 raw native 批次,Transcript 用同一分类 ACL 装配;Transcript 作为 customer 定义所需信息粒度。
-      恢复批次与 live 增量互斥到达(HS-010),Transcript 统一处理两通道。无跨边界 ACL(共用 AgentCliACL 的分类入口)。
+      恢复批次与 live 增量互斥到达(HS-010),Transcript 统一处理两通道。integration=none:无独立跨边界翻译,共用 AgentCliACL 的分类入口。
   - upstream: Transcript
     downstream: Interaction
     type: customer-supplier
-    mechanism: read-projection
+    integration: none
     async: false
     translation: ""
     rationale: >
       Transcript 投影 TurnInProgress(busy/idle)状态喂入 ComposerState(读侧投影,非可写共享),决定主操作三态。
-      Customer-Supplier 而非 Shared-Kernel:只读投影,无共享可写模型,避免最贵模式。
+      Customer-Supplier 而非 Shared-Kernel:只读投影,无共享可写模型,避免最贵模式。integration=none:只读状态投影,无技术翻译层。
   - upstream: ContentSync
     downstream: Interaction
     type: customer-supplier
-    mechanism: read-projection
+    integration: none
     async: false
     translation: ""
     rationale: >
       ContentSync 投影可得性状态(恢复中/连接不可用/目标不明确)喂入 ComposerState 作"禁用发送"gate(freshness guard)。
-      只读投影,Customer-Supplier。
+      只读投影,Customer-Supplier,integration=none。
   - upstream: Interaction
     downstream: Transcript
     type: separate-ways
-    mechanism: none
+    integration: none
     async: false
     translation: ""
     rationale: >
