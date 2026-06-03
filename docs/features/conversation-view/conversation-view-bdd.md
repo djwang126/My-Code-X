@@ -12,8 +12,6 @@
 
 产品用户的电脑持续运行 `My-Code-X` 后端。后端调用同一台电脑上的 `agent cli`，产品用户可以通过手机、其他电脑或同一电脑上的前端连接后端，并与 `agent cli` 对话。
 
-`Conversation View` 消费当前选中对话状态、对话内容、连接状态、恢复状态、发送结果和当前 `agent cli` 能力信息。它不负责创建、选择或取消选择对话。
-
 `Conversation View` 使用四类产品内部信息分类决定渲染方式：
 
 - 普通对话内容
@@ -27,7 +25,11 @@
 
 未识别信息只用于 `agent cli` 提供的不能安全归类的信息，不仅因为某个 `agent cli` native type 没有专门展示规则，就把该信息归为未识别信息。
 
-`turn` 边界由当前 `agent cli` 提供的 turn 相关信息决定。`Conversation View` 不自行推断 turn 边界。
+`turn` 边界由当前 `agent cli` 提供的 turn 相关信息决定。`Conversation View` 不自行推断 turn 边界。对话"正在工作"指当前存在一个进行中的 `turn`;两种说法指同一状态。
+
+内容恢复在对话空闲时发生;`live update` 只在对话正在工作(`turn` 进行中)时发生。两者不会同时进行。
+
+`Conversation View` 不负责创建、选择或取消选择对话, 这些能力由另外的功能负责提供，`Conversation View` 只消费已有的“选中对话”。
 
 UI标准由 UImock 提供，UImock 只体现界面样式与布局，不代表任何代码设计、领域定义或实现细节。[conversation-view-UImock.html](./conversation-view-UImock.html)：
 
@@ -153,27 +155,27 @@ When 产品用户展开该工作过程信息详情
 Then 页面展示该信息的通用字段或结构化内容
 And 产品用户的浏览位置不应突然跳动到其他消息
 
-### Scenario: 工作过程展开状态在对话打开期间保持
+### Scenario: 工作过程/未知信息的展开状态在对话打开期间保持
 
 Given 产品用户已展开一条工作过程信息
 When 页面收到 live update
 Then 该工作过程信息保持展开
 
-When 产品用户滚动消息列表后回到该工作过程信息
-Then 该工作过程信息仍保持展开
+When 产品用户滚动消息列表后回到该工作过程/未知信息
+Then 该工作过程/未知信息仍保持展开
 
 When 页面刷新后恢复同一对话
-Then 该工作过程信息仍保持展开
+Then 该工作过程/未知信息仍保持展开
 
 When app 断线重连后恢复同一对话
-Then 该工作过程信息仍保持展开
+Then 该工作过程/未知信息仍保持展开
 
-### Scenario: 切换对话后不保留工作过程展开状态
+### Scenario: 切换对话后不保留工作过程/未知信息展开状态
 
-Given 产品用户在对话 A 中已展开一条工作过程信息
+Given 产品用户在对话 A 中已展开一条工作过程/未知信息
 When 外部功能把当前选中对话切换为对话 B
 And 外部功能把当前选中对话切换回对话 A
-Then 对话 A 中该工作过程信息恢复为默认折叠状态
+Then 对话 A 中该工作过程/未知信息恢复为默认折叠状态
 
 ### Scenario: 未识别信息不丢失
 
@@ -480,6 +482,7 @@ Then 页面展示中断确认 modal
 
 When 产品用户在 modal 中二次确认
 Then Composer 发送中断当前工作请求
+And 中断结果由 `agent cli` 后续信息与对话状态变化体现
 
 When 产品用户在 modal 中取消
 Then 页面关闭 modal

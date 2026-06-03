@@ -1,0 +1,121 @@
+# Context Map (final) — Conversation View
+# 基于已确认的 4 聚合结构与 Phase 4 战术(AgentCliACL + InformationClassificationPolicy)修订自 2.4 draft。
+
+context-map:
+  project: conversation-view
+
+contexts:
+  - name: Transcript
+    type: core
+    owner: my-code-x
+    description: 把已分类信息装配成按序、保真、可读的 ConversationTranscript;持有四类分类 ACL 入口。
+  - name: Interaction
+    type: core
+    owner: my-code-x
+    description: 产品用户对 agent 的操控——发送语义(普通/补充/中断)与 PendingInteraction 响应、状态机、幂等裁决。
+  - name: ContentSync
+    type: supporting
+    owner: my-code-x
+    description: 让 transcript 在移动/远程/多连接下可得且尽量最新——内容恢复生命周期与可得性状态。
+  - name: PageNotification
+    type: generic
+    owner: my-code-x
+    description: 无法归属到具体对话的 agent 错误,以通用页面提示呈现,不入 transcript。
+  - name: AgentCLI
+    type: generic
+    owner: external
+    description: 外部 cli 形态 agent(codex/claude code 等)统称;本模型唯一外部系统,概念不受我们控制。
+
+relationships:
+  # ===== 外部边界:对 AgentCLI(单一 AgentCliACL,按 BC 拆 port) =====
+  # 关系模式 = anti-corruption-layer:下游翻译 agent native 模型以保护 Core 语言。
+  # 注意:ACL 与 conformist 互斥(conformist=不翻译直接顺从)。本边界皆需翻译,故为 ACL,非 conformist。
+  - upstream: AgentCLI
+    downstream: Transcript
+    type: anti-corruption-layer
+    mechanism: async-event-stream
+    async: true
+    events: [ConversationInformationReceived, InformationClassifiedAsConversation, InformationClassifiedAsWorkProgress, InformationClassifiedAsFailure, InformationClassifiedAsUnrecognized, AgentReplyStreamStarted, AgentReplyDeltaReceived, AgentReplyCompleted, WorkProgressInformationProgressed, FailureInformationReceived, UnrecognizedInformationReceived, TurnStarted, TurnCompleted]
+    translation: >
+      native type → Classification 四类判别(经 InformationClassificationPolicy,未知 type→Unrecognized);
+      native status → NativeStatus(原样,缺失→None 不占位);native message → MarkdownText/FailureMessage(Failure 缺失→兜底 Unknown error);
+      native 流式分片 → ReplyStreamState+DeltaContent;native 稳定 id → EntryId/TurnId(不透明保留);
+      native turn 信令 → TurnBoundaryEvent(边界由 agent 提供不推断)。丢弃:vendor 专属元数据(整条不可安全归类者完整落 Unrecognized,不丢失)。
+    rationale: >
+      闭环 HS-005+008(Phase 4 已 resolved)。agent native 语义异构且不可控,无 ACL 则污染四类分类与 Turn 语义、滋生 if-by-vendor。
+      ACL 在边界翻译 native 模型,保护 Core 的 Ubiquitous Language;不采用 conformist,因我们绝不让 native 概念裸进 Core。
+  - upstream: AgentCLI
+    downstream: Interaction
+    direction: both                 # 下行 interaction 信令 + 上行发送/响应请求(CM-2)
+    type: anti-corruption-layer
+    mechanism: async-inbound + sync-outbound   # 下行异步信令;上行同步请求-裁决
+    async: true
+    events: [PendingInteractionRaised, PendingInteractionResolved, PendingInteractionExpired, PendingInteractionCancelled, InteractionResponseAccepted, InteractionResponseRejected, NormalInputAccepted, NormalInputSendFailed, SupplementaryInstructionAccepted, SupplementaryInstructionSendFailed]
+    translation: >
+      下行:native interaction 信令 → PendingInteraction/InteractionEvent(Raised 携 OptionSet,响应方式由 interaction 自身决定);
+      上行:NormalInput/SupplementaryInstruction/Interrupt/Response → agent native 请求,返回 SendOutcome(Accepted|SendFailed,中断无 ack);
+      被拒/失败 → 领域数据(SendFailed/Failure),不抛 native 错误码。
+    rationale: >
+      双向边界(both),interaction 概念与请求裁决均来自不可控 agent;ACL 把"被拒/超时/取消"驯化为领域数据与 Domain Error
+      (InteractionAlreadyResolved/NoLongerPending),内部不见 native 错误码。响应有效性不校验(HS-007),交 agent。
+  - upstream: AgentCLI
+    downstream: ContentSync
+    type: anti-corruption-layer
+    mechanism: sync-request-response
+    async: false
+    translation: >
+      出站 fetchHistory(convId);入站 native 历史批次 → RestoreOutcome:有内容→Restored(raw 批次转交 Transcript 分类装配),
+      空批次→RestoredEmpty(空≠失败,I3-2/I1-4 权威在此),取不到→RestoreFailed。
+    rationale: >
+      历史恢复内容形态由 agent 决定;ACL 在此边界确立"空≠失败"判定,避免把空内容误判为失败渗入 Core。同步调用(请求-响应式取历史)。
+  - upstream: AgentCLI
+    downstream: PageNotification
+    type: conformist
+    mechanism: async-event
+    async: true
+    events: [UnattributedAgentErrorReceived]
+    translation: >
+      native 无法归属对话的错误 → UnattributedAgentError(仅取 native message);展示为通用 banner,不为类型设计专门视觉。
+    rationale: >
+      Generic 子域,概念无扭曲(仅 message),故关系模式为 conformist——下游直接顺从 native message,不做语义翻译。
+      物理上仍经 AgentCliACL 的 UnattributedErrorPort 透传(保持"一外部 Context 一 ACL"的单一边界),
+      但这是透传适配,非概念翻译,关系模式仍是 conformist 而非 ACL。承载领域事实是 UnattributedAgentError,banner 属表现层。
+
+  # ===== 内部边界 =====
+  - upstream: ContentSync
+    downstream: Transcript
+    type: customer-supplier
+    mechanism: async-event
+    async: true
+    events: [ConversationContentRestored, ConversationContentRestoredEmpty]
+    translation: ""
+    rationale: >
+      ContentSync 供给恢复出的 raw native 批次,Transcript 用同一分类 ACL 装配;Transcript 作为 customer 定义所需信息粒度。
+      恢复批次与 live 增量互斥到达(HS-010),Transcript 统一处理两通道。无跨边界 ACL(共用 AgentCliACL 的分类入口)。
+  - upstream: Transcript
+    downstream: Interaction
+    type: customer-supplier
+    mechanism: read-projection
+    async: false
+    translation: ""
+    rationale: >
+      Transcript 投影 TurnInProgress(busy/idle)状态喂入 ComposerState(读侧投影,非可写共享),决定主操作三态。
+      Customer-Supplier 而非 Shared-Kernel:只读投影,无共享可写模型,避免最贵模式。
+  - upstream: ContentSync
+    downstream: Interaction
+    type: customer-supplier
+    mechanism: read-projection
+    async: false
+    translation: ""
+    rationale: >
+      ContentSync 投影可得性状态(恢复中/连接不可用/目标不明确)喂入 ComposerState 作"禁用发送"gate(freshness guard)。
+      只读投影,Customer-Supplier。
+  - upstream: Interaction
+    downstream: Transcript
+    type: separate-ways
+    mechanism: none
+    async: false
+    translation: ""
+    rationale: >
+      关键边界决策(CM-8)。用户输入不本地直塞 transcript,经 agent round-trip(发送→accept→live 回流→分类成 UserInput)。
+      两个 Core Context 间无直接领域数据流,从根上避免 UserInput 被两聚合共享这一常见跨 Context 聚合错误。刻意不连,非缺边。
