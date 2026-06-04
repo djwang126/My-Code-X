@@ -1,0 +1,347 @@
+import type {
+  AgentCliHistorySource,
+  ClassifiedAgentInformation,
+  ClassifyAgentInformationInput,
+  ContentRestoreOutcome,
+  EntryBody,
+  InterpretTurnSignalInput,
+  RestoreAgentContentInput,
+  TurnCompletionOutcome,
+  TurnSignalInterpretation
+} from "./agent-cli-adapter";
+
+export interface CreateCodexAgentCliAdapterInput {
+  historySource: AgentCliHistorySource;
+}
+
+interface CodexUserMessage {
+  type: "userMessage";
+  id: string;
+  content: Array<{ type: string; text?: string }>;
+}
+
+interface CodexAgentMessage {
+  type: "agentMessage";
+  id: string;
+  text: string;
+  phase: string | null;
+}
+
+type CodexWorkProgressType =
+  | "reasoning"
+  | "commandExecution"
+  | "fileChange"
+  | "mcpToolCall"
+  | "dynamicToolCall"
+  | "webSearch"
+  | "collabAgentToolCall"
+  | "imageView"
+  | "imageGeneration";
+
+interface CodexWorkProgressItem extends Record<string, unknown> {
+  type: CodexWorkProgressType;
+  id: string;
+  status?: string;
+}
+
+interface CodexErrorNotification extends Record<string, unknown> {
+  error: {
+    message?: unknown;
+  };
+  turnId: string;
+}
+
+interface CodexTurnNotification extends Record<string, unknown> {
+  turn: {
+    id: string;
+    status: string;
+    startedAt: number | null;
+    completedAt: number | null;
+  };
+}
+
+interface CodexItemNotification extends Record<string, unknown> {
+  item: {
+    type: string;
+    id: string;
+  };
+  turnId: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+function isCodexUserMessage(value: unknown): value is CodexUserMessage {
+  return (
+    isRecord(value) &&
+    value.type === "userMessage" &&
+    typeof value.id === "string" &&
+    Array.isArray(value.content)
+  );
+}
+
+function isCodexAgentMessage(value: unknown): value is CodexAgentMessage {
+  return (
+    isRecord(value) &&
+    value.type === "agentMessage" &&
+    typeof value.id === "string" &&
+    typeof value.text === "string"
+  );
+}
+
+function isCodexWorkProgressItem(value: unknown): value is CodexWorkProgressItem {
+  return (
+    isRecord(value) &&
+    (value.type === "reasoning" ||
+      value.type === "commandExecution" ||
+      value.type === "fileChange" ||
+      value.type === "mcpToolCall" ||
+      value.type === "dynamicToolCall" ||
+      value.type === "webSearch" ||
+      value.type === "collabAgentToolCall" ||
+      value.type === "imageView" ||
+      value.type === "imageGeneration") &&
+    typeof value.id === "string"
+  );
+}
+
+function isCodexErrorNotification(value: unknown): value is CodexErrorNotification {
+  return (
+    isRecord(value) &&
+    isRecord(value.error) &&
+    typeof value.turnId === "string"
+  );
+}
+
+function hasStableItemId(value: unknown): value is Record<string, unknown> & { id: string } {
+  return isRecord(value) && typeof value.id === "string";
+}
+
+function isCodexTurnNotification(value: unknown): value is CodexTurnNotification {
+  return (
+    isRecord(value) &&
+    isRecord(value.turn) &&
+    typeof value.turn.id === "string" &&
+    typeof value.turn.status === "string"
+  );
+}
+
+function isCodexItemNotification(value: unknown): value is CodexItemNotification {
+  return (
+    isRecord(value) &&
+    isRecord(value.item) &&
+    typeof value.item.type === "string" &&
+    typeof value.item.id === "string" &&
+    typeof value.turnId === "string"
+  );
+}
+
+function codexItemFromRaw(raw: unknown): unknown {
+  if (isCodexItemNotification(raw)) {
+    return raw.item;
+  }
+
+  return raw;
+}
+
+function unixSecondsToIso(seconds: number): string {
+  return new Date(seconds * 1000).toISOString();
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unknown error";
+}
+
+function codexUserMessageMarkdown(message: CodexUserMessage): string {
+  return message.content
+    .filter((item) => item.type === "text")
+    .map((item) => item.text ?? "")
+    .join("");
+}
+
+function codexTurnOutcome(status: string): TurnCompletionOutcome | null {
+  if (status === "completed") {
+    return "Completed";
+  }
+
+  if (status === "failed") {
+    return "Failed";
+  }
+
+  if (status === "interrupted") {
+    return "Interrupted";
+  }
+
+  return null;
+}
+
+export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInput) {
+  const pendingTurnStarts = new Map<string, { userInputTime: string }>();
+  const pendingLastAgentReplies = new Map<string, { lastAgentReplyRef: string }>();
+  const errorCountsByTurn = new Map<string, number>();
+
+  return {
+    classifyInformation(classifyInput: ClassifyAgentInformationInput): ClassifiedAgentInformation {
+      const rawItem = codexItemFromRaw(classifyInput.raw);
+
+      if (isCodexUserMessage(rawItem)) {
+        return {
+          entryId: rawItem.id,
+          body: {
+            kind: "UserInput",
+            markdown: codexUserMessageMarkdown(rawItem)
+          }
+        };
+      }
+
+      if (isCodexAgentMessage(rawItem)) {
+        return {
+          entryId: rawItem.id,
+          body: {
+            kind: "AgentReply",
+            content: rawItem.text,
+            stream:
+              classifyInput.streamHint ??
+              (rawItem.phase === "final_answer" ? "Completed" : "InProgress")
+          }
+        };
+      }
+
+      if (isCodexWorkProgressItem(rawItem)) {
+        const body: EntryBody = {
+          kind: "WorkProgress",
+          nativeType: rawItem.type,
+          detail: rawItem
+        };
+
+        if (typeof rawItem.status === "string") {
+          body.nativeStatus = rawItem.status;
+        }
+
+        return {
+          entryId: rawItem.id,
+          body
+        };
+      }
+
+      if (isCodexErrorNotification(classifyInput.raw)) {
+        const message =
+          typeof classifyInput.raw.error.message === "string"
+            ? classifyInput.raw.error.message
+            : "Unknown error";
+
+        const nextErrorCount = (errorCountsByTurn.get(classifyInput.raw.turnId) ?? 0) + 1;
+        errorCountsByTurn.set(classifyInput.raw.turnId, nextErrorCount);
+
+        return {
+          entryId: `${classifyInput.raw.turnId}:error:${nextErrorCount}`,
+          body: {
+            kind: "Failure",
+            message,
+            detail: classifyInput.raw
+          }
+        };
+      }
+
+      if (hasStableItemId(rawItem)) {
+        return {
+          entryId: rawItem.id,
+          body: {
+            kind: "Unrecognized",
+            detail: rawItem
+          }
+        };
+      }
+
+      throw new Error("Unsupported Codex information");
+    },
+
+    interpretTurnSignal(turnInput: InterpretTurnSignalInput): TurnSignalInterpretation {
+      if (
+        isCodexTurnNotification(turnInput.raw) &&
+        turnInput.raw.turn.status === "inProgress" &&
+        typeof turnInput.raw.turn.startedAt === "number"
+      ) {
+        pendingTurnStarts.set(turnInput.raw.turn.id, {
+          userInputTime: unixSecondsToIso(turnInput.raw.turn.startedAt)
+        });
+        return { kind: "NoTurnSignal" };
+      }
+
+      if (
+        isCodexTurnNotification(turnInput.raw) &&
+        codexTurnOutcome(turnInput.raw.turn.status) !== null &&
+        typeof turnInput.raw.turn.completedAt === "number"
+      ) {
+        const outcome = codexTurnOutcome(turnInput.raw.turn.status);
+        if (outcome === null) {
+          return { kind: "NoTurnSignal" };
+        }
+
+        const pending = pendingLastAgentReplies.get(turnInput.raw.turn.id);
+        const completed: TurnSignalInterpretation = {
+          kind: "TurnCompleted",
+          turnId: turnInput.raw.turn.id,
+          outcome,
+          lastReplyCompletedTime: unixSecondsToIso(turnInput.raw.turn.completedAt)
+        };
+
+        if (pending !== undefined) {
+          pendingLastAgentReplies.delete(turnInput.raw.turn.id);
+          completed.lastAgentReplyRef = pending.lastAgentReplyRef;
+        }
+
+        return completed;
+      }
+
+      if (
+        isCodexItemNotification(turnInput.raw) &&
+        turnInput.raw.item.type === "userMessage"
+      ) {
+        const pending = pendingTurnStarts.get(turnInput.raw.turnId);
+        if (pending === undefined) {
+          return { kind: "NoTurnSignal" };
+        }
+
+        pendingTurnStarts.delete(turnInput.raw.turnId);
+        return {
+          kind: "TurnStarted",
+          turnId: turnInput.raw.turnId,
+          firstUserInputRef: turnInput.raw.item.id,
+          userInputTime: pending.userInputTime
+        };
+      }
+
+      if (
+        isCodexItemNotification(turnInput.raw) &&
+        turnInput.raw.item.type === "agentMessage"
+      ) {
+        pendingLastAgentReplies.set(turnInput.raw.turnId, {
+          lastAgentReplyRef: turnInput.raw.item.id
+        });
+        return { kind: "NoTurnSignal" };
+      }
+
+      return { kind: "NoTurnSignal" };
+    },
+
+    async restoreContent(restoreInput: RestoreAgentContentInput): Promise<ContentRestoreOutcome> {
+      let items: unknown[];
+      try {
+        items = await input.historySource.fetchHistory(restoreInput);
+      } catch (error) {
+        return {
+          kind: "RestoreFailed",
+          message: errorMessage(error)
+        };
+      }
+
+      if (items.length === 0) {
+        return { kind: "RestoredEmpty" };
+      }
+
+      return { kind: "Restored", items };
+    }
+  };
+}

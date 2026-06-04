@@ -1,0 +1,406 @@
+[
+  {
+    "type": "user",
+    "uuid": "122bb96d-8496-4e01-a8d5-c877bb3551a8",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "You are generating a deterministic My-Code-X fixture.\nWork only in the current repository.\nFirst read cat.md.\nThen append exactly this line to cat.md: Fixture note: Claude Agent SDK touched this file.\nThen run harmless command `node --version`.\nDo not modify any other file.\nAfter completing the file edit and command, reply in one sentence."
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:11.928Z"
+  },
+  {
+    "type": "assistant",
+    "uuid": "8214708b-dc87-47a0-a5a4-28dfa8f302bc",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "content": [
+        {
+          "text": "I'll start by reading cat.md.",
+          "type": "text"
+        }
+      ],
+      "id": "msg_061cf99b-b09b-4531-b2",
+      "model": "claude-opus-4-8",
+      "role": "assistant",
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "input_tokens": 1648,
+        "cache_creation_input_tokens": 1427,
+        "cache_read_input_tokens": 9087,
+        "output_tokens": 45,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 1427
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "stop_details": null
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:15.154Z"
+  },
+  {
+    "type": "assistant",
+    "uuid": "da232c93-0136-4128-8215-2a39847d6ec0",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "content": [
+        {
+          "id": "tooluse_Fqb1Sv4nhZrkPhif7BSr72",
+          "input": {
+            "file_path": "D:\\workspaces\\AI-Tools\\My-Code-X-C\\cat.md"
+          },
+          "name": "Read",
+          "type": "tool_use"
+        }
+      ],
+      "id": "msg_061cf99b-b09b-4531-b2",
+      "model": "claude-opus-4-8",
+      "role": "assistant",
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "input_tokens": 1648,
+        "cache_creation_input_tokens": 1427,
+        "cache_read_input_tokens": 9087,
+        "output_tokens": 45,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 1427
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "stop_details": null
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:15.758Z"
+  },
+  {
+    "type": "user",
+    "uuid": "fe2ff377-e1b8-45eb-875f-724e387ae0ce",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "tooluse_Fqb1Sv4nhZrkPhif7BSr72",
+          "type": "tool_result",
+          "content": "1\tYou are a cute cat\n2\t"
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:15.779Z"
+  },
+  {
+    "type": "assistant",
+    "uuid": "4384494f-5cfc-4109-a5ed-64105ed8f892",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "content": [
+        {
+          "id": "tooluse_awar5d5TyR80LZmAMZKFl5",
+          "input": {
+            "replace_all": false,
+            "file_path": "D:\\workspaces\\AI-Tools\\My-Code-X-C\\cat.md",
+            "old_string": "You are a cute cat",
+            "new_string": "You are a cute cat\nFixture note: Claude Agent SDK touched this file."
+          },
+          "name": "Edit",
+          "type": "tool_use"
+        }
+      ],
+      "id": "msg_f54c1298-9ea9-472e-8c",
+      "model": "claude-opus-4-8",
+      "role": "assistant",
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "input_tokens": 55,
+        "cache_creation_input_tokens": 1763,
+        "cache_read_input_tokens": 9204,
+        "output_tokens": 125,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 1763
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "stop_details": null
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:20.687Z"
+  },
+  {
+    "type": "assistant",
+    "uuid": "2ce14fcf-20df-4745-8e07-fa7869c2c7d6",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "content": [
+        {
+          "id": "tooluse_3BWfihGbHt0M13RBtjRdps",
+          "input": {
+            "command": "node --version",
+            "description": "Check Node.js version"
+          },
+          "name": "Bash",
+          "type": "tool_use"
+        }
+      ],
+      "id": "msg_f54c1298-9ea9-472e-8c",
+      "model": "claude-opus-4-8",
+      "role": "assistant",
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "input_tokens": 55,
+        "cache_creation_input_tokens": 1763,
+        "cache_read_input_tokens": 9204,
+        "output_tokens": 125,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 1763
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "stop_details": null
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:20.743Z"
+  },
+  {
+    "type": "user",
+    "uuid": "2f45e4ea-b78b-4c47-8775-940cbc6c52ad",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "tooluse_awar5d5TyR80LZmAMZKFl5",
+          "type": "tool_result",
+          "content": "The file D:\\workspaces\\AI-Tools\\My-Code-X-C\\cat.md has been updated successfully. (file state is current in your context — no need to Read it back)"
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:20.783Z"
+  },
+  {
+    "type": "user",
+    "uuid": "6c428458-9f70-4500-bfcd-1a570c955a32",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "tooluse_3BWfihGbHt0M13RBtjRdps",
+          "type": "tool_result",
+          "content": "v24.14.0",
+          "is_error": false
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:24.230Z"
+  },
+  {
+    "type": "assistant",
+    "uuid": "cc7877dc-e3b6-400c-9084-41b07d08c22a",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "content": [
+        {
+          "text": "Appended the fixture note to cat.md and confirmed Node.js v24.14.0.",
+          "type": "text"
+        }
+      ],
+      "id": "msg_9caccf10-c6f1-4af4-85",
+      "model": "claude-opus-4-8",
+      "role": "assistant",
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "input_tokens": 121,
+        "cache_creation_input_tokens": 480,
+        "cache_read_input_tokens": 9456,
+        "output_tokens": 30,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 480
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "stop_details": null
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:26.654Z"
+  },
+  {
+    "type": "user",
+    "uuid": "f486335f-42bb-4db6-b613-994211b26aee",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "type": "text",
+          "text": "Continue the fixture cleanup.\nRevert only your previous change to cat.md.\nDelete exactly this line: Fixture note: Claude Agent SDK touched this file.\nRestore cat.md to the content it had before your previous turn.\nDo not modify any other file.\nAfter completing the cleanup, reply in one sentence."
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:35.259Z"
+  },
+  {
+    "type": "assistant",
+    "uuid": "1e014792-baa1-4ca7-803f-d6d6d3c4cb7f",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "content": [
+        {
+          "id": "tooluse_i19rQF7EQA1VSpn9jP5KFF",
+          "input": {
+            "replace_all": false,
+            "file_path": "D:\\workspaces\\AI-Tools\\My-Code-X-C\\cat.md",
+            "old_string": "You are a cute cat\nFixture note: Claude Agent SDK touched this file.",
+            "new_string": "You are a cute cat"
+          },
+          "name": "Edit",
+          "type": "tool_use"
+        }
+      ],
+      "id": "msg_576ab783-6e18-4d61-92",
+      "model": "claude-opus-4-8",
+      "role": "assistant",
+      "stop_reason": "tool_use",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "input_tokens": 117,
+        "cache_creation_input_tokens": 311,
+        "cache_read_input_tokens": 9600,
+        "output_tokens": 90,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 311
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "stop_details": null
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:48.025Z"
+  },
+  {
+    "type": "user",
+    "uuid": "980dc36e-fc56-4437-b4bb-e749381a9787",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "role": "user",
+      "content": [
+        {
+          "tool_use_id": "tooluse_i19rQF7EQA1VSpn9jP5KFF",
+          "type": "tool_result",
+          "content": "The file D:\\workspaces\\AI-Tools\\My-Code-X-C\\cat.md has been updated successfully. (file state is current in your context — no need to Read it back)"
+        }
+      ]
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:48.104Z"
+  },
+  {
+    "type": "assistant",
+    "uuid": "55169c05-ddae-4ca0-aae0-9a026987b713",
+    "session_id": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+    "message": {
+      "content": [
+        {
+          "text": "Removed the fixture note line, restoring cat.md to its original content.",
+          "type": "text"
+        }
+      ],
+      "id": "msg_163c6652-9592-4807-a7",
+      "model": "claude-opus-4-8",
+      "role": "assistant",
+      "stop_reason": "end_turn",
+      "stop_sequence": null,
+      "type": "message",
+      "usage": {
+        "input_tokens": 92,
+        "cache_creation_input_tokens": 518,
+        "cache_read_input_tokens": 9778,
+        "output_tokens": 34,
+        "server_tool_use": {
+          "web_search_requests": 0,
+          "web_fetch_requests": 0
+        },
+        "service_tier": "standard",
+        "cache_creation": {
+          "ephemeral_1h_input_tokens": 0,
+          "ephemeral_5m_input_tokens": 518
+        },
+        "inference_geo": "",
+        "iterations": [],
+        "speed": "standard"
+      },
+      "stop_details": null
+    },
+    "parent_tool_use_id": null,
+    "timestamp": "2026-06-04T15:49:50.599Z"
+  }
+]
