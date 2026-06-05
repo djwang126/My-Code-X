@@ -27,11 +27,12 @@ Phase 0 探查目标，按"如果错了，重做范围"排序：
 | 0.2a | Codex ACL spike | 0.1 | 对 `../codex/codex-rs` 写最小 adapter，触 InformationClassificationPort + TurnSignalPort + ContentRestorePort；验假设 A（codex 侧）；产出：adapter 雏形 + 文档修订（如有） |
 | 0.2b | Claude Code ACL spike | 0.1 | 对 claude code 写最小 adapter，触 InformationClassificationPort + TurnSignalPort + ContentRestorePort；验假设 A（claude code 侧）；产出：adapter 雏形 + 文档修订（如有） |
 
+实习生结论：【
 0.2a 执行发现：Codex app-server protocol 的 `turn/started` / `turn/completed` 通知本身不携带完整 entry 引用；Codex adapter 需要在 TurnSignalPort 内部关联 turn 通知与 `item/*` 通知后，再产出 `TurnStarted` / `TurnCompleted` 语义。Codex `turn/completed` 可能是 `failed` 或 `interrupted` 且没有最后一条 agent reply，因此 `TurnCompleted` 需要携带 outcome，并允许 `lastAgentReplyRef` 缺失。Codex `error` notification 无 item id，adapter 需要为同一 turn 内多条 failure 生成不碰撞的 entry id。
 
 0.2a smoke 验证：使用 `codex app-server --listen stdio://` 捕获真实 JSON-RPC 输出，成功验证 `thread/resume` 默认返回 `thread.turns`，可作为 ContentRestorePort 的真实恢复来源；`turn/started` → `item/started` / `item/completed` → `turn/completed` 可由同一 Codex adapter 翻译为 Conversation View 需要的分类与 turn 语义。真实 app-server 事件里的 `AgentReply` 流式状态应由 `item/started` / `item/completed` 生命周期提供，而不是只看 `agentMessage.phase`。
 
-0.2b 执行发现：Claude Code TypeScript Agent SDK 的 live `query()` 输出不会回放本次 prompt 的 `user` message；实测 smoke 只收到 `system`、assistant thinking/text 与 `result`。因此 `TurnStarted` 不能只从 SDK live stream 推导，My-Code-X 需要在提交输入时把本地 user entry 与 Claude `session_id` 关联，或在送入 TurnSignalPort 时携带本地 user event。SDK `result` 可作为 active turn 的完成信号，`getSessionMessages()` 可按 session id 恢复历史 user/assistant/system messages；assistant thinking-only message 归入 `WorkProgress`，含 text 的 assistant message 归入 completed `AgentReply`。
+0.2b 执行发现：Claude Code TypeScript Agent SDK 的 live `query()` 输出不会回放本次 prompt 的 `user` message；实测 smoke 只收到 `system`、assistant thinking/text 与 `result`。因此 `TurnStarted` 不能只从 SDK live stream 推导，My-Code-X 需要在提交输入时把本地 user entry 与 Claude `session_id` 关联，或在送入 TurnSignalPort 时携带本地 user event。SDK `result` 可作为 active turn 的完成信号，`getSessionMessages()` 可按 session id 恢复历史 user/assistant/system messages；assistant thinking-only message 归入 `WorkProgress`，含 text 的 assistant message 归入 completed `AgentReply`。】
 
 ### Phase 1 — Tracer（AFK）
 
