@@ -2,8 +2,8 @@
 
 ## Related Artifacts
 
-- Ubiquitous Language: [link](./domain-artifacts/conversation-view-ubiquitous-language.md)
-- Context Map: [link to YAML](./domain-artifacts/conversation-view-domain-context-map.yaml)
+- Ubiquitous Language: [link](../../domain/conversation-view-ubiquitous-language.md)
+- Context Map: [link to YAML](../../domain/conversation-view-domain-context-map.yaml)
 - Design Decisions: [link](./domain-artifacts/conversation-view-design-decisions.md)
 - Discovery Note: [link](./domain-artifacts/conversation-view-domain-discovery-note.md)
 - BDD Source: [link](./conversation-view-bdd.md)
