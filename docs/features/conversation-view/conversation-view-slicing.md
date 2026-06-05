@@ -26,7 +26,6 @@ Phase 0 探查目标，按"如果错了，重做范围"排序：
 | 0.1 | Walking skeleton | — | web→server→web 空线打通；构建、测试框架、SSE 传输固定；无业务无 ACL |
 | 0.2a | Codex ACL spike | 0.1 | 对 `../codex/codex-rs` 写最小 adapter，触 InformationClassificationPort + TurnSignalPort + ContentRestorePort；验假设 A（codex 侧）；产出：adapter 雏形 + 文档修订（如有） |
 | 0.2b | Claude Code ACL spike | 0.1 | 对 claude code 写最小 adapter，触 InformationClassificationPort + TurnSignalPort + ContentRestorePort；验假设 A（claude code 侧）；产出：adapter 雏形 + 文档修订（如有） |
-| 0.3 | Cursor 契约 spike | 0.1 | server 侧实现跨四类事件源的单调 cursor 生成；验假设 B；产出：实现 + 文档修订（如有） |
 
 0.2a 执行发现：Codex app-server protocol 的 `turn/started` / `turn/completed` 通知本身不携带完整 entry 引用；Codex adapter 需要在 TurnSignalPort 内部关联 turn 通知与 `item/*` 通知后，再产出 `TurnStarted` / `TurnCompleted` 语义。Codex `turn/completed` 可能是 `failed` 或 `interrupted` 且没有最后一条 agent reply，因此 `TurnCompleted` 需要携带 outcome，并允许 `lastAgentReplyRef` 缺失。Codex `error` notification 无 item id，adapter 需要为同一 turn 内多条 failure 生成不碰撞的 entry id。
 
