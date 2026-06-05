@@ -8,7 +8,7 @@ import type {
   RestoreAgentContentInput,
   TurnCompletionOutcome,
   TurnSignalInterpretation
-} from "./agent-cli-adapter";
+} from "./agent-cli-ports";
 
 export interface CreateCodexAgentCliAdapterInput {
   historySource: AgentCliHistorySource;

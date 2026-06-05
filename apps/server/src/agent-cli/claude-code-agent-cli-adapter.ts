@@ -9,7 +9,7 @@ import type {
   InterpretTurnSignalInput,
   RestoreAgentContentInput,
   TurnSignalInterpretation
-} from "./agent-cli-adapter";
+} from "./agent-cli-ports";
 
 export interface CreateClaudeCodeAgentCliAdapterInput {
   historySource: AgentCliHistorySource;

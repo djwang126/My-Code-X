@@ -212,7 +212,7 @@ describe("CodexAgentCliAdapter", () => {
 
   it("restores the real Codex thread/resume turns as history items", async () => {
     const resumeResponse = readJsonFixture<CodexThreadResumeFixture>(
-      "./fixtures/codex/thread-resume-two-turn-file-command-revert.json"
+      "./fixtures/codex/resume-two-turn-file-command-revert.json"
     );
     const historyItems = resumeHistoryItems(resumeResponse);
     const adapter = createAdapter(historyItems);

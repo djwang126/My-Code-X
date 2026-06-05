@@ -106,7 +106,7 @@ describe("ClaudeCodeAgentCliAdapter", () => {
   it("translates the real Claude Code live capture into classified information", () => {
     const adapter = createAdapter();
     const liveMessages = readJsonlFixture<Record<string, unknown>>(
-      "./fixtures/claude-code/live-two-turn-file-command-revert.capture.jsonl"
+      "./fixtures/claude-code/live-two-turn-file-command-revert.jsonl"
     );
 
     const streamDelta = firstMessage(liveMessages, (message) => {
@@ -264,7 +264,7 @@ describe("ClaudeCodeAgentCliAdapter", () => {
   it("uses a local submitted entry plus real Claude Code live messages to produce turn signals", () => {
     const adapter = createAdapter();
     const liveMessages = readJsonlFixture<Record<string, unknown>>(
-      "./fixtures/claude-code/live-two-turn-file-command-revert.capture.jsonl"
+      "./fixtures/claude-code/live-two-turn-file-command-revert.jsonl"
     );
     const firstFinalReply = firstMessage(liveMessages, (message) => {
       return (
@@ -362,7 +362,7 @@ describe("ClaudeCodeAgentCliAdapter", () => {
   it("does not infer a Claude Code live turn start from SDK output alone", () => {
     const adapter = createAdapter();
     const liveMessages = readJsonlFixture<Record<string, unknown>>(
-      "./fixtures/claude-code/live-two-turn-file-command-revert.capture.jsonl"
+      "./fixtures/claude-code/live-two-turn-file-command-revert.jsonl"
     );
     const resultMessage = messagesOfType<Record<string, unknown>>(
       liveMessages,
@@ -379,7 +379,7 @@ describe("ClaudeCodeAgentCliAdapter", () => {
 
   it("restores and classifies real Claude Code session messages captured after resume", async () => {
     const historyItems = readJsonFixture<unknown[]>(
-      "./fixtures/claude-code/session-messages-resume.json"
+      "./fixtures/claude-code/resume-two-turn-file-command-revert.json"
     );
     const adapter = createAdapter(historyItems);
 
@@ -459,7 +459,7 @@ describe("ClaudeCodeAgentCliAdapter", () => {
   it("starts turns from real Claude Code restored user messages when timestamps are available", () => {
     const adapter = createAdapter();
     const historyItems = readJsonFixture<Record<string, unknown>[]>(
-      "./fixtures/claude-code/session-messages-resume.json"
+      "./fixtures/claude-code/resume-two-turn-file-command-revert.json"
     );
     const userMessages = messagesOfType<Record<string, unknown>>(historyItems, "user").filter(
       (message) => contentTypes(message).includes("text")
