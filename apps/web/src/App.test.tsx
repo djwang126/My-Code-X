@@ -11,11 +11,23 @@ import {
   within
 } from "@testing-library/react";
 import type { ConversationSnapshotView, TranscriptEntry } from "@my-code-x/app-types";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
+
+const originalScrollIntoView = HTMLElement.prototype.scrollIntoView;
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
+  if (originalScrollIntoView === undefined) {
+    delete (HTMLElement.prototype as { scrollIntoView?: unknown }).scrollIntoView;
+    return;
+  }
+
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+    configurable: true,
+    value: originalScrollIntoView
+  });
 });
 
 function emptySnapshot(conversationId: string): ConversationSnapshotView {
@@ -66,6 +78,11 @@ function createDeferred<T>() {
   return { promise, resolve };
 }
 
+interface ControlledEventInput {
+  id: string;
+  data: unknown;
+}
+
 function createControlledEventSource() {
   const listeners = new Map<string, (event: MessageEvent<string>) => void>();
 
@@ -76,7 +93,7 @@ function createControlledEventSource() {
       },
       close: () => undefined
     },
-    emit: (type: string, data: unknown) => {
+    emit: (type: string, input: ControlledEventInput) => {
       const listener = listeners.get(type);
 
       if (listener === undefined) {
@@ -84,10 +101,27 @@ function createControlledEventSource() {
       }
 
       act(() => {
-        listener(new MessageEvent(type, { data: JSON.stringify(data) }));
+        const event = new MessageEvent(type, { data: JSON.stringify(input.data) });
+        Object.defineProperty(event, "lastEventId", {
+          configurable: true,
+          value: input.id
+        });
+
+        listener(event);
       });
     }
   };
+}
+
+function installScrollIntoViewSpy() {
+  const scrollIntoView = vi.fn();
+
+  Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
+    configurable: true,
+    value: scrollIntoView
+  });
+
+  return scrollIntoView;
 }
 
 describe("Conversation View shell", () => {
@@ -173,6 +207,47 @@ describe("Conversation View shell", () => {
     expect(await screen.findByText("hello")).toBeInTheDocument();
     expect(screen.getByText("echo: hello")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /展开/ })).not.toBeInTheDocument();
+  });
+
+  it("scrolls to the bottom after loading a conversation snapshot with content", async () => {
+    const scrollIntoView = installScrollIntoViewSpy();
+
+    render(
+      <App
+        selectedConversation={{
+          id: "conv-scroll-snapshot",
+          title: "Scroll Snapshot Thread",
+          directory: "D:\\workspaces\\AI-Tools\\My-Code-X-C"
+        }}
+        conversationViewClient={{
+          getSnapshot: async (conversationId: string) =>
+            snapshotWithEntries(conversationId, [
+              {
+                id: "entry-1-user",
+                sequence: 1,
+                body: { kind: "UserInput", markdown: "older message" }
+              },
+              {
+                id: "entry-2-agent",
+                sequence: 2,
+                body: {
+                  kind: "AgentReply",
+                  content: "latest message",
+                  stream: "Completed"
+                }
+              }
+            ]),
+          sendInput: async () => ({ outcome: "Accepted" as const }),
+          createEventSource: () => ({
+            addEventListener: () => undefined,
+            close: () => undefined
+          })
+        }}
+      />
+    );
+
+    expect(await screen.findByText("latest message")).toBeInTheDocument();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "end" });
   });
 
   it("opens conversation events after loading the snapshot cursor", async () => {
@@ -474,10 +549,13 @@ describe("Conversation View shell", () => {
     const transcript = await screen.findByLabelText("Conversation transcript");
 
     eventSource.emit("transcript.entry-added", {
-      entry: {
-        id: "entry-1-user",
-        sequence: 1,
-        body: { kind: "UserInput", markdown: "hello from live event" }
+      id: "1",
+      data: {
+        entry: {
+          id: "entry-1-user",
+          sequence: 1,
+          body: { kind: "UserInput", markdown: "hello from live event" }
+        }
       }
     });
 
@@ -505,13 +583,16 @@ describe("Conversation View shell", () => {
     const transcript = await screen.findByLabelText("Conversation transcript");
 
     eventSource.emit("transcript.entry-added", {
-      entry: {
-        id: "entry-2-agent",
-        sequence: 2,
-        body: {
-          kind: "AgentReply",
-          content: "echo from live event",
-          stream: "Completed"
+      id: "2",
+      data: {
+        entry: {
+          id: "entry-2-agent",
+          sequence: 2,
+          body: {
+            kind: "AgentReply",
+            content: "echo from live event",
+            stream: "Completed"
+          }
         }
       }
     });
@@ -521,6 +602,7 @@ describe("Conversation View shell", () => {
   });
 
   it("shows the echo at the bottom after send and SSE return", async () => {
+    const scrollIntoView = installScrollIntoViewSpy();
     const eventSource = createControlledEventSource();
     const sentInputs: Array<{ conversationId: string; markdownSource: string }> = [];
 
@@ -557,20 +639,26 @@ describe("Conversation View shell", () => {
     ]);
 
     eventSource.emit("transcript.entry-added", {
-      entry: {
-        id: "entry-1-user",
-        sequence: 1,
-        body: { kind: "UserInput", markdown: "hello" }
+      id: "1",
+      data: {
+        entry: {
+          id: "entry-1-user",
+          sequence: 1,
+          body: { kind: "UserInput", markdown: "hello" }
+        }
       }
     });
     eventSource.emit("transcript.entry-added", {
-      entry: {
-        id: "entry-2-agent",
-        sequence: 2,
-        body: {
-          kind: "AgentReply",
-          content: "echo: hello",
-          stream: "Completed"
+      id: "2",
+      data: {
+        entry: {
+          id: "entry-2-agent",
+          sequence: 2,
+          body: {
+            kind: "AgentReply",
+            content: "echo: hello",
+            stream: "Completed"
+          }
         }
       }
     });
@@ -585,5 +673,6 @@ describe("Conversation View shell", () => {
 
     expect(within(transcript).getByText("hello")).toBeInTheDocument();
     expect(within(latestTranscriptItem).getByText("echo: hello")).toBeInTheDocument();
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "end" });
   });
 });

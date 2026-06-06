@@ -85,6 +85,26 @@ function formatSseEvent(event: ConversationStreamEvent): string {
   return `event: ${event.type}\nid: ${event.id}\ndata: ${JSON.stringify(event.data)}\n\n`;
 }
 
+function firstHeaderValue(value: string | string[] | undefined): string | undefined {
+  if (Array.isArray(value)) {
+    return value[0];
+  }
+
+  return value;
+}
+
+function firstQueryValue(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (Array.isArray(value) && typeof value[0] === "string") {
+    return value[0];
+  }
+
+  return undefined;
+}
+
 type MarkdownSourceParseResult =
   | { kind: "Valid"; markdownSource: string }
   | { kind: "Missing" }
@@ -163,8 +183,12 @@ export function createApp(input: CreateAppInput) {
   });
 
   app.get("/api/conversations/:conversationId/events", (req, res) => {
+    const lastEventId = firstHeaderValue(req.headers["last-event-id"]);
+    const queryCursor = firstQueryValue(req.query.after);
+    const afterCursor = lastEventId ?? queryCursor;
     const result = conversationView.subscribeToEvents({
       conversationId: req.params.conversationId,
+      ...(afterCursor === undefined ? {} : { afterCursor }),
       subscriber: {
         publish(event) {
           res.write(formatSseEvent(event));

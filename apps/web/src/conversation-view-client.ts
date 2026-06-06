@@ -85,8 +85,12 @@ export function createConversationViewClient(
     },
 
     createEventSource(input) {
+      const params = new URLSearchParams({
+        after: input.cursor
+      });
+
       return createEventSource(
-        `/api/conversations/${encodeURIComponent(input.conversationId)}/events`
+        `/api/conversations/${encodeURIComponent(input.conversationId)}/events?${params}`
       );
     }
   };

@@ -2,6 +2,7 @@ import request from "supertest";
 import { createServer, get } from "node:http";
 import { describe, expect, it } from "vitest";
 import { createApp } from "./create-app";
+import type { ConversationViewRuntime } from "./conversation-view/conversation-view-runtime";
 
 const app = createApp({
   config: {
@@ -575,6 +576,64 @@ describe("Conversation View input API", () => {
 });
 
 describe("Conversation View event stream API", () => {
+  interface ReceivedEventSubscriptionInput {
+    conversationId: string;
+    afterCursor: string | undefined;
+  }
+
+  function createCursorRecordingApp(receivedInputs: ReceivedEventSubscriptionInput[]) {
+    const conversationView: ConversationViewRuntime = {
+      getSnapshot: () => ({ kind: "ConversationNotFound" }),
+      submitInput: async () => ({ kind: "ConversationNotFound" }),
+      subscribeToEvents(input) {
+        receivedInputs.push({
+          conversationId: input.conversationId,
+          afterCursor: input.afterCursor
+        });
+
+        return { kind: "ConversationNotFound" };
+      }
+    };
+
+    return createApp({
+      config: {
+        host: "127.0.0.1",
+        port: 0
+      },
+      conversationView
+    });
+  }
+
+  it("passes the after query cursor to the event subscription port", async () => {
+    const receivedInputs: ReceivedEventSubscriptionInput[] = [];
+    const response = await request(createCursorRecordingApp(receivedInputs)).get(
+      "/api/conversations/conv-events/events?after=cursor-42"
+    );
+
+    expect(response.status).toBe(404);
+    expect(receivedInputs).toEqual([
+      {
+        conversationId: "conv-events",
+        afterCursor: "cursor-42"
+      }
+    ]);
+  });
+
+  it("uses Last-Event-ID before the after query cursor", async () => {
+    const receivedInputs: ReceivedEventSubscriptionInput[] = [];
+    const response = await request(createCursorRecordingApp(receivedInputs))
+      .get("/api/conversations/conv-events/events?after=query-cursor")
+      .set("Last-Event-ID", "header-cursor");
+
+    expect(response.status).toBe(404);
+    expect(receivedInputs).toEqual([
+      {
+        conversationId: "conv-events",
+        afterCursor: "header-cursor"
+      }
+    ]);
+  });
+
   it("reports conversation-not-found for an unknown conversation event stream", async () => {
     const response = await request(createTestApp()).get("/api/conversations/missing/events");
 

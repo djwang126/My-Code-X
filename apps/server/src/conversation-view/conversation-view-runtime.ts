@@ -29,6 +29,7 @@ export interface ConversationEventSubscription {
 
 export interface SubscribeToConversationEventsInput {
   conversationId: string;
+  afterCursor?: string;
   subscriber: ConversationEventSubscriber;
 }
 

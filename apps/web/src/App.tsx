@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   conversationStreamEventSchema
 } from "@my-code-x/app-types";
@@ -74,6 +74,10 @@ function entryText(entry: TranscriptEntry): string {
   return "";
 }
 
+function isNearBottom(element: HTMLElement): boolean {
+  return element.scrollHeight - element.scrollTop - element.clientHeight <= 24;
+}
+
 export function App(input: AppDependencies = {}) {
   const selectedConversation = input.selectedConversation ?? null;
   const conversationViewClient =
@@ -81,14 +85,16 @@ export function App(input: AppDependencies = {}) {
   const [snapshot, setSnapshot] = useState<ConversationSnapshotView | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const transcriptBottomRef = useRef<HTMLLIElement | null>(null);
+  const shouldStickToBottomRef = useRef(true);
 
   useEffect(() => {
     if (selectedConversation === null) {
-      setSnapshot(null);
+      shouldStickToBottomRef.current = true;
       return;
     }
 
-    setSnapshot(null);
+    shouldStickToBottomRef.current = true;
 
     let active = true;
     let events: EventSourceLike | null = null;
@@ -146,6 +152,28 @@ export function App(input: AppDependencies = {}) {
     };
   }, [conversationViewClient, selectedConversation]);
 
+  const currentSnapshot =
+    selectedConversation !== null && snapshot?.conversation.id === selectedConversation.id
+      ? snapshot
+      : null;
+
+  useLayoutEffect(() => {
+    if (
+      currentSnapshot === null ||
+      currentSnapshot.transcriptEntries.length === 0 ||
+      !shouldStickToBottomRef.current
+    ) {
+      return;
+    }
+
+    const scrollIntoView = transcriptBottomRef.current?.scrollIntoView;
+    if (scrollIntoView === undefined) {
+      return;
+    }
+
+    scrollIntoView.call(transcriptBottomRef.current, { block: "end" });
+  }, [currentSnapshot]);
+
   if (selectedConversation === null) {
     return (
       <main className="app-shell">
@@ -162,9 +190,6 @@ export function App(input: AppDependencies = {}) {
     );
   }
 
-  const currentSnapshot =
-    snapshot?.conversation.id === selectedConversation.id ? snapshot : null;
-
   return (
     <main className="app-shell">
       <section className="conversation-view" aria-label="Conversation View">
@@ -173,7 +198,13 @@ export function App(input: AppDependencies = {}) {
           {selectedConversation.directory !== undefined && <p>{selectedConversation.directory}</p>}
         </header>
         {currentSnapshot !== null && (
-          <ol className="conversation-transcript" aria-label="Conversation transcript">
+          <ol
+            className="conversation-transcript"
+            aria-label="Conversation transcript"
+            onScroll={(event) => {
+              shouldStickToBottomRef.current = isNearBottom(event.currentTarget);
+            }}
+          >
             {currentSnapshot.transcriptEntries.map((entry) => (
               <li key={entry.id}>
                 <article aria-label={entry.body.kind === "UserInput" ? "User message" : "Agent message"}>
@@ -181,6 +212,11 @@ export function App(input: AppDependencies = {}) {
                 </article>
               </li>
             ))}
+            <li
+              aria-hidden="true"
+              className="transcript-bottom-anchor"
+              ref={transcriptBottomRef}
+            />
           </ol>
         )}
         <Composer

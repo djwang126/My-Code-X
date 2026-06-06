@@ -113,7 +113,7 @@ describe("ConversationViewClient", () => {
     });
   });
 
-  it("opens conversation events at the API events endpoint", () => {
+  it("opens conversation events from the snapshot cursor", () => {
     const openedEventSourceUrls: string[] = [];
     const eventSource = {
       addEventListener: () => undefined,
@@ -130,11 +130,11 @@ describe("ConversationViewClient", () => {
     expect(
       client.createEventSource({
         conversationId: "conv with spaces/and/slashes",
-        cursor: "cursor-42"
+        cursor: "cursor with spaces/and/slashes"
       })
     ).toBe(eventSource);
     expect(openedEventSourceUrls).toEqual([
-      "/api/conversations/conv%20with%20spaces%2Fand%2Fslashes/events"
+      "/api/conversations/conv%20with%20spaces%2Fand%2Fslashes/events?after=cursor+with+spaces%2Fand%2Fslashes"
     ]);
   });
 });
