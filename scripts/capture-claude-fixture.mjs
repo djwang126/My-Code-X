@@ -35,6 +35,11 @@ const resumeFixturePath = path.join(
   fixtureDir,
   "resume-two-turn-file-command-revert.json"
 );
+const inputsFixturePath = path.join(
+  fixtureDir,
+  "live-two-turn-file-command-revert.inputs.json"
+);
+const fixtureInputs = [];
 const tmpLivePath = path.join(
   tmpDir,
   "claude-live-two-turn-file-command-revert.raw.jsonl"
@@ -43,7 +48,7 @@ const tmpProgressPath = path.join(tmpDir, "claude-fixture-capture-progress.log")
 const catPath = path.join(workspace, "cat.md");
 const note = "Fixture note: Claude Agent SDK touched this file.";
 
-for (const file of [liveFixturePath, tmpLivePath, tmpProgressPath]) {
+for (const file of [liveFixturePath, inputsFixturePath, tmpLivePath, tmpProgressPath]) {
   fs.writeFileSync(file, "", "utf8");
 }
 
@@ -112,14 +117,12 @@ async function runQueryTurn(input) {
   let resultMessage = null;
   const inboundMessages = [];
 
-  writeLiveRecord({
-    fixtureInput: {
-      label: input.label,
-      prompt: input.prompt,
-      ...(input.resumeSessionId === undefined
-        ? {}
-        : { resumeSessionId: input.resumeSessionId })
-    }
+  fixtureInputs.push({
+    label: input.label,
+    prompt: input.prompt,
+    ...(input.resumeSessionId === undefined
+      ? {}
+      : { resumeSessionId: input.resumeSessionId })
   });
 
   const options = {
@@ -207,17 +210,20 @@ async function main() {
   );
   progress(`wrote resume fixture ${sessionMessages.length} messages`);
 
-  const liveRecords = fs
+  fs.writeFileSync(
+    inputsFixturePath,
+    `${JSON.stringify(fixtureInputs, null, 2)}\n`,
+    "utf8"
+  );
+  progress(`wrote inputs sidecar ${fixtureInputs.length} prompts`);
+
+  const liveMessages = fs
     .readFileSync(liveFixturePath, "utf8")
     .trim()
     .split("\n")
     .filter(Boolean)
-    .map((line) => JSON.parse(line));
-  const liveMessages = liveRecords.filter((record) => typeof record.type === "string");
-  const fixtureInputs = liveRecords.filter((record) => record.fixtureInput !== undefined);
-  const fakePromptUsers = liveRecords.filter(
-    (record) => record.type === "user" && record.shouldQuery === true
-  );
+    .map((line) => JSON.parse(line))
+    .filter((record) => typeof record.type === "string");
   const catContent = fs.existsSync(catPath) ? fs.readFileSync(catPath, "utf8") : null;
 
   console.log(
@@ -225,13 +231,13 @@ async function main() {
       {
         sessionId,
         liveFixturePath,
+        inputsFixturePath,
         resumeFixturePath,
         tmpLivePath,
         progressPath: tmpProgressPath,
         fixtureInputs: fixtureInputs.length,
         liveMessages: liveMessages.length,
         liveMessageTypes: countMessageTypes(liveMessages),
-        fakePromptUsers: fakePromptUsers.length,
         firstInboundMessages: first.inboundMessages.length,
         secondInboundMessages: second.inboundMessages.length,
         resumeMessages: sessionMessages.length,

@@ -43,10 +43,6 @@ function createAdapter(historyItems: unknown[] = []) {
   });
 }
 
-function completedItemNotifications(notifications: JsonRpcNotificationFixture[]) {
-  return notifications.filter((notification) => notification.method === "item/completed");
-}
-
 function startedAgentMessageNotification(notifications: JsonRpcNotificationFixture[]) {
   const notification = notifications.find(
     (candidate) =>
@@ -78,22 +74,34 @@ describe("CodexAgentCliAdapter", () => {
       "./fixtures/codex/live-two-turn-file-command-revert.jsonl"
     );
 
+    // Feed every notification through the adapter exactly as the live stream
+    // delivers it (full method + params). The adapter — not the test — decides
+    // routing: turn signals, transcript entries, or nothing.
     const turnSignals = notifications
       .map((notification) =>
         adapter.interpretTurnSignal({
           conversationId: "019e931b-2ae7-7992-8084-0c11959eeab3",
+          nativeMethod: notification.method,
           raw: notification.params
         })
       )
       .filter((signal) => signal.kind !== "NoTurnSignal");
 
-    const classifiedEntries = completedItemNotifications(notifications).map((notification) =>
-      adapter.classifyInformation({
+    // The live stream emits item/started then item/completed for the same item.
+    // Both classify into an entry sharing one entryId; the transcript upserts
+    // by entryId (INV-2), so fold to the final state in first-seen order.
+    const transcript = new Map<string, NonNullable<ReturnType<typeof adapter.classifyInformation>>>();
+    for (const notification of notifications) {
+      const entry = adapter.classifyInformation({
         conversationId: "019e931b-2ae7-7992-8084-0c11959eeab3",
-        raw: notification.params,
-        streamHint: "Completed"
-      })
-    );
+        nativeMethod: notification.method,
+        raw: notification.params
+      });
+      if (entry !== null) {
+        transcript.set(entry.entryId, entry);
+      }
+    }
+    const classifiedEntries = [...transcript.values()];
 
     expect(turnSignals).toEqual([
       {
@@ -197,8 +205,8 @@ describe("CodexAgentCliAdapter", () => {
     expect(
       adapter.classifyInformation({
         conversationId: "019e931b-2ae7-7992-8084-0c11959eeab3",
-        raw: startedAgentMessage.params,
-        streamHint: "InProgress"
+        nativeMethod: startedAgentMessage.method,
+        raw: startedAgentMessage.params
       })
     ).toEqual({
       entryId: "msg_0ffce87b780db953016a21903566f8819b8c261a38c93e2419",
@@ -224,12 +232,16 @@ describe("CodexAgentCliAdapter", () => {
       items: historyItems
     });
 
-    const classifiedHistory = historyItems.map((raw) =>
-      adapter.classifyInformation({
+    const classifiedHistory = historyItems.map((raw) => {
+      const entry = adapter.classifyInformation({
         conversationId: "019e931b-2ae7-7992-8084-0c11959eeab3",
         raw
-      })
-    );
+      });
+      if (entry === null) {
+        throw new Error("Restored Codex history item must classify into a transcript entry");
+      }
+      return entry;
+    });
     expect(classifiedHistory.map((entry) => entry.body.kind)).toEqual([
       "UserInput",
       "AgentReply",

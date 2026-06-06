@@ -157,19 +157,14 @@ describe("ClaudeCodeAgentCliAdapter", () => {
       "result"
     )[0];
 
+    // stream_event carries partial streaming deltas; it is a non-entry signal
+    // (superseded by the final assistant message) and must not reach the transcript.
     expect(
       adapter.classifyInformation({
         conversationId: "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
         raw: streamDelta
       })
-    ).toMatchObject({
-      entryId: "f7c25fc9-3c64-40b8-93d4-92d8c0ba399f",
-      body: {
-        kind: "WorkProgress",
-        nativeType: "stream_event",
-        nativeStatus: "content_block_delta"
-      }
-    });
+    ).toBeNull();
     expect(
       adapter.classifyInformation({
         conversationId: "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
@@ -248,17 +243,45 @@ describe("ClaudeCodeAgentCliAdapter", () => {
         stream: "Completed"
       }
     });
+    // result is the turn-completion signal consumed by interpretTurnSignal; it
+    // is not transcript content and must not be misclassified as Unrecognized.
     expect(
       adapter.classifyInformation({
         conversationId: "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
         raw: successResult
       })
-    ).toMatchObject({
-      entryId: "45d5b2ea-6b2d-4014-90e7-b3709e9a8dce",
-      body: {
-        kind: "Unrecognized"
+    ).toBeNull();
+
+    // Feed every message through the adapter exactly as the live stream delivers
+    // it (stream_event / result / system included). The adapter — not the test —
+    // decides routing: a transcript entry or nothing. Fold to the final state per
+    // entryId (INV-2 upsert), preserving first-seen order. No message may throw.
+    const transcript = new Map<
+      string,
+      NonNullable<ReturnType<typeof adapter.classifyInformation>>
+    >();
+    for (const message of liveMessages) {
+      const entry = adapter.classifyInformation({
+        conversationId: "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
+        raw: message
+      });
+      if (entry !== null) {
+        transcript.set(entry.entryId, entry);
       }
-    });
+    }
+    expect([...transcript.values()].map((entry) => entry.body.kind)).toEqual([
+      "AgentReply",
+      "WorkProgress",
+      "WorkProgress",
+      "WorkProgress",
+      "WorkProgress",
+      "WorkProgress",
+      "WorkProgress",
+      "AgentReply",
+      "WorkProgress",
+      "WorkProgress",
+      "AgentReply"
+    ]);
   });
 
   it("uses a local submitted entry plus real Claude Code live messages to produce turn signals", () => {
@@ -392,12 +415,16 @@ describe("ClaudeCodeAgentCliAdapter", () => {
       items: historyItems
     });
 
-    const classifiedEntries = historyItems.map((raw) =>
-      adapter.classifyInformation({
+    const classifiedEntries = historyItems.map((raw) => {
+      const entry = adapter.classifyInformation({
         conversationId: "3f549aa9-6c7a-4591-bfaa-8308323bcdf3",
         raw
-      })
-    );
+      });
+      if (entry === null) {
+        throw new Error("Restored Claude Code history item must classify into a transcript entry");
+      }
+      return entry;
+    });
 
     expect(classifiedEntries.map((entry) => entry.body.kind)).toEqual([
       "UserInput",

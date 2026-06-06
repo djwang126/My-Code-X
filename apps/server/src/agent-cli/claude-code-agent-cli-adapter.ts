@@ -2,7 +2,7 @@ import { getSessionMessages } from "@anthropic-ai/claude-agent-sdk";
 import type { GetSessionMessagesOptions, SessionMessage } from "@anthropic-ai/claude-agent-sdk";
 import type {
   AgentCliHistorySource,
-  ClassifiedAgentInformation,
+  ClassificationResult,
   ClassifyAgentInformationInput,
   ContentRestoreOutcome,
   EntryBody,
@@ -191,6 +191,12 @@ function isClaudeLocalUserSubmittedSignal(
   );
 }
 
+function isClaudeSystemMessage(
+  value: unknown
+): value is Record<string, unknown> & { type: "system" } {
+  return isRecord(value) && value.type === "system";
+}
+
 function hasStableUuid(value: unknown): value is Record<string, unknown> & { uuid: string } {
   return isRecord(value) && typeof value.uuid === "string";
 }
@@ -281,7 +287,7 @@ export function createClaudeCodeAgentCliAdapter(input: CreateClaudeCodeAgentCliA
   const activeTurnsByConversation = new Map<string, ActiveClaudeTurn>();
 
   return {
-    classifyInformation(classifyInput: ClassifyAgentInformationInput): ClassifiedAgentInformation {
+    classifyInformation(classifyInput: ClassifyAgentInformationInput): ClassificationResult {
       if (isClaudeUserMessage(classifyInput.raw)) {
         const toolResultStatus = claudeToolResultStatus(classifyInput.raw.message.content);
         if (toolResultStatus !== undefined) {
@@ -348,23 +354,6 @@ export function createClaudeCodeAgentCliAdapter(input: CreateClaudeCodeAgentCliA
         };
       }
 
-      if (isClaudeStreamEventMessage(classifyInput.raw)) {
-        const body: EntryBody = {
-          kind: "WorkProgress",
-          nativeType: classifyInput.raw.type,
-          detail: classifyInput.raw
-        };
-
-        if (typeof classifyInput.raw.event.type === "string") {
-          body.nativeStatus = classifyInput.raw.event.type;
-        }
-
-        return {
-          entryId: classifyInput.raw.uuid,
-          body
-        };
-      }
-
       if (isClaudeResultErrorMessage(classifyInput.raw)) {
         const [firstError] = classifyInput.raw.errors;
         return {
@@ -388,6 +377,19 @@ export function createClaudeCodeAgentCliAdapter(input: CreateClaudeCodeAgentCliA
         };
       }
 
+      // Known non-entry signals must not reach the transcript (INV-4 keeps
+      // Unrecognized for content-like messages only).
+      // - stream_event: partial streaming deltas, superseded by the final message
+      // - result (success): turn completion signal, consumed by interpretTurnSignal
+      // - system (init/status/...): session lifecycle, not conversation content
+      if (
+        isClaudeStreamEventMessage(classifyInput.raw) ||
+        isClaudeResultMessage(classifyInput.raw) ||
+        isClaudeSystemMessage(classifyInput.raw)
+      ) {
+        return null;
+      }
+
       if (hasStableUuid(classifyInput.raw)) {
         return {
           entryId: classifyInput.raw.uuid,
@@ -398,7 +400,8 @@ export function createClaudeCodeAgentCliAdapter(input: CreateClaudeCodeAgentCliA
         };
       }
 
-      throw new Error("Unsupported Claude Code information");
+      // Not content and not a recognized signal: surface nothing.
+      return null;
     },
 
     interpretTurnSignal(turnInput: InterpretTurnSignalInput): TurnSignalInterpretation {

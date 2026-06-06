@@ -1,6 +1,6 @@
 import type {
   AgentCliHistorySource,
-  ClassifiedAgentInformation,
+  ClassificationResult,
   ClassifyAgentInformationInput,
   ContentRestoreOutcome,
   EntryBody,
@@ -160,6 +160,15 @@ function codexUserMessageMarkdown(message: CodexUserMessage): string {
     .join("");
 }
 
+function codexAgentReplyStream(
+  nativeMethod: string | undefined
+): "InProgress" | "Completed" {
+  // 0.2a finding: AgentReply stream state comes from the item lifecycle, not
+  // agentMessage.phase. item/started -> still streaming; item/completed (and
+  // the restore path, nativeMethod undefined) -> the reply is final.
+  return nativeMethod === "item/started" ? "InProgress" : "Completed";
+}
+
 function codexTurnOutcome(status: string): TurnCompletionOutcome | null {
   if (status === "completed") {
     return "Completed";
@@ -182,7 +191,36 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
   const errorCountsByTurn = new Map<string, number>();
 
   return {
-    classifyInformation(classifyInput: ClassifyAgentInformationInput): ClassifiedAgentInformation {
+    classifyInformation(classifyInput: ClassifyAgentInformationInput): ClassificationResult {
+      // Codex error notifications carry no item id; they always yield a Failure
+      // entry regardless of routing key. Detected by shape on the params payload.
+      if (isCodexErrorNotification(classifyInput.raw)) {
+        const message =
+          typeof classifyInput.raw.error.message === "string"
+            ? classifyInput.raw.error.message
+            : "Unknown error";
+
+        const nextErrorCount = (errorCountsByTurn.get(classifyInput.raw.turnId) ?? 0) + 1;
+        errorCountsByTurn.set(classifyInput.raw.turnId, nextErrorCount);
+
+        return {
+          entryId: `${classifyInput.raw.turnId}:error:${nextErrorCount}`,
+          body: {
+            kind: "Failure",
+            message,
+            detail: classifyInput.raw
+          }
+        };
+      }
+
+      // Live stream: only item lifecycle notifications can yield transcript
+      // entries. turn/*, thread/*, *delta, tokenUsage, etc. are non-entry signals.
+      // Restore path has no nativeMethod (raw is a bare item) and falls through.
+      const method = classifyInput.nativeMethod;
+      if (method !== undefined && method !== "item/started" && method !== "item/completed") {
+        return null;
+      }
+
       const rawItem = codexItemFromRaw(classifyInput.raw);
 
       if (isCodexUserMessage(rawItem)) {
@@ -201,9 +239,7 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
           body: {
             kind: "AgentReply",
             content: rawItem.text,
-            stream:
-              classifyInput.streamHint ??
-              (rawItem.phase === "final_answer" ? "Completed" : "InProgress")
+            stream: codexAgentReplyStream(method)
           }
         };
       }
@@ -225,25 +261,6 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
         };
       }
 
-      if (isCodexErrorNotification(classifyInput.raw)) {
-        const message =
-          typeof classifyInput.raw.error.message === "string"
-            ? classifyInput.raw.error.message
-            : "Unknown error";
-
-        const nextErrorCount = (errorCountsByTurn.get(classifyInput.raw.turnId) ?? 0) + 1;
-        errorCountsByTurn.set(classifyInput.raw.turnId, nextErrorCount);
-
-        return {
-          entryId: `${classifyInput.raw.turnId}:error:${nextErrorCount}`,
-          body: {
-            kind: "Failure",
-            message,
-            detail: classifyInput.raw
-          }
-        };
-      }
-
       if (hasStableItemId(rawItem)) {
         return {
           entryId: rawItem.id,
@@ -254,11 +271,17 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
         };
       }
 
-      throw new Error("Unsupported Codex information");
+      // Not an entry and not content-like: a signal we do not surface.
+      return null;
     },
 
     interpretTurnSignal(turnInput: InterpretTurnSignalInput): TurnSignalInterpretation {
+      const method = turnInput.nativeMethod;
+
+      // turn/started carries no user item reference (0.2a finding): stash the
+      // start time and wait for the userMessage item to supply firstUserInputRef.
       if (
+        (method === undefined || method === "turn/started") &&
         isCodexTurnNotification(turnInput.raw) &&
         turnInput.raw.turn.status === "inProgress" &&
         typeof turnInput.raw.turn.startedAt === "number"
@@ -270,6 +293,7 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
       }
 
       if (
+        (method === undefined || method === "turn/completed") &&
         isCodexTurnNotification(turnInput.raw) &&
         codexTurnOutcome(turnInput.raw.turn.status) !== null &&
         typeof turnInput.raw.turn.completedAt === "number"
@@ -295,7 +319,11 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
         return completed;
       }
 
+      // Item lifecycle: associate user/agent items with their turn. Use the
+      // completed lifecycle point so the item is final (a started agentMessage
+      // is empty and must not become lastAgentReplyRef).
       if (
+        (method === undefined || method === "item/completed") &&
         isCodexItemNotification(turnInput.raw) &&
         turnInput.raw.item.type === "userMessage"
       ) {
@@ -314,6 +342,7 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
       }
 
       if (
+        (method === undefined || method === "item/completed") &&
         isCodexItemNotification(turnInput.raw) &&
         turnInput.raw.item.type === "agentMessage"
       ) {

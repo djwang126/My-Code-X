@@ -1,0 +1,11 @@
+[
+  {
+    "label": "first",
+    "prompt": "You are generating a deterministic My-Code-X fixture.\nWork only in the current repository.\nFirst read cat.md.\nThen append exactly this line to cat.md: Fixture note: Claude Agent SDK touched this file.\nThen run harmless command `node --version`.\nDo not modify any other file.\nAfter completing the file edit and command, reply in one sentence."
+  },
+  {
+    "label": "second",
+    "prompt": "Continue the fixture cleanup.\nRevert only your previous change to cat.md.\nDelete exactly this line: Fixture note: Claude Agent SDK touched this file.\nRestore cat.md to the content it had before your previous turn.\nDo not modify any other file.\nAfter completing the cleanup, reply in one sentence.",
+    "resumeSessionId": "3f549aa9-6c7a-4591-bfaa-8308323bcdf3"
+  }
+]
