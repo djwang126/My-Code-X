@@ -1,3 +1,5 @@
+import type { EntryBody } from "@my-code-x/app-types";
+
 export interface AgentCliHistorySource {
   fetchHistory(input: RestoreAgentContentInput): Promise<unknown[]>;
 }
@@ -12,18 +14,6 @@ export interface ClassifyAgentInformationInput {
   nativeMethod?: string;
   raw: unknown;
 }
-
-export type EntryBody =
-  | { kind: "UserInput"; markdown: string }
-  | { kind: "AgentReply"; content: string; stream: "InProgress" | "Completed" }
-  | {
-      kind: "WorkProgress";
-      nativeType?: string;
-      nativeStatus?: string;
-      detail: Record<string, unknown>;
-    }
-  | { kind: "Failure"; message: string; detail: Record<string, unknown> }
-  | { kind: "Unrecognized"; nativeStatus?: string; detail: Record<string, unknown> };
 
 export interface ClassifiedAgentInformation {
   entryId: string;

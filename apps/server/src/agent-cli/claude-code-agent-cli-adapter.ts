@@ -1,11 +1,11 @@
 import { getSessionMessages } from "@anthropic-ai/claude-agent-sdk";
 import type { GetSessionMessagesOptions, SessionMessage } from "@anthropic-ai/claude-agent-sdk";
+import type { EntryBody } from "@my-code-x/app-types";
 import type {
   AgentCliHistorySource,
   ClassificationResult,
   ClassifyAgentInformationInput,
   ContentRestoreOutcome,
-  EntryBody,
   InterpretTurnSignalInput,
   RestoreAgentContentInput,
   TurnSignalInterpretation

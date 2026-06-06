@@ -1,112 +1,214 @@
 import { useEffect, useState } from "react";
-import type { HealthView } from "@my-code-x/app-types";
+import {
+  conversationStreamEventSchema
+} from "@my-code-x/app-types";
+import type { ConversationSnapshotView, TranscriptEntry } from "@my-code-x/app-types";
+import {
+  DEFAULT_CONVERSATION_VIEW_CLIENT
+} from "./conversation-view-client";
+import type { ConversationViewClient, EventSourceLike } from "./conversation-view-client";
 
-export interface EventSourceLike {
-  addEventListener(type: string, listener: (event: MessageEvent<string>) => void): void;
-  close(): void;
+export interface SelectedConversationView {
+  id: string;
+  title?: string;
+  directory?: string;
 }
 
 export interface AppDependencies {
-  fetchHealth?: () => Promise<HealthView>;
-  createEventSource?: (url: string) => EventSourceLike;
+  selectedConversation?: SelectedConversationView | null;
+  conversationViewClient?: ConversationViewClient;
 }
 
-type ServerStatus = "checking" | "connected" | "disconnected";
-type SseStatus = "waiting" | "ready";
-
-function isWalkingSkeletonReadyPayload(data: string): boolean {
-  const parsed = JSON.parse(data) as unknown;
-
+function DisabledComposer() {
   return (
-    typeof parsed === "object" &&
-    parsed !== null &&
-    "status" in parsed &&
-    parsed.status === "ready"
+    <form className="composer" aria-label="Reply composer">
+      <textarea aria-label="输入" placeholder="选择 Thread 后可以输入" disabled />
+      <button type="button" aria-label="发送不可用" disabled>
+        发送
+      </button>
+    </form>
   );
 }
 
-async function defaultFetchHealth(): Promise<HealthView> {
-  const response = await fetch("/api/health");
-
-  if (!response.ok) {
-    throw new Error("Health check failed");
-  }
-
-  const body = (await response.json()) as HealthView;
-
-  if (body.status !== "ok") {
-    throw new Error("Unexpected health response");
-  }
-
-  return body;
+interface ComposerInput {
+  draft: string;
+  sending: boolean;
+  onDraftChange(value: string): void;
+  onSubmit(): void;
 }
 
-function defaultCreateEventSource(url: string): EventSourceLike {
-  return new EventSource(url);
+function Composer(input: ComposerInput) {
+  return (
+    <form
+      className="composer"
+      aria-label="Reply composer"
+      onSubmit={(event) => {
+        event.preventDefault();
+        input.onSubmit();
+      }}
+    >
+      <textarea
+        aria-label="输入"
+        placeholder="输入给 Codex 的指令"
+        value={input.draft}
+        onChange={(event) => {
+          input.onDraftChange(event.target.value);
+        }}
+      />
+      <button type="submit" aria-label="发送" disabled={input.sending}>
+        发送
+      </button>
+    </form>
+  );
+}
+
+function entryText(entry: TranscriptEntry): string {
+  if (entry.body.kind === "UserInput") {
+    return entry.body.markdown;
+  }
+
+  if (entry.body.kind === "AgentReply") {
+    return entry.body.content;
+  }
+
+  return "";
 }
 
 export function App(input: AppDependencies = {}) {
-  const fetchHealth = input.fetchHealth ?? defaultFetchHealth;
-  const createEventSource = input.createEventSource ?? defaultCreateEventSource;
-  const [serverStatus, setServerStatus] = useState<ServerStatus>("checking");
-  const [sseStatus, setSseStatus] = useState<SseStatus>("waiting");
+  const selectedConversation = input.selectedConversation ?? null;
+  const conversationViewClient =
+    input.conversationViewClient ?? DEFAULT_CONVERSATION_VIEW_CLIENT;
+  const [snapshot, setSnapshot] = useState<ConversationSnapshotView | null>(null);
+  const [draft, setDraft] = useState("");
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
+    if (selectedConversation === null) {
+      setSnapshot(null);
+      return;
+    }
+
+    setSnapshot(null);
+
     let active = true;
+    let events: EventSourceLike | null = null;
 
-    fetchHealth()
-      .then(() => {
-        if (active) {
-          setServerStatus("connected");
-        }
-      })
-      .catch(() => {
-        if (active) {
-          setServerStatus("disconnected");
-        }
-      });
-
-    const events = createEventSource("/api/walking-skeleton/events");
-    events.addEventListener("walking-skeleton.ready", (event) => {
-      try {
-        if (!isWalkingSkeletonReadyPayload(event.data)) {
-          return;
-        }
-      } catch {
+    conversationViewClient.getSnapshot(selectedConversation.id).then((nextSnapshot) => {
+      if (!active) {
         return;
       }
 
-      if (active) {
-        setSseStatus("ready");
-      }
+      setSnapshot(nextSnapshot);
+      events = conversationViewClient.createEventSource({
+        conversationId: selectedConversation.id,
+        cursor: nextSnapshot.cursor
+      });
+      events.addEventListener("transcript.entry-added", (event) => {
+        if (!active) {
+          return;
+        }
+
+        let streamEvent;
+
+        try {
+          streamEvent = conversationStreamEventSchema.parse({
+            id: event.lastEventId,
+            type: "transcript.entry-added",
+            data: JSON.parse(event.data) as unknown
+          });
+        } catch {
+          return;
+        }
+
+        setSnapshot((previousSnapshot) => {
+          if (
+            previousSnapshot === null ||
+            previousSnapshot.conversation.id !== selectedConversation.id
+          ) {
+            return previousSnapshot;
+          }
+
+          return {
+            ...previousSnapshot,
+            transcriptEntries: [
+              ...previousSnapshot.transcriptEntries,
+              streamEvent.data.entry
+            ],
+            cursor: streamEvent.id
+          };
+        });
+      });
     });
 
     return () => {
       active = false;
-      events.close();
+      events?.close();
     };
-  }, [createEventSource, fetchHealth]);
+  }, [conversationViewClient, selectedConversation]);
+
+  if (selectedConversation === null) {
+    return (
+      <main className="app-shell">
+        <section className="conversation-view" aria-label="Conversation View no thread selected">
+          <header className="appbar">
+            <h1>My-Code-X</h1>
+          </header>
+          <div className="state-view">
+            <h2>打开一个 Codex Thread</h2>
+          </div>
+          <DisabledComposer />
+        </section>
+      </main>
+    );
+  }
+
+  const currentSnapshot =
+    snapshot?.conversation.id === selectedConversation.id ? snapshot : null;
 
   return (
     <main className="app-shell">
-      <div className="empty-state">
-        <h1>My-Code-X</h1>
-        <p>Conversation View pending implementation.</p>
-        <dl className="skeleton-status">
-          <div>
-            <dt>Server</dt>
-            <dd>
-              {serverStatus === "checking" && "Server checking"}
-              {serverStatus === "connected" && "Server connected"}
-              {serverStatus === "disconnected" && "Server disconnected"}
-            </dd>
-          </div>
-          <div>
-            <dt>SSE</dt>
-            <dd>{sseStatus === "ready" ? "SSE ready" : "SSE waiting"}</dd>
-          </div>
-        </dl>
-      </div>
+      <section className="conversation-view" aria-label="Conversation View">
+        <header className="appbar">
+          {selectedConversation.title !== undefined && <h1>{selectedConversation.title}</h1>}
+          {selectedConversation.directory !== undefined && <p>{selectedConversation.directory}</p>}
+        </header>
+        {currentSnapshot !== null && (
+          <ol className="conversation-transcript" aria-label="Conversation transcript">
+            {currentSnapshot.transcriptEntries.map((entry) => (
+              <li key={entry.id}>
+                <article aria-label={entry.body.kind === "UserInput" ? "User message" : "Agent message"}>
+                  <p>{entryText(entry)}</p>
+                </article>
+              </li>
+            ))}
+          </ol>
+        )}
+        <Composer
+          draft={draft}
+          sending={sending}
+          onDraftChange={setDraft}
+          onSubmit={() => {
+            if (sending) {
+              return;
+            }
+
+            setSending(true);
+            void conversationViewClient
+              .sendInput({
+                conversationId: selectedConversation.id,
+                markdownSource: draft
+              })
+              .then((outcome) => {
+                if (outcome.outcome === "Accepted") {
+                  setDraft("");
+                }
+              })
+              .finally(() => {
+                setSending(false);
+              });
+          }}
+        />
+      </section>
     </main>
   );
 }

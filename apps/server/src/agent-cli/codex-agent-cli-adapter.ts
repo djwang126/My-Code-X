@@ -1,9 +1,9 @@
+import type { EntryBody } from "@my-code-x/app-types";
 import type {
   AgentCliHistorySource,
   ClassificationResult,
   ClassifyAgentInformationInput,
   ContentRestoreOutcome,
-  EntryBody,
   InterpretTurnSignalInput,
   RestoreAgentContentInput,
   TurnCompletionOutcome,
