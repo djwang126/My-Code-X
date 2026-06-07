@@ -2,6 +2,7 @@ import { getSessionMessages } from "@anthropic-ai/claude-agent-sdk";
 import type { GetSessionMessagesOptions, SessionMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { EntryBody } from "@my-code-x/app-types";
 import type {
+  AgentCliHistory,
   AgentCliHistorySource,
   ClassificationResult,
   ClassifyAgentInformationInput,
@@ -105,6 +106,14 @@ interface ClaudeAssistantWorkProgressDescriptor {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
+}
+
+function historyItems(history: AgentCliHistory): unknown[] {
+  if (Array.isArray(history)) {
+    return history;
+  }
+
+  return history.items;
 }
 
 function isClaudeUserMessage(value: unknown): value is ClaudeUserMessage {
@@ -474,7 +483,7 @@ export function createClaudeCodeAgentCliAdapter(input: CreateClaudeCodeAgentCliA
     async restoreContent(restoreInput: RestoreAgentContentInput): Promise<ContentRestoreOutcome> {
       let items: unknown[];
       try {
-        items = await input.historySource.fetchHistory(restoreInput);
+        items = historyItems(await input.historySource.fetchHistory(restoreInput));
       } catch (error) {
         return {
           kind: "RestoreFailed",

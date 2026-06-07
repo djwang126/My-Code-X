@@ -102,7 +102,7 @@ export const interactionSchema = z.object({
   status: interactionStatusSchema
 });
 
-export const conversationSnapshotViewSchema = z.object({
+export const conversationSnapshotSchema = z.object({
   conversation: z.object({
     id: z.string(),
     contentRestore: contentRestoreStatusSchema
@@ -145,6 +145,6 @@ export type InteractionOption = z.infer<typeof interactionOptionSchema>;
 export type InteractionResponse = z.infer<typeof interactionResponseSchema>;
 export type InteractionStatus = z.infer<typeof interactionStatusSchema>;
 export type Interaction = z.infer<typeof interactionSchema>;
-export type ConversationSnapshotView = z.infer<typeof conversationSnapshotViewSchema>;
+export type ConversationSnapshot = z.infer<typeof conversationSnapshotSchema>;
 export type InputSendOutcome = z.infer<typeof inputSendOutcomeSchema>;
 export type ConversationStreamEvent = z.infer<typeof conversationStreamEventSchema>;

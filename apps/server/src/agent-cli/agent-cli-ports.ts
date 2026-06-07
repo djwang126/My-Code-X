@@ -1,7 +1,14 @@
-import type { EntryBody } from "@my-code-x/app-types";
+import type { EntryBody, Turn } from "@my-code-x/app-types";
+
+export type AgentCliHistory =
+  | unknown[]
+  | {
+      items: unknown[];
+      turns?: unknown[];
+    };
 
 export interface AgentCliHistorySource {
-  fetchHistory(input: RestoreAgentContentInput): Promise<unknown[]>;
+  fetchHistory(input: RestoreAgentContentInput): Promise<AgentCliHistory>;
 }
 
 export interface ClassifyAgentInformationInput {
@@ -58,6 +65,6 @@ export interface RestoreAgentContentInput {
 }
 
 export type ContentRestoreOutcome =
-  | { kind: "Restored"; items: unknown[] }
+  | { kind: "Restored"; items: unknown[]; turns?: Turn[] }
   | { kind: "RestoredEmpty" }
   | { kind: "RestoreFailed"; message: string };

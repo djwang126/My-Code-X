@@ -1,12 +1,20 @@
 import type {
-  ConversationSnapshotView,
+  ContentRestoreStatus,
+  ConversationSnapshot,
   ConversationStreamEvent,
   EntryBody,
+  Interaction,
   TranscriptEntry
 } from "@my-code-x/app-types";
+import type {
+  ClassificationResult,
+  ContentRestoreOutcome,
+  RestoreAgentContentInput
+} from "../agent-cli/agent-cli-ports";
+import { createConversationSnapshotReader } from "./conversation-snapshot-reader";
 
 export type ConversationSnapshotResult =
-  | { kind: "Found"; snapshot: ConversationSnapshotView }
+  | { kind: "Found"; snapshot: ConversationSnapshot }
   | { kind: "ConversationNotFound" };
 
 export interface SubmitConversationInput {
@@ -39,17 +47,35 @@ export type SubscribeToConversationEventsResult =
 
 export interface ConversationViewRuntime {
   getSnapshot(conversationId: string): ConversationSnapshotResult;
+  restoreConversationContent(conversationId: string): Promise<void>;
   submitInput(input: SubmitConversationInput): Promise<SubmitConversationInputResult>;
   subscribeToEvents(input: SubscribeToConversationEventsInput): SubscribeToConversationEventsResult;
 }
 
-const defaultSnapshots: Record<string, ConversationSnapshotView> = {
+export interface RuntimeConversationRecord {
+  id: string;
+  contentRestore: ContentRestoreStatus;
+  transcriptEntries: TranscriptEntry[];
+  turns: ConversationSnapshot["turns"];
+  pendingInteractions: Interaction[];
+  cursor: string;
+}
+
+export interface ContentRestorePort {
+  restoreContent(input: RestoreAgentContentInput): Promise<ContentRestoreOutcome>;
+  classifyInformation?(input: { conversationId: string; raw: unknown }): ClassificationResult;
+}
+
+export interface CreateConversationViewRuntimeInput {
+  conversations: RuntimeConversationRecord[];
+  contentRestorePort: ContentRestorePort;
+}
+
+const defaultConversations: Record<string, RuntimeConversationRecord> = {
   "conv-empty": {
-    conversation: {
-      id: "conv-empty",
-      contentRestore: {
-        kind: "RestoredEmpty"
-      }
+    id: "conv-empty",
+    contentRestore: {
+      kind: "RestoredEmpty"
     },
     transcriptEntries: [],
     turns: [],
@@ -57,11 +83,9 @@ const defaultSnapshots: Record<string, ConversationSnapshotView> = {
     cursor: "0"
   },
   "conv-seeded": {
-    conversation: {
-      id: "conv-seeded",
-      contentRestore: {
-        kind: "Restored"
-      }
+    id: "conv-seeded",
+    contentRestore: {
+      kind: "Restored"
     },
     transcriptEntries: [
       {
@@ -89,14 +113,72 @@ const defaultSnapshots: Record<string, ConversationSnapshotView> = {
 };
 
 export function createDefaultConversationViewRuntime(): ConversationViewRuntime {
-  const snapshots: Record<string, ConversationSnapshotView> = structuredClone(defaultSnapshots);
+  return createConversationViewRuntime({
+    conversations: Object.values(structuredClone(defaultConversations)),
+    contentRestorePort: {
+      async restoreContent() {
+        return { kind: "RestoredEmpty" };
+      }
+    }
+  });
+}
+
+export function createConversationViewRuntime(
+  input: CreateConversationViewRuntimeInput
+): ConversationViewRuntime {
+  const conversations: Record<string, RuntimeConversationRecord> = Object.fromEntries(
+    input.conversations.map((conversation) => [conversation.id, structuredClone(conversation)])
+  );
   const subscribersByConversation = new Map<string, Set<ConversationEventSubscriber>>();
 
+  function getConversationRecord(conversationId: string): RuntimeConversationRecord {
+    const record = conversations[conversationId];
+
+    if (record === undefined) {
+      throw new Error(`Conversation record not found: ${conversationId}`);
+    }
+
+    return record;
+  }
+
+  const snapshotReader = createConversationSnapshotReader({
+    conversations: {
+      exists(conversationId) {
+        return conversations[conversationId] !== undefined;
+      }
+    },
+    contentRestore: {
+      getStatus(conversationId) {
+        return getConversationRecord(conversationId).contentRestore;
+      }
+    },
+    transcriptEntries: {
+      listByConversation(conversationId) {
+        return getConversationRecord(conversationId).transcriptEntries;
+      }
+    },
+    turns: {
+      listByConversation(conversationId) {
+        return getConversationRecord(conversationId).turns;
+      }
+    },
+    pendingInteractions: {
+      listByConversation(conversationId) {
+        return getConversationRecord(conversationId).pendingInteractions;
+      }
+    },
+    cursors: {
+      getCursor(conversationId) {
+        return getConversationRecord(conversationId).cursor;
+      }
+    }
+  });
+
   function appendEntryBodies(
-    snapshot: ConversationSnapshotView,
+    record: RuntimeConversationRecord,
     bodies: EntryBody[]
-  ): { snapshot: ConversationSnapshotView; appendedEntries: TranscriptEntry[] } {
-    const nextEntries: TranscriptEntry[] = [...snapshot.transcriptEntries];
+  ): { record: RuntimeConversationRecord; appendedEntries: TranscriptEntry[] } {
+    const nextEntries: TranscriptEntry[] = [...record.transcriptEntries];
     const appendedEntries: TranscriptEntry[] = [];
 
     for (const body of bodies) {
@@ -114,18 +196,60 @@ export function createDefaultConversationViewRuntime(): ConversationViewRuntime 
     }
 
     return {
-      snapshot: {
-        ...snapshot,
-        conversation: {
-          ...snapshot.conversation,
-          contentRestore: {
-            kind: "Restored"
-          }
+      record: {
+        ...record,
+        contentRestore: {
+          kind: "Restored"
         },
         transcriptEntries: nextEntries,
         cursor: String(nextEntries.length)
       },
       appendedEntries
+    };
+  }
+
+  function appendRestoredItems(
+    record: RuntimeConversationRecord,
+    items: unknown[],
+    turns: RuntimeConversationRecord["turns"] = record.turns
+  ): RuntimeConversationRecord {
+    if (input.contentRestorePort.classifyInformation === undefined) {
+      return {
+        ...record,
+        contentRestore: {
+          kind: "Restored"
+        },
+        turns
+      };
+    }
+
+    const transcriptEntries = [...record.transcriptEntries];
+
+    for (const item of items) {
+      const classified = input.contentRestorePort.classifyInformation({
+        conversationId: record.id,
+        raw: item
+      });
+
+      if (classified === null) {
+        continue;
+      }
+
+      transcriptEntries.push({
+        id: classified.entryId,
+        sequence: transcriptEntries.length + 1,
+        body: classified.body
+      });
+    }
+
+    return {
+      ...record,
+      contentRestore: {
+        kind: "Restored"
+      },
+      transcriptEntries,
+      turns,
+      cursor: String(transcriptEntries.length)
     };
   }
 
@@ -153,21 +277,45 @@ export function createDefaultConversationViewRuntime(): ConversationViewRuntime 
 
   return {
     getSnapshot(conversationId) {
-      const snapshot = snapshots[conversationId];
+      return snapshotReader.getSnapshot(conversationId);
+    },
+    async restoreConversationContent(conversationId) {
+      const record = conversations[conversationId];
 
-      if (snapshot === undefined) {
-        return { kind: "ConversationNotFound" };
+      if (record === undefined) {
+        return;
       }
 
-      return {
-        kind: "Found",
-        snapshot
-      };
+      const outcome = await input.contentRestorePort.restoreContent({ conversationId });
+
+      if (outcome.kind === "RestoredEmpty") {
+        conversations[conversationId] = {
+          ...record,
+          contentRestore: {
+            kind: "RestoredEmpty"
+          }
+        };
+        return;
+      }
+
+      if (outcome.kind === "RestoreFailed") {
+        conversations[conversationId] = {
+          ...record,
+          contentRestore: {
+            kind: "RestoreFailed"
+          }
+        };
+        return;
+      }
+
+      if (outcome.kind === "Restored") {
+        conversations[conversationId] = appendRestoredItems(record, outcome.items, outcome.turns);
+      }
     },
     async submitInput(input) {
-      const snapshot = snapshots[input.conversationId];
+      const record = conversations[input.conversationId];
 
-      if (snapshot === undefined) {
+      if (record === undefined) {
         return { kind: "ConversationNotFound" };
       }
 
@@ -175,7 +323,7 @@ export function createDefaultConversationViewRuntime(): ConversationViewRuntime 
         return { kind: "EmptyInput" };
       }
 
-      const result = appendEntryBodies(snapshot, [
+      const result = appendEntryBodies(record, [
         {
           kind: "UserInput",
           markdown: input.markdownSource
@@ -186,13 +334,13 @@ export function createDefaultConversationViewRuntime(): ConversationViewRuntime 
           stream: "Completed"
         }
       ]);
-      snapshots[input.conversationId] = result.snapshot;
+      conversations[input.conversationId] = result.record;
       publishEntryAddedEvents(input.conversationId, result.appendedEntries);
 
       return { kind: "Accepted" };
     },
     subscribeToEvents(input) {
-      if (snapshots[input.conversationId] === undefined) {
+      if (conversations[input.conversationId] === undefined) {
         return { kind: "ConversationNotFound" };
       }
 

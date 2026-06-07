@@ -1,9 +1,9 @@
 import {
-  conversationSnapshotViewSchema,
+  conversationSnapshotSchema,
   inputSendOutcomeSchema
 } from "@my-code-x/app-types";
 import type {
-  ConversationSnapshotView,
+  ConversationSnapshot,
   InputSendOutcome
 } from "@my-code-x/app-types";
 
@@ -23,7 +23,7 @@ export interface CreateConversationEventSourceInput {
 }
 
 export interface ConversationViewClient {
-  getSnapshot(conversationId: string): Promise<ConversationSnapshotView>;
+  getSnapshot(conversationId: string): Promise<ConversationSnapshot>;
   sendInput(input: SendConversationInput): Promise<InputSendOutcome>;
   createEventSource(input: CreateConversationEventSourceInput): EventSourceLike;
 }
@@ -62,7 +62,7 @@ export function createConversationViewClient(
 
       const body = await response.json();
 
-      return conversationSnapshotViewSchema.parse(body);
+      return conversationSnapshotSchema.parse(body);
     },
 
     async sendInput(input) {

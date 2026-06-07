@@ -281,6 +281,50 @@ describe("CodexAgentCliAdapter", () => {
     });
   });
 
+  it("restores the real Codex thread/resume turns as completed conversation turns", async () => {
+    const resumeResponse = readJsonFixture<CodexThreadResumeFixture>(
+      "./fixtures/codex/resume-two-turn-file-command-revert.json"
+    );
+    const adapter = createCodexAgentCliAdapter({
+      historySource: {
+        async fetchHistory() {
+          return {
+            items: resumeHistoryItems(resumeResponse),
+            turns: resumeResponse.result.thread.turns
+          };
+        }
+      }
+    });
+
+    await expect(
+      adapter.restoreContent({ conversationId: "019e931b-2ae7-7992-8084-0c11959eeab3" })
+    ).resolves.toMatchObject({
+      kind: "Restored",
+      turns: [
+        {
+          id: "019e931b-2b22-73c3-bd07-122c192a1187",
+          status: {
+            kind: "Completed",
+            firstUserInputRef: "item-1",
+            userInputTime: "2026-06-04T14:48:11.000Z",
+            lastAgentReplyRef: "item-5",
+            lastReplyCompletedTime: "2026-06-04T14:49:10.000Z"
+          }
+        },
+        {
+          id: "019e931c-0ef9-7640-ac8f-ff8a9f7a964d",
+          status: {
+            kind: "Completed",
+            firstUserInputRef: "item-6",
+            userInputTime: "2026-06-04T14:49:10.000Z",
+            lastAgentReplyRef: "item-9",
+            lastReplyCompletedTime: "2026-06-04T14:49:56.000Z"
+          }
+        }
+      ]
+    });
+  });
+
   it("keeps separate Codex failure entries when one turn receives multiple unattributed errors", () => {
     const adapter = createAdapter();
     const firstRaw = {

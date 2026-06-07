@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  type ConversationSnapshot,
   conversationStreamEventSchema,
-  conversationSnapshotViewSchema,
+  conversationSnapshotSchema,
   entryBodySchema,
   inputSendOutcomeSchema,
   transcriptEntrySchema
 } from "./conversation-view";
+import { entryFixture, snapshotFixture, turnFixture } from "./conversation-view.fixtures";
 
 describe("Conversation View contract", () => {
   it("accepts ordinary user input and completed agent reply transcript entries", () => {
@@ -95,8 +97,59 @@ describe("Conversation View contract", () => {
     });
   });
 
+  it("builds valid transcript entry fixtures for every phase 2 entry body", () => {
+    const entries = [
+      entryFixture.userInput({
+        id: "entry-user",
+        sequence: 1,
+        markdown: "你好"
+      }),
+      entryFixture.agentReply({
+        id: "entry-agent",
+        sequence: 2,
+        content: "完成",
+        stream: "InProgress"
+      }),
+      entryFixture.workProgress({
+        id: "entry-work",
+        sequence: 3,
+        nativeType: "reasoning",
+        nativeStatus: "running",
+        detail: {
+          text: "thinking"
+        }
+      }),
+      entryFixture.failure({
+        id: "entry-failure",
+        sequence: 4,
+        message: "Unknown error",
+        detail: {
+          code: "E_UNKNOWN"
+        }
+      }),
+      entryFixture.unrecognized({
+        id: "entry-unrecognized",
+        sequence: 5,
+        nativeStatus: "future",
+        detail: {
+          rawType: "future-event"
+        }
+      })
+    ];
+
+    const parsedEntries = entries.map((entry) => transcriptEntrySchema.parse(entry));
+
+    expect(parsedEntries.map((entry) => entry.body.kind)).toEqual([
+      "UserInput",
+      "AgentReply",
+      "WorkProgress",
+      "Failure",
+      "Unrecognized"
+    ]);
+  });
+
   it("accepts an empty restored conversation snapshot", () => {
-    const snapshot = conversationSnapshotViewSchema.parse({
+    const snapshot = conversationSnapshotSchema.parse({
       conversation: {
         id: "conv-empty",
         contentRestore: {
@@ -123,8 +176,57 @@ describe("Conversation View contract", () => {
     });
   });
 
+  it("accepts all phase 2 content restore status variants in snapshots", () => {
+    const snapshots = [
+      snapshotFixture({
+        conversation: {
+          id: "conv-restoring",
+          contentRestore: {
+            kind: "Restoring"
+          }
+        }
+      }),
+      snapshotFixture({
+        conversation: {
+          id: "conv-restored",
+          contentRestore: {
+            kind: "Restored"
+          }
+        }
+      }),
+      snapshotFixture({
+        conversation: {
+          id: "conv-empty",
+          contentRestore: {
+            kind: "RestoredEmpty"
+          }
+        }
+      }),
+      snapshotFixture({
+        conversation: {
+          id: "conv-failed",
+          contentRestore: {
+            kind: "RestoreFailed"
+          }
+        }
+      })
+    ];
+
+    const parsedStatuses = snapshots.map(
+      (snapshot) =>
+        conversationSnapshotSchema.parse(snapshot).conversation.contentRestore.kind
+    );
+
+    expect(parsedStatuses).toEqual([
+      "Restoring",
+      "Restored",
+      "RestoredEmpty",
+      "RestoreFailed"
+    ]);
+  });
+
   it("accepts a conversation snapshot with ordinary transcript entries", () => {
-    const snapshot = conversationSnapshotViewSchema.parse({
+    const snapshot = conversationSnapshotSchema.parse({
       conversation: {
         id: "conv-seeded",
         contentRestore: {
@@ -188,7 +290,7 @@ describe("Conversation View contract", () => {
   });
 
   it("accepts conversation snapshots with turn and pending interaction state", () => {
-    const snapshot = conversationSnapshotViewSchema.parse({
+    const snapshotInput: ConversationSnapshot = snapshotFixture({
       conversation: {
         id: "conv-active",
         contentRestore: {
@@ -258,13 +360,64 @@ describe("Conversation View contract", () => {
       ],
       cursor: "5"
     });
+    const snapshot = conversationSnapshotSchema.parse(snapshotInput);
 
     expect(snapshot.turns).toHaveLength(2);
     expect(snapshot.pendingInteractions).toHaveLength(2);
   });
 
+  it("builds valid turn fixtures for in-progress and completed turns", () => {
+    const snapshot = conversationSnapshotSchema.parse(
+      snapshotFixture({
+        transcriptEntries: [
+          entryFixture.userInput({
+            id: "entry-1-user"
+          }),
+          entryFixture.agentReply({
+            id: "entry-2-agent"
+          })
+        ],
+        turns: [
+          turnFixture.inProgress({
+            id: "turn-in-progress",
+            firstUserInputRef: "entry-1-user",
+            userInputTime: "2026-06-06T06:00:00.000Z"
+          }),
+          turnFixture.completed({
+            id: "turn-completed",
+            firstUserInputRef: "entry-1-user",
+            userInputTime: "2026-06-06T06:00:00.000Z",
+            lastAgentReplyRef: "entry-2-agent",
+            lastReplyCompletedTime: "2026-06-06T06:01:00.000Z"
+          })
+        ]
+      })
+    );
+
+    expect(snapshot.turns).toEqual([
+      {
+        id: "turn-in-progress",
+        status: {
+          kind: "InProgress",
+          firstUserInputRef: "entry-1-user",
+          userInputTime: "2026-06-06T06:00:00.000Z"
+        }
+      },
+      {
+        id: "turn-completed",
+        status: {
+          kind: "Completed",
+          firstUserInputRef: "entry-1-user",
+          userInputTime: "2026-06-06T06:00:00.000Z",
+          lastAgentReplyRef: "entry-2-agent",
+          lastReplyCompletedTime: "2026-06-06T06:01:00.000Z"
+        }
+      }
+    ]);
+  });
+
   it("rejects snapshots with malformed turn state", () => {
-    const result = conversationSnapshotViewSchema.safeParse({
+    const result = conversationSnapshotSchema.safeParse({
       conversation: {
         id: "conv-bad-turn",
         contentRestore: {

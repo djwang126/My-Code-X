@@ -10,7 +10,7 @@ import {
   waitFor,
   within
 } from "@testing-library/react";
-import type { ConversationSnapshotView, TranscriptEntry } from "@my-code-x/app-types";
+import type { ConversationSnapshot, TranscriptEntry } from "@my-code-x/app-types";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { App } from "./App";
 
@@ -30,7 +30,7 @@ afterEach(() => {
   });
 });
 
-function emptySnapshot(conversationId: string): ConversationSnapshotView {
+function emptySnapshot(conversationId: string): ConversationSnapshot {
   return {
     conversation: {
       id: conversationId,
@@ -46,7 +46,7 @@ function emptySnapshot(conversationId: string): ConversationSnapshotView {
 function snapshotWithEntries(
   conversationId: string,
   transcriptEntries: TranscriptEntry[]
-): ConversationSnapshotView {
+): ConversationSnapshot {
   return {
     ...emptySnapshot(conversationId),
     conversation: {
@@ -283,7 +283,7 @@ describe("Conversation View shell", () => {
   });
 
   it("does not show the previous conversation transcript while the next snapshot is loading", async () => {
-    const nextSnapshot = createDeferred<ConversationSnapshotView>();
+    const nextSnapshot = createDeferred<ConversationSnapshot>();
     const conversationViewClient = {
       getSnapshot: (conversationId: string) => {
         if (conversationId === "conv-a") {

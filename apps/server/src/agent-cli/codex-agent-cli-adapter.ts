@@ -1,5 +1,6 @@
-import type { EntryBody } from "@my-code-x/app-types";
+import type { EntryBody, Turn } from "@my-code-x/app-types";
 import type {
+  AgentCliHistory,
   AgentCliHistorySource,
   ClassificationResult,
   ClassifyAgentInformationInput,
@@ -58,6 +59,17 @@ interface CodexTurnNotification extends Record<string, unknown> {
     startedAt: number | null;
     completedAt: number | null;
   };
+}
+
+interface CodexRestoredTurn extends Record<string, unknown> {
+  id: string;
+  status: string;
+  startedAt: number | null;
+  completedAt: number | null;
+  items: Array<{
+    id: string;
+    type: string;
+  }>;
 }
 
 interface CodexItemNotification extends Record<string, unknown> {
@@ -127,6 +139,19 @@ function isCodexTurnNotification(value: unknown): value is CodexTurnNotification
   );
 }
 
+function isCodexRestoredTurn(value: unknown): value is CodexRestoredTurn {
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.status === "string" &&
+    Array.isArray(value.items)
+  );
+}
+
+function isHistoryEnvelope(value: AgentCliHistory): value is { items: unknown[]; turns?: unknown[] } {
+  return isRecord(value) && Array.isArray(value.items);
+}
+
 function isCodexItemNotification(value: unknown): value is CodexItemNotification {
   return (
     isRecord(value) &&
@@ -183,6 +208,81 @@ function codexTurnOutcome(status: string): TurnCompletionOutcome | null {
   }
 
   return null;
+}
+
+function normalizeHistory(history: AgentCliHistory): { items: unknown[]; turns: unknown[] } {
+  if (isHistoryEnvelope(history)) {
+    return {
+      items: history.items,
+      turns: history.turns ?? []
+    };
+  }
+
+  return {
+    items: history,
+    turns: []
+  };
+}
+
+function firstItemIdByType(turn: CodexRestoredTurn, itemType: string): string | undefined {
+  return turn.items.find((item) => item.type === itemType)?.id;
+}
+
+function lastItemIdByType(turn: CodexRestoredTurn, itemType: string): string | undefined {
+  for (let index = turn.items.length - 1; index >= 0; index -= 1) {
+    const item = turn.items[index];
+    if (item === undefined) {
+      continue;
+    }
+
+    if (item.type === itemType) {
+      return item.id;
+    }
+  }
+
+  return undefined;
+}
+
+function restoredCodexTurnToConversationTurn(rawTurn: unknown): Turn | null {
+  if (!isCodexRestoredTurn(rawTurn) || typeof rawTurn.startedAt !== "number") {
+    return null;
+  }
+
+  const firstUserInputRef = firstItemIdByType(rawTurn, "userMessage");
+  if (firstUserInputRef === undefined) {
+    return null;
+  }
+
+  if (rawTurn.status === "inProgress") {
+    return {
+      id: rawTurn.id,
+      status: {
+        kind: "InProgress",
+        firstUserInputRef,
+        userInputTime: unixSecondsToIso(rawTurn.startedAt)
+      }
+    };
+  }
+
+  if (rawTurn.status !== "completed" || typeof rawTurn.completedAt !== "number") {
+    return null;
+  }
+
+  const lastAgentReplyRef = lastItemIdByType(rawTurn, "agentMessage");
+  if (lastAgentReplyRef === undefined) {
+    return null;
+  }
+
+  return {
+    id: rawTurn.id,
+    status: {
+      kind: "Completed",
+      firstUserInputRef,
+      userInputTime: unixSecondsToIso(rawTurn.startedAt),
+      lastAgentReplyRef,
+      lastReplyCompletedTime: unixSecondsToIso(rawTurn.completedAt)
+    }
+  };
 }
 
 export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInput) {
@@ -356,9 +456,9 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
     },
 
     async restoreContent(restoreInput: RestoreAgentContentInput): Promise<ContentRestoreOutcome> {
-      let items: unknown[];
+      let history: AgentCliHistory;
       try {
-        items = await input.historySource.fetchHistory(restoreInput);
+        history = await input.historySource.fetchHistory(restoreInput);
       } catch (error) {
         return {
           kind: "RestoreFailed",
@@ -366,11 +466,22 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
         };
       }
 
+      const { items, turns: rawTurns } = normalizeHistory(history);
+
       if (items.length === 0) {
         return { kind: "RestoredEmpty" };
       }
 
-      return { kind: "Restored", items };
+      const turns = rawTurns.flatMap((rawTurn) => {
+        const turn = restoredCodexTurnToConversationTurn(rawTurn);
+        return turn === null ? [] : [turn];
+      });
+
+      if (turns.length === 0) {
+        return { kind: "Restored", items };
+      }
+
+      return { kind: "Restored", items, turns };
     }
   };
 }

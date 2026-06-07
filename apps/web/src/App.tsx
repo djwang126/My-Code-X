@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   conversationStreamEventSchema
 } from "@my-code-x/app-types";
-import type { ConversationSnapshotView, TranscriptEntry } from "@my-code-x/app-types";
+import type { ConversationSnapshot, TranscriptEntry } from "@my-code-x/app-types";
 import {
   DEFAULT_CONVERSATION_VIEW_CLIENT
 } from "./conversation-view-client";
@@ -82,7 +82,7 @@ export function App(input: AppDependencies = {}) {
   const selectedConversation = input.selectedConversation ?? null;
   const conversationViewClient =
     input.conversationViewClient ?? DEFAULT_CONVERSATION_VIEW_CLIENT;
-  const [snapshot, setSnapshot] = useState<ConversationSnapshotView | null>(null);
+  const [snapshot, setSnapshot] = useState<ConversationSnapshot | null>(null);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
   const transcriptBottomRef = useRef<HTMLLIElement | null>(null);
