@@ -1,13 +1,15 @@
 import request from "supertest";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../create-app";
+import { createTestConversationViewRuntime } from "../test-support/conversation-view-runtime";
 
 function createIsolatedApp() {
   return createApp({
     config: {
       host: "127.0.0.1",
       port: 0
-    }
+    },
+    conversationView: createTestConversationViewRuntime()
   });
 }
 

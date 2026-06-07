@@ -7,6 +7,7 @@ import {
   openNoEventGuard,
   openSseCollector
 } from "../test-support/sse";
+import { createTestConversationViewRuntime } from "../test-support/conversation-view-runtime";
 import type { ConversationViewRuntime } from "./conversation-view-runtime";
 
 function createTestApp() {
@@ -14,7 +15,8 @@ function createTestApp() {
     config: {
       host: "127.0.0.1",
       port: 0
-    }
+    },
+    conversationView: createTestConversationViewRuntime()
   });
 }
 

@@ -3,13 +3,15 @@ import { describe, expect, it } from "vitest";
 import { conversationSnapshotSchema, type ConversationSnapshot } from "@my-code-x/app-types";
 import { entryFixture, snapshotFixture } from "@my-code-x/app-types/test-fixtures";
 import { createApp } from "../create-app";
+import { createTestConversationViewRuntime } from "../test-support/conversation-view-runtime";
 import type { ConversationViewRuntime } from "./conversation-view-runtime";
 
 const app = createApp({
   config: {
     host: "127.0.0.1",
     port: 0
-  }
+  },
+  conversationView: createTestConversationViewRuntime()
 });
 
 function parseSnapshotResponse(body: unknown): ConversationSnapshot {

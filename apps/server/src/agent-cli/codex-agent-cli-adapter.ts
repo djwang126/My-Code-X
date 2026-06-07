@@ -264,24 +264,84 @@ function restoredCodexTurnToConversationTurn(rawTurn: unknown): Turn | null {
     };
   }
 
-  if (rawTurn.status !== "completed" || typeof rawTurn.completedAt !== "number") {
+  if (typeof rawTurn.completedAt !== "number") {
     return null;
   }
 
-  const lastAgentReplyRef = lastItemIdByType(rawTurn, "agentMessage");
-  if (lastAgentReplyRef === undefined) {
-    return null;
+  const lastAgentReplyRef = lastItemIdByType(rawTurn, "agentMessage") ?? null;
+
+  if (rawTurn.status === "completed") {
+    if (lastAgentReplyRef === null) {
+      return null;
+    }
+
+    return {
+      id: rawTurn.id,
+      status: {
+        kind: "Completed",
+        firstUserInputRef,
+        userInputTime: unixSecondsToIso(rawTurn.startedAt),
+        lastAgentReplyRef,
+        lastReplyCompletedTime: unixSecondsToIso(rawTurn.completedAt)
+      }
+    };
+  }
+
+  if (rawTurn.status === "failed") {
+    return {
+      id: rawTurn.id,
+      status: {
+        kind: "Failed",
+        firstUserInputRef,
+        userInputTime: unixSecondsToIso(rawTurn.startedAt),
+        completedTime: unixSecondsToIso(rawTurn.completedAt),
+        lastAgentReplyRef
+      }
+    };
+  }
+
+  if (rawTurn.status === "interrupted") {
+    return {
+      id: rawTurn.id,
+      status: {
+        kind: "Interrupted",
+        firstUserInputRef,
+        userInputTime: unixSecondsToIso(rawTurn.startedAt),
+        completedTime: unixSecondsToIso(rawTurn.completedAt),
+        lastAgentReplyRef
+      }
+    };
+  }
+
+  return null;
+}
+
+function codexTurnCompletedSignal(input: {
+  turnId: string;
+  outcome: TurnCompletionOutcome;
+  completedAt: string;
+  lastAgentReplyRef: string | null;
+}): TurnSignalInterpretation {
+  if (input.outcome === "Completed") {
+    if (input.lastAgentReplyRef === null) {
+      return { kind: "NoTurnSignal" };
+    }
+
+    return {
+      kind: "TurnCompleted",
+      turnId: input.turnId,
+      outcome: "Completed",
+      lastAgentReplyRef: input.lastAgentReplyRef,
+      lastReplyCompletedTime: input.completedAt
+    };
   }
 
   return {
-    id: rawTurn.id,
-    status: {
-      kind: "Completed",
-      firstUserInputRef,
-      userInputTime: unixSecondsToIso(rawTurn.startedAt),
-      lastAgentReplyRef,
-      lastReplyCompletedTime: unixSecondsToIso(rawTurn.completedAt)
-    }
+    kind: "TurnCompleted",
+    turnId: input.turnId,
+    outcome: input.outcome,
+    lastAgentReplyRef: input.lastAgentReplyRef,
+    completedTime: input.completedAt
   };
 }
 
@@ -362,12 +422,18 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
       }
 
       if (hasStableItemId(rawItem)) {
+        const body: EntryBody = {
+          kind: "Unrecognized",
+          detail: rawItem
+        };
+
+        if (typeof rawItem.status === "string") {
+          body.nativeStatus = rawItem.status;
+        }
+
         return {
           entryId: rawItem.id,
-          body: {
-            kind: "Unrecognized",
-            detail: rawItem
-          }
+          body
         };
       }
 
@@ -404,19 +470,16 @@ export function createCodexAgentCliAdapter(input: CreateCodexAgentCliAdapterInpu
         }
 
         const pending = pendingLastAgentReplies.get(turnInput.raw.turn.id);
-        const completed: TurnSignalInterpretation = {
-          kind: "TurnCompleted",
-          turnId: turnInput.raw.turn.id,
-          outcome,
-          lastReplyCompletedTime: unixSecondsToIso(turnInput.raw.turn.completedAt)
-        };
-
         if (pending !== undefined) {
           pendingLastAgentReplies.delete(turnInput.raw.turn.id);
-          completed.lastAgentReplyRef = pending.lastAgentReplyRef;
         }
 
-        return completed;
+        return codexTurnCompletedSignal({
+          turnId: turnInput.raw.turn.id,
+          outcome,
+          completedAt: unixSecondsToIso(turnInput.raw.turn.completedAt),
+          lastAgentReplyRef: pending?.lastAgentReplyRef ?? null
+        });
       }
 
       // Item lifecycle: associate user/agent items with their turn. Use the

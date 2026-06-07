@@ -126,6 +126,10 @@ export function App(input: AppDependencies = {}) {
           return;
         }
 
+        if (streamEvent.type !== "transcript.entry-added") {
+          return;
+        }
+
         setSnapshot((previousSnapshot) => {
           if (
             previousSnapshot === null ||

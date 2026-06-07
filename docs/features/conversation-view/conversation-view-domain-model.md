@@ -166,7 +166,7 @@ members:
   - { name: Turn,       role: root, type: Entity }
   - { name: ConversationId, role: reference-vo, type: VO, semantics: "归属对话身份;跨 BC 引用" }
   - { name: TurnId,     role: vo, type: VO, semantics: "agent cli 提供的回合标识" }
-  - { name: TurnStatus, role: vo, type: VO, semantics: "判别联合 InProgress|Completed" }
+  - { name: TurnStatus, role: vo, type: VO, semantics: "判别联合 InProgress|Completed|Failed|Interrupted" }
   - { name: Timestamp,  role: vo, type: VO, semantics: "用户输入时间 / 最后回复完成时间" }
 ```
 
@@ -195,6 +195,10 @@ TurnStatus:
   InProgress: { firstUserInputRef: EntryId, userInputTime: Timestamp }
   Completed:  { firstUserInputRef: EntryId, userInputTime: Timestamp,
                 lastAgentReplyRef: EntryId, lastReplyCompletedTime: Timestamp }
+  Failed:      { firstUserInputRef: EntryId, userInputTime: Timestamp,
+                completedTime: Timestamp, lastAgentReplyRef: Optional<EntryId> }
+  Interrupted: { firstUserInputRef: EntryId, userInputTime: Timestamp,
+                completedTime: Timestamp, lastAgentReplyRef: Optional<EntryId> }
 ```
 
 #### Invariants
@@ -205,7 +209,7 @@ invariants:
     rule: "Turn 边界由 agent cli 提供,My-Code-X 不自行推断"
     enforced_at: "AgentCliACL.TurnSignalPort(仅消费)"
   - id: INV-9
-    rule: "Completed turn 必含 firstUserInput 与 lastAgentReply(+时间);InProgress 无 agent 侧信息"
+    rule: "Completed turn 必含 firstUserInput 与 lastAgentReply(+时间);Failed/Interrupted 必含 firstUserInput 与完成时间,lastAgentReplyRef 可缺失;InProgress 无 agent 侧信息"
     enforced_at: "TurnStatus 判别联合构造"
   - id: INV-10
     rule: "TurnInProgress(busy)≡ 存在 status=InProgress 的 Turn;完成单向不可逆"
@@ -221,7 +225,7 @@ Turn 独立成聚合:其状态机(INV-10)与成员完整性(INV-9)是独立于�
 ```yaml
 events:
   - { name: TurnStarted,   payload: [turnId, firstUserInputRef, userInputTime], emitted_when: "agent 提供进行中 turn" }
-  - { name: TurnCompleted, payload: [turnId, lastAgentReplyRef, lastReplyCompletedTime], emitted_when: "agent 标记 turn 完成" }
+  - { name: TurnCompleted, payload: [turnId, outcome, lastAgentReplyRef, completedTime], emitted_when: "agent 标记 turn 进入终态" }
 ```
 
 #### Repository Port
@@ -487,7 +491,7 @@ interface ContentRestoreRepository {             // domain layer
 
 ### BeginTurnService / ConcludeTurnService
 
-**Input**: BeginTurn(`TurnId`, `firstUserInputRef`, `userInputTime`)| ConcludeTurn(`TurnId`, `lastAgentReplyRef`, `lastReplyCompletedTime`)
+**Input**: BeginTurn(`TurnId`, `firstUserInputRef`, `userInputTime`)| ConcludeTurn(`TurnId`, `outcome`, `lastAgentReplyRef`, `completedTime`)
 
 **Output**: void | ConcludeTurn raises [TurnNotFound, TurnAlreadyCompleted]
 

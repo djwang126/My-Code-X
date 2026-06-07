@@ -2,17 +2,20 @@ import { describe, expect, it } from "vitest";
 import { createCodexAgentCliAdapter } from "../agent-cli/codex-agent-cli-adapter";
 import {
   createConversationViewRuntime,
-  type ContentRestorePort,
   type ConversationViewRuntime
 } from "./conversation-view-runtime";
+import type { ConversationAgentCliAdapter } from "./restore-conversation-content-service";
 
-function createRestoringRuntime(contentRestorePort: ContentRestorePort): ConversationViewRuntime {
+function createRestoringRuntime(
+  agentCli: Omit<ConversationAgentCliAdapter, "classifyInformation"> &
+    Partial<Pick<ConversationAgentCliAdapter, "classifyInformation">>
+): ConversationViewRuntime {
   return createConversationViewRuntime({
     conversations: [
       {
         id: "conv-restore",
         contentRestore: {
-          kind: "Restoring"
+          kind: "RestoredEmpty"
         },
         transcriptEntries: [],
         turns: [],
@@ -20,7 +23,12 @@ function createRestoringRuntime(contentRestorePort: ContentRestorePort): Convers
         cursor: "0"
       }
     ],
-    contentRestorePort
+    agentCli: {
+      classifyInformation() {
+        throw new Error("Test restore port did not expect history classification");
+      },
+      ...agentCli
+    }
   });
 }
 
@@ -75,7 +83,7 @@ describe("Conversation content restore", () => {
         transcriptEntries: [],
         turns: [],
         pendingInteractions: [],
-        cursor: "0"
+        cursor: "2"
       }
     });
   });
@@ -104,38 +112,64 @@ describe("Conversation content restore", () => {
         transcriptEntries: [],
         turns: [],
         pendingInteractions: [],
-        cursor: "0"
+        cursor: "2"
       }
     });
   });
 
-  it("marks a conversation as Restored when agent history has items", async () => {
+  it.each([
+    {
+      name: "RestoredEmpty",
+      outcome: { kind: "RestoredEmpty" } as const,
+      status: { kind: "RestoredEmpty" } as const
+    },
+    {
+      name: "RestoreFailed",
+      outcome: { kind: "RestoreFailed", message: "agent cli failed" } as const,
+      status: { kind: "RestoreFailed" } as const
+    },
+    {
+      name: "Restored",
+      outcome: { kind: "Restored", items: [] as unknown[] } as const,
+      status: { kind: "Restored" } as const
+    }
+  ])("publishes $name content restore status changes to event subscribers", async ({ outcome, status }) => {
     const runtime = createRestoringRuntime({
       async restoreContent() {
-        return {
-          kind: "Restored",
-          items: [{ type: "userMessage", id: "raw-1" }]
-        };
+        return outcome;
+      }
+    });
+    const events: unknown[] = [];
+    const subscription = runtime.subscribeToEvents({
+      conversationId: "conv-restore",
+      subscriber: {
+        publish(event) {
+          events.push(event);
+        }
       }
     });
 
     await runtime.restoreConversationContent("conv-restore");
 
-    expect(runtime.getSnapshot("conv-restore")).toEqual({
-      kind: "Found",
-      snapshot: {
-        conversation: {
-          id: "conv-restore",
-          contentRestore: {
-            kind: "Restored"
+    expect(subscription.kind).toBe("Subscribed");
+    expect(events).toEqual([
+      {
+        id: "1",
+        type: "content-restore.status-changed",
+        data: {
+          status: {
+            kind: "Restoring"
           }
-        },
-        transcriptEntries: [],
-        turns: [],
-        pendingInteractions: [],
-        cursor: "0"
+        }
+      },
+      {
+        id: "2",
+        type: "content-restore.status-changed",
+        data: {
+          status
+        }
       }
-    });
+    ]);
   });
 
   it("restores a Codex user message as a UserInput transcript entry", async () => {
@@ -170,7 +204,7 @@ describe("Conversation content restore", () => {
         ],
         turns: [],
         pendingInteractions: [],
-        cursor: "1"
+        cursor: "2"
       }
     });
   });
@@ -209,7 +243,7 @@ describe("Conversation content restore", () => {
         ],
         turns: [],
         pendingInteractions: [],
-        cursor: "1"
+        cursor: "2"
       }
     });
   });
@@ -248,7 +282,7 @@ describe("Conversation content restore", () => {
         ],
         turns: [],
         pendingInteractions: [],
-        cursor: "1"
+        cursor: "2"
       }
     });
   });
@@ -284,7 +318,7 @@ describe("Conversation content restore", () => {
         ],
         turns: [],
         pendingInteractions: [],
-        cursor: "1"
+        cursor: "2"
       }
     });
   });
@@ -317,13 +351,14 @@ describe("Conversation content restore", () => {
             sequence: 1,
             body: {
               kind: "Unrecognized",
+              nativeStatus: "opaque",
               detail: rawUnrecognized
             }
           }
         ],
         turns: [],
         pendingInteractions: [],
-        cursor: "1"
+        cursor: "2"
       }
     });
   });
@@ -443,7 +478,7 @@ describe("Conversation content restore", () => {
         ],
         turns: [],
         pendingInteractions: [],
-        cursor: "3"
+        cursor: "2"
       }
     });
   });
@@ -495,7 +530,7 @@ describe("Conversation content restore", () => {
           }
         ],
         pendingInteractions: [],
-        cursor: "0"
+        cursor: "2"
       }
     });
   });
@@ -543,7 +578,7 @@ describe("Conversation content restore", () => {
           }
         ],
         pendingInteractions: [],
-        cursor: "0"
+        cursor: "2"
       }
     });
   });
@@ -622,6 +657,185 @@ describe("Conversation content restore", () => {
               userInputTime: "2026-06-04T14:48:11.000Z",
               lastAgentReplyRef: "entry-2-agent",
               lastReplyCompletedTime: "2026-06-04T14:49:10.000Z"
+            }
+          }
+        ],
+        pendingInteractions: [],
+        cursor: "2"
+      }
+    });
+  });
+
+  it("restores failed and interrupted Codex history turns through the snapshot read path", async () => {
+    const runtime = createCodexRestoringRuntimeFromHistory({
+      items: [
+        {
+          type: "userMessage",
+          id: "entry-1-user",
+          content: [{ type: "text", text: "run command" }]
+        },
+        {
+          type: "userMessage",
+          id: "entry-2-user",
+          content: [{ type: "text", text: "stop" }]
+        }
+      ],
+      turns: [
+        {
+          id: "turn-failed",
+          status: "failed",
+          startedAt: 1780584491,
+          completedAt: 1780584550,
+          items: [
+            {
+              id: "entry-1-user",
+              type: "userMessage"
+            }
+          ]
+        },
+        {
+          id: "turn-interrupted",
+          status: "interrupted",
+          startedAt: 1780584551,
+          completedAt: 1780584560,
+          items: [
+            {
+              id: "entry-2-user",
+              type: "userMessage"
+            }
+          ]
+        }
+      ]
+    });
+
+    await runtime.restoreConversationContent("conv-restore");
+
+    expect(runtime.getSnapshot("conv-restore")).toEqual({
+      kind: "Found",
+      snapshot: {
+        conversation: {
+          id: "conv-restore",
+          contentRestore: {
+            kind: "Restored"
+          }
+        },
+        transcriptEntries: [
+          {
+            id: "entry-1-user",
+            sequence: 1,
+            body: {
+              kind: "UserInput",
+              markdown: "run command"
+            }
+          },
+          {
+            id: "entry-2-user",
+            sequence: 2,
+            body: {
+              kind: "UserInput",
+              markdown: "stop"
+            }
+          }
+        ],
+        turns: [
+          {
+            id: "turn-failed",
+            status: {
+              kind: "Failed",
+              firstUserInputRef: "entry-1-user",
+              userInputTime: "2026-06-04T14:48:11.000Z",
+              completedTime: "2026-06-04T14:49:10.000Z",
+              lastAgentReplyRef: null
+            }
+          },
+          {
+            id: "turn-interrupted",
+            status: {
+              kind: "Interrupted",
+              firstUserInputRef: "entry-2-user",
+              userInputTime: "2026-06-04T14:49:11.000Z",
+              completedTime: "2026-06-04T14:49:20.000Z",
+              lastAgentReplyRef: null
+            }
+          }
+        ],
+        pendingInteractions: [],
+        cursor: "2"
+      }
+    });
+  });
+
+  it("restores a Codex failure entry alongside its failed turn boundary", async () => {
+    const rawFailure = {
+      turnId: "turn-failed",
+      error: {
+        message: "model stream failed"
+      }
+    };
+    const runtime = createCodexRestoringRuntimeFromHistory({
+      items: [
+        {
+          type: "userMessage",
+          id: "entry-1-user",
+          content: [{ type: "text", text: "run command" }]
+        },
+        rawFailure
+      ],
+      turns: [
+        {
+          id: "turn-failed",
+          status: "failed",
+          startedAt: 1780584491,
+          completedAt: 1780584550,
+          items: [
+            {
+              id: "entry-1-user",
+              type: "userMessage"
+            }
+          ]
+        }
+      ]
+    });
+
+    await runtime.restoreConversationContent("conv-restore");
+
+    expect(runtime.getSnapshot("conv-restore")).toEqual({
+      kind: "Found",
+      snapshot: {
+        conversation: {
+          id: "conv-restore",
+          contentRestore: {
+            kind: "Restored"
+          }
+        },
+        transcriptEntries: [
+          {
+            id: "entry-1-user",
+            sequence: 1,
+            body: {
+              kind: "UserInput",
+              markdown: "run command"
+            }
+          },
+          {
+            id: "turn-failed:error:1",
+            sequence: 2,
+            body: {
+              kind: "Failure",
+              message: "model stream failed",
+              detail: rawFailure
+            }
+          }
+        ],
+        turns: [
+          {
+            id: "turn-failed",
+            status: {
+              kind: "Failed",
+              firstUserInputRef: "entry-1-user",
+              userInputTime: "2026-06-04T14:48:11.000Z",
+              completedTime: "2026-06-04T14:49:10.000Z",
+              lastAgentReplyRef: null
             }
           }
         ],

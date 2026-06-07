@@ -2,12 +2,14 @@ import request from "supertest";
 import { createServer, get } from "node:http";
 import { describe, expect, it } from "vitest";
 import { createApp } from "./create-app";
+import { createTestConversationViewRuntime } from "./test-support/conversation-view-runtime";
 
 const app = createApp({
   config: {
     host: "127.0.0.1",
     port: 0
-  }
+  },
+  conversationView: createTestConversationViewRuntime()
 });
 
 describe("server walking skeleton", () => {

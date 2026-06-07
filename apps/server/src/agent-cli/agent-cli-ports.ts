@@ -44,6 +44,22 @@ export interface InterpretTurnSignalInput {
 
 export type TurnCompletionOutcome = "Completed" | "Failed" | "Interrupted";
 
+export type TurnCompletedSignal =
+  | {
+      kind: "TurnCompleted";
+      turnId: string;
+      outcome: "Completed";
+      lastAgentReplyRef: string;
+      lastReplyCompletedTime: string;
+    }
+  | {
+      kind: "TurnCompleted";
+      turnId: string;
+      outcome: "Failed" | "Interrupted";
+      lastAgentReplyRef: string | null;
+      completedTime: string;
+    };
+
 export type TurnSignalInterpretation =
   | { kind: "NoTurnSignal" }
   | {
@@ -52,13 +68,7 @@ export type TurnSignalInterpretation =
       firstUserInputRef: string;
       userInputTime: string;
     }
-  | {
-      kind: "TurnCompleted";
-      turnId: string;
-      outcome: TurnCompletionOutcome;
-      lastAgentReplyRef?: string;
-      lastReplyCompletedTime: string;
-    };
+  | TurnCompletedSignal;
 
 export interface RestoreAgentContentInput {
   conversationId: string;

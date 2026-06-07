@@ -1,15 +1,12 @@
 import express from "express";
 import type { ErrorRequestHandler, Response } from "express";
 import type { ConversationStreamEvent } from "@my-code-x/app-types";
-import {
-  createDefaultConversationViewRuntime,
-  type ConversationViewRuntime
-} from "./conversation-view/conversation-view-runtime";
+import type { ConversationViewRuntime } from "./conversation-view/conversation-view-runtime";
 import type { ServerConfig } from "./config";
 
 export interface CreateAppInput {
   config: ServerConfig;
-  conversationView?: ConversationViewRuntime;
+  conversationView: ConversationViewRuntime;
 }
 
 type ApiErrorCode =
@@ -152,7 +149,7 @@ const apiErrorMiddleware: ErrorRequestHandler = (error, _req, res, next) => {
 
 export function createApp(input: CreateAppInput) {
   const app = express();
-  const conversationView = input.conversationView ?? createDefaultConversationViewRuntime();
+  const conversationView = input.conversationView;
 
   app.use(express.json({ limit: "1mb" }));
 

@@ -325,6 +325,240 @@ describe("CodexAgentCliAdapter", () => {
     });
   });
 
+  it("restores failed and interrupted Codex turns without requiring an agent reply", async () => {
+    const adapter = createCodexAgentCliAdapter({
+      historySource: {
+        async fetchHistory() {
+          return {
+            items: [
+              {
+                type: "userMessage",
+                id: "entry-1-user",
+                content: [{ type: "text", text: "run risky command" }]
+              },
+              {
+                type: "userMessage",
+                id: "entry-2-user",
+                content: [{ type: "text", text: "stop current work" }]
+              }
+            ],
+            turns: [
+              {
+                id: "turn-failed",
+                status: "failed",
+                startedAt: 1780584491,
+                completedAt: 1780584550,
+                items: [
+                  {
+                    id: "entry-1-user",
+                    type: "userMessage"
+                  }
+                ]
+              },
+              {
+                id: "turn-interrupted",
+                status: "interrupted",
+                startedAt: 1780584551,
+                completedAt: 1780584560,
+                items: [
+                  {
+                    id: "entry-2-user",
+                    type: "userMessage"
+                  }
+                ]
+              }
+            ]
+          };
+        }
+      }
+    });
+
+    await expect(adapter.restoreContent({ conversationId: "thread-terminal" })).resolves.toEqual({
+      kind: "Restored",
+      items: [
+        {
+          type: "userMessage",
+          id: "entry-1-user",
+          content: [{ type: "text", text: "run risky command" }]
+        },
+        {
+          type: "userMessage",
+          id: "entry-2-user",
+          content: [{ type: "text", text: "stop current work" }]
+        }
+      ],
+      turns: [
+        {
+          id: "turn-failed",
+          status: {
+            kind: "Failed",
+            firstUserInputRef: "entry-1-user",
+            userInputTime: "2026-06-04T14:48:11.000Z",
+            completedTime: "2026-06-04T14:49:10.000Z",
+            lastAgentReplyRef: null
+          }
+        },
+        {
+          id: "turn-interrupted",
+          status: {
+            kind: "Interrupted",
+            firstUserInputRef: "entry-2-user",
+            userInputTime: "2026-06-04T14:49:11.000Z",
+            completedTime: "2026-06-04T14:49:20.000Z",
+            lastAgentReplyRef: null
+          }
+        }
+      ]
+    });
+  });
+
+  it("keeps the last agent reply reference on failed or interrupted Codex turns when Codex provides one", async () => {
+    const adapter = createCodexAgentCliAdapter({
+      historySource: {
+        async fetchHistory() {
+          return {
+            items: [
+              {
+                type: "userMessage",
+                id: "entry-1-user",
+                content: [{ type: "text", text: "continue" }]
+              },
+              {
+                type: "agentMessage",
+                id: "entry-2-agent",
+                text: "partial answer",
+                phase: null
+              }
+            ],
+            turns: [
+              {
+                id: "turn-failed-with-reply",
+                status: "failed",
+                startedAt: 1780584491,
+                completedAt: 1780584550,
+                items: [
+                  {
+                    id: "entry-1-user",
+                    type: "userMessage"
+                  },
+                  {
+                    id: "entry-2-agent",
+                    type: "agentMessage"
+                  }
+                ]
+              }
+            ]
+          };
+        }
+      }
+    });
+
+    await expect(adapter.restoreContent({ conversationId: "thread-terminal" })).resolves.toMatchObject({
+      kind: "Restored",
+      turns: [
+        {
+          id: "turn-failed-with-reply",
+          status: {
+            kind: "Failed",
+            firstUserInputRef: "entry-1-user",
+            userInputTime: "2026-06-04T14:48:11.000Z",
+            completedTime: "2026-06-04T14:49:10.000Z",
+            lastAgentReplyRef: "entry-2-agent"
+          }
+        }
+      ]
+    });
+  });
+
+  it("does not restore a completed Codex turn without a final agent reply as a fake success", async () => {
+    const adapter = createCodexAgentCliAdapter({
+      historySource: {
+        async fetchHistory() {
+          return {
+            items: [
+              {
+                type: "userMessage",
+                id: "entry-1-user",
+                content: [{ type: "text", text: "hello" }]
+              }
+            ],
+            turns: [
+              {
+                id: "turn-completed-without-reply",
+                status: "completed",
+                startedAt: 1780584491,
+                completedAt: 1780584550,
+                items: [
+                  {
+                    id: "entry-1-user",
+                    type: "userMessage"
+                  }
+                ]
+              }
+            ]
+          };
+        }
+      }
+    });
+
+    await expect(adapter.restoreContent({ conversationId: "thread-terminal" })).resolves.toEqual({
+      kind: "Restored",
+      items: [
+        {
+          type: "userMessage",
+          id: "entry-1-user",
+          content: [{ type: "text", text: "hello" }]
+        }
+      ]
+    });
+  });
+
+  it("interprets failed and interrupted live Codex turn completions without an agent reply", () => {
+    const adapter = createAdapter();
+
+    expect(
+      adapter.interpretTurnSignal({
+        conversationId: "thread-1",
+        nativeMethod: "turn/completed",
+        raw: {
+          turn: {
+            id: "turn-failed",
+            status: "failed",
+            startedAt: 1780584491,
+            completedAt: 1780584550
+          }
+        }
+      })
+    ).toEqual({
+      kind: "TurnCompleted",
+      turnId: "turn-failed",
+      outcome: "Failed",
+      completedTime: "2026-06-04T14:49:10.000Z",
+      lastAgentReplyRef: null
+    });
+
+    expect(
+      adapter.interpretTurnSignal({
+        conversationId: "thread-1",
+        nativeMethod: "turn/completed",
+        raw: {
+          turn: {
+            id: "turn-interrupted",
+            status: "interrupted",
+            startedAt: 1780584491,
+            completedAt: 1780584550
+          }
+        }
+      })
+    ).toEqual({
+      kind: "TurnCompleted",
+      turnId: "turn-interrupted",
+      outcome: "Interrupted",
+      completedTime: "2026-06-04T14:49:10.000Z",
+      lastAgentReplyRef: null
+    });
+  });
+
   it("keeps separate Codex failure entries when one turn receives multiple unattributed errors", () => {
     const adapter = createAdapter();
     const firstRaw = {
@@ -369,6 +603,27 @@ describe("CodexAgentCliAdapter", () => {
         }
       }
     ]);
+  });
+
+  it("preserves native status when classifying unknown content-like Codex items", () => {
+    const adapter = createAdapter();
+    const raw = {
+      type: "futureContent",
+      id: "entry-future",
+      status: "opaque",
+      payload: {
+        value: 42
+      }
+    };
+
+    expect(adapter.classifyInformation({ conversationId: "thread-1", raw })).toEqual({
+      entryId: "entry-future",
+      body: {
+        kind: "Unrecognized",
+        nativeStatus: "opaque",
+        detail: raw
+      }
+    });
   });
 
   it("reports empty and failed Codex history restores as explicit restore outcomes", async () => {

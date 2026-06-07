@@ -63,6 +63,20 @@ export const turnStatusSchema = z.discriminatedUnion("kind", [
     userInputTime: z.string(),
     lastAgentReplyRef: z.string(),
     lastReplyCompletedTime: z.string()
+  }),
+  z.object({
+    kind: z.literal("Failed"),
+    firstUserInputRef: z.string(),
+    userInputTime: z.string(),
+    completedTime: z.string(),
+    lastAgentReplyRef: z.string().nullable()
+  }),
+  z.object({
+    kind: z.literal("Interrupted"),
+    firstUserInputRef: z.string(),
+    userInputTime: z.string(),
+    completedTime: z.string(),
+    lastAgentReplyRef: z.string().nullable()
   })
 ]);
 
@@ -123,13 +137,44 @@ export const inputSendOutcomeSchema = z.discriminatedUnion("outcome", [
   })
 ]);
 
-export const conversationStreamEventSchema = z.object({
+export const transcriptEntryAddedEventSchema = z.object({
   id: z.string(),
   type: z.literal("transcript.entry-added"),
   data: z.object({
     entry: transcriptEntrySchema
   })
 });
+
+export const contentRestoreStatusChangedEventSchema = z.object({
+  id: z.string(),
+  type: z.literal("content-restore.status-changed"),
+  data: z.object({
+    status: contentRestoreStatusSchema
+  })
+});
+
+export const turnStartedEventSchema = z.object({
+  id: z.string(),
+  type: z.literal("turn.started"),
+  data: z.object({
+    turn: turnSchema
+  })
+});
+
+export const turnCompletedEventSchema = z.object({
+  id: z.string(),
+  type: z.literal("turn.completed"),
+  data: z.object({
+    turn: turnSchema
+  })
+});
+
+export const conversationStreamEventSchema = z.discriminatedUnion("type", [
+  transcriptEntryAddedEventSchema,
+  contentRestoreStatusChangedEventSchema,
+  turnStartedEventSchema,
+  turnCompletedEventSchema
+]);
 
 export type UserInputEntryBody = z.infer<typeof userInputEntryBodySchema>;
 export type AgentReplyEntryBody = z.infer<typeof agentReplyEntryBodySchema>;
@@ -147,4 +192,10 @@ export type InteractionStatus = z.infer<typeof interactionStatusSchema>;
 export type Interaction = z.infer<typeof interactionSchema>;
 export type ConversationSnapshot = z.infer<typeof conversationSnapshotSchema>;
 export type InputSendOutcome = z.infer<typeof inputSendOutcomeSchema>;
+export type TranscriptEntryAddedEvent = z.infer<typeof transcriptEntryAddedEventSchema>;
+export type ContentRestoreStatusChangedEvent = z.infer<
+  typeof contentRestoreStatusChangedEventSchema
+>;
+export type TurnStartedEvent = z.infer<typeof turnStartedEventSchema>;
+export type TurnCompletedEvent = z.infer<typeof turnCompletedEventSchema>;
 export type ConversationStreamEvent = z.infer<typeof conversationStreamEventSchema>;

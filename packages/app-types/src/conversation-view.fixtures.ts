@@ -54,6 +54,14 @@ export interface CompletedTurnFixtureInput {
   lastReplyCompletedTime?: string;
 }
 
+export interface TerminalTurnFixtureInput {
+  id?: string;
+  firstUserInputRef?: string;
+  userInputTime?: string;
+  completedTime?: string;
+  lastAgentReplyRef?: string | null;
+}
+
 export const entryFixture = {
   userInput(input: UserInputEntryFixtureInput = {}): TranscriptEntry {
     return {
@@ -138,6 +146,32 @@ export const turnFixture = {
         lastAgentReplyRef: input.lastAgentReplyRef ?? "entry-agent",
         lastReplyCompletedTime:
           input.lastReplyCompletedTime ?? "2026-06-06T06:01:00.000Z"
+      }
+    };
+  },
+
+  failed(input: TerminalTurnFixtureInput = {}): Turn {
+    return {
+      id: input.id ?? "turn-failed",
+      status: {
+        kind: "Failed",
+        firstUserInputRef: input.firstUserInputRef ?? "entry-user",
+        userInputTime: input.userInputTime ?? "2026-06-06T06:00:00.000Z",
+        completedTime: input.completedTime ?? "2026-06-06T06:01:00.000Z",
+        lastAgentReplyRef: input.lastAgentReplyRef ?? null
+      }
+    };
+  },
+
+  interrupted(input: TerminalTurnFixtureInput = {}): Turn {
+    return {
+      id: input.id ?? "turn-interrupted",
+      status: {
+        kind: "Interrupted",
+        firstUserInputRef: input.firstUserInputRef ?? "entry-user",
+        userInputTime: input.userInputTime ?? "2026-06-06T06:00:00.000Z",
+        completedTime: input.completedTime ?? "2026-06-06T06:01:00.000Z",
+        lastAgentReplyRef: input.lastAgentReplyRef ?? null
       }
     };
   }

@@ -153,6 +153,8 @@ SendFailed 是业务数据，不走 HTTP 4xx。
 **TurnStatus**:
 - `{ "kind": "InProgress", "firstUserInputRef": "entryId", "userInputTime": "ISO8601" }`
 - `{ "kind": "Completed", "firstUserInputRef": "entryId", "userInputTime": "ISO8601", "lastAgentReplyRef": "entryId", "lastReplyCompletedTime": "ISO8601" }`
+- `{ "kind": "Failed", "firstUserInputRef": "entryId", "userInputTime": "ISO8601", "completedTime": "ISO8601", "lastAgentReplyRef": "entryId|null" }`
+- `{ "kind": "Interrupted", "firstUserInputRef": "entryId", "userInputTime": "ISO8601", "completedTime": "ISO8601", "lastAgentReplyRef": "entryId|null" }`
 
 ### Interaction
 
@@ -187,7 +189,7 @@ Stream: `GET /conversations/{conversationId}/events`
 | `transcript.reply-delta` | `{ "entryId": "string", "delta": "string" }` | AgentReply 流式增量 |
 | `transcript.entry-updated` | `{ "entryId": "string", "body": EntryBody }` | entry 状态变更 |
 | `turn.started` | `{ "turn": Turn }` | Turn 开始 |
-| `turn.completed` | `{ "turnId": "string", "lastAgentReplyRef": "string", "lastReplyCompletedTime": "ISO8601" }` | Turn 结束 |
+| `turn.completed` | `{ "turn": Turn }` | Turn 进入终态：Completed / Failed / Interrupted |
 | `interaction.raised` | `{ "interaction": Interaction }` | 新 pending interaction |
 | `interaction.status-changed` | `{ "interactionId": "string", "status": InteractionStatus }` | interaction 终态 |
 | `content-restore.status-changed` | `{ "status": ContentRestoreStatus }` | 恢复状态变更 |

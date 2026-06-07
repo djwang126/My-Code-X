@@ -463,16 +463,27 @@ export function createClaudeCodeAgentCliAdapter(input: CreateClaudeCodeAgentCliA
           new Date(completedTurn.userInputTime).getTime() + turnInput.raw.duration_ms
         ).toISOString();
 
+        if (turnInput.raw.subtype === "success") {
+          if (completedTurn.lastAgentReplyRef === undefined) {
+            return { kind: "NoTurnSignal" };
+          }
+
+          return {
+            kind: "TurnCompleted",
+            turnId: completedTurn.turnId,
+            outcome: "Completed",
+            lastAgentReplyRef: completedTurn.lastAgentReplyRef,
+            lastReplyCompletedTime: completedAt
+          };
+        }
+
         const completed: TurnSignalInterpretation = {
           kind: "TurnCompleted",
           turnId: completedTurn.turnId,
-          outcome: turnInput.raw.subtype === "success" ? "Completed" : "Failed",
-          lastReplyCompletedTime: completedAt
+          outcome: "Failed",
+          lastAgentReplyRef: completedTurn.lastAgentReplyRef ?? null,
+          completedTime: completedAt
         };
-
-        if (completedTurn.lastAgentReplyRef !== undefined) {
-          completed.lastAgentReplyRef = completedTurn.lastAgentReplyRef;
-        }
 
         return completed;
       }

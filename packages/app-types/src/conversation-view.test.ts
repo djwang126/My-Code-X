@@ -5,7 +5,8 @@ import {
   conversationSnapshotSchema,
   entryBodySchema,
   inputSendOutcomeSchema,
-  transcriptEntrySchema
+  transcriptEntrySchema,
+  turnStatusSchema
 } from "./conversation-view";
 import { entryFixture, snapshotFixture, turnFixture } from "./conversation-view.fixtures";
 
@@ -366,7 +367,58 @@ describe("Conversation View contract", () => {
     expect(snapshot.pendingInteractions).toHaveLength(2);
   });
 
-  it("builds valid turn fixtures for in-progress and completed turns", () => {
+  it("accepts failed and interrupted terminal turns without an agent reply", () => {
+    const failed = turnStatusSchema.parse({
+      kind: "Failed",
+      firstUserInputRef: "entry-1-user",
+      userInputTime: "2026-06-06T06:00:00.000Z",
+      completedTime: "2026-06-06T06:01:00.000Z",
+      lastAgentReplyRef: null
+    });
+    const interrupted = turnStatusSchema.parse({
+      kind: "Interrupted",
+      firstUserInputRef: "entry-2-user",
+      userInputTime: "2026-06-06T06:02:00.000Z",
+      completedTime: "2026-06-06T06:03:00.000Z",
+      lastAgentReplyRef: null
+    });
+
+    expect(failed).toEqual({
+      kind: "Failed",
+      firstUserInputRef: "entry-1-user",
+      userInputTime: "2026-06-06T06:00:00.000Z",
+      completedTime: "2026-06-06T06:01:00.000Z",
+      lastAgentReplyRef: null
+    });
+    expect(interrupted).toEqual({
+      kind: "Interrupted",
+      firstUserInputRef: "entry-2-user",
+      userInputTime: "2026-06-06T06:02:00.000Z",
+      completedTime: "2026-06-06T06:03:00.000Z",
+      lastAgentReplyRef: null
+    });
+  });
+
+  it("rejects malformed terminal turn variants", () => {
+    expect(
+      turnStatusSchema.safeParse({
+        kind: "Completed",
+        firstUserInputRef: "entry-1-user",
+        userInputTime: "2026-06-06T06:00:00.000Z",
+        lastReplyCompletedTime: "2026-06-06T06:01:00.000Z"
+      }).success
+    ).toBe(false);
+    expect(
+      turnStatusSchema.safeParse({
+        kind: "Failed",
+        firstUserInputRef: "entry-1-user",
+        userInputTime: "2026-06-06T06:00:00.000Z",
+        lastAgentReplyRef: null
+      }).success
+    ).toBe(false);
+  });
+
+  it("builds valid turn fixtures for in-progress and terminal turns", () => {
     const snapshot = conversationSnapshotSchema.parse(
       snapshotFixture({
         transcriptEntries: [
@@ -389,6 +441,19 @@ describe("Conversation View contract", () => {
             userInputTime: "2026-06-06T06:00:00.000Z",
             lastAgentReplyRef: "entry-2-agent",
             lastReplyCompletedTime: "2026-06-06T06:01:00.000Z"
+          }),
+          turnFixture.failed({
+            id: "turn-failed",
+            firstUserInputRef: "entry-3-user",
+            userInputTime: "2026-06-06T06:02:00.000Z",
+            completedTime: "2026-06-06T06:03:00.000Z"
+          }),
+          turnFixture.interrupted({
+            id: "turn-interrupted",
+            firstUserInputRef: "entry-4-user",
+            userInputTime: "2026-06-06T06:04:00.000Z",
+            completedTime: "2026-06-06T06:05:00.000Z",
+            lastAgentReplyRef: "entry-5-agent"
           })
         ]
       })
@@ -411,6 +476,26 @@ describe("Conversation View contract", () => {
           userInputTime: "2026-06-06T06:00:00.000Z",
           lastAgentReplyRef: "entry-2-agent",
           lastReplyCompletedTime: "2026-06-06T06:01:00.000Z"
+        }
+      },
+      {
+        id: "turn-failed",
+        status: {
+          kind: "Failed",
+          firstUserInputRef: "entry-3-user",
+          userInputTime: "2026-06-06T06:02:00.000Z",
+          completedTime: "2026-06-06T06:03:00.000Z",
+          lastAgentReplyRef: null
+        }
+      },
+      {
+        id: "turn-interrupted",
+        status: {
+          kind: "Interrupted",
+          firstUserInputRef: "entry-4-user",
+          userInputTime: "2026-06-06T06:04:00.000Z",
+          completedTime: "2026-06-06T06:05:00.000Z",
+          lastAgentReplyRef: "entry-5-agent"
         }
       }
     ]);
@@ -490,6 +575,69 @@ describe("Conversation View contract", () => {
           body: {
             kind: "UserInput",
             markdown: "hello"
+          }
+        }
+      }
+    });
+  });
+
+  it("accepts content restore status changed stream events", () => {
+    const event = conversationStreamEventSchema.parse({
+      id: "3",
+      type: "content-restore.status-changed",
+      data: {
+        status: {
+          kind: "RestoredEmpty"
+        }
+      }
+    });
+
+    expect(event).toEqual({
+      id: "3",
+      type: "content-restore.status-changed",
+      data: {
+        status: {
+          kind: "RestoredEmpty"
+        }
+      }
+    });
+  });
+
+  it("accepts turn lifecycle stream events with full turn payloads", () => {
+    const started = conversationStreamEventSchema.parse({
+      id: "4",
+      type: "turn.started",
+      data: {
+        turn: turnFixture.inProgress({
+          id: "turn-in-progress",
+          firstUserInputRef: "entry-1-user"
+        })
+      }
+    });
+    const completed = conversationStreamEventSchema.parse({
+      id: "5",
+      type: "turn.completed",
+      data: {
+        turn: turnFixture.failed({
+          id: "turn-failed",
+          firstUserInputRef: "entry-1-user"
+        })
+      }
+    });
+
+    expect(started.type).toBe("turn.started");
+    expect(completed).toEqual({
+      id: "5",
+      type: "turn.completed",
+      data: {
+        turn: {
+          id: "turn-failed",
+          status: {
+            kind: "Failed",
+            firstUserInputRef: "entry-1-user",
+            userInputTime: "2026-06-06T06:00:00.000Z",
+            completedTime: "2026-06-06T06:01:00.000Z",
+            lastAgentReplyRef: null
           }
         }
       }
