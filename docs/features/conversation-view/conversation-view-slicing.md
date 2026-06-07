@@ -40,50 +40,57 @@ Phase 0 探查目标，按"如果错了，重做范围"排序：
 |---|---|---|---|---|
 | 1 | End-to-end echo skeleton | 0.x | Conversation View Shell（无选中 / 首屏定位底部 / Composer 显示）、Conversation Information Rendering（普通对话内容直接展示）、Composer（空闲发送 / 发送被接受清空 draft） | 用户输入→fake adapter echo Completed AgentReply→列表底部可见。建立 4 个 BC 最小骨架、AgentCliACL 雏形、snapshot + SSE entry-added + POST /inputs。横切基线自此切片起强制 |
 
-### Phase 2 — 信息类型（AFK）
+### Phase 2 — 历史阅读路径（AFK）
 
 | # | Title | Blocked by | BDD 覆盖 | 范围 |
 |---|---|---|---|---|
-| 2 | AgentReply 流式 | 1 | Message Reading（正在输出的回复持续更新） | ReplyStreamState InProgress→Completed；reply-delta + entry-updated；前端流式拼接、完成态切换 |
-| 3 | WorkProgress 分类与渲染 | 1 | Conversation Information Rendering（工作过程相关 4 个 scenario） | InformationClassificationPolicy 引入；默认折叠 / 缺字段降级 / 展开位置稳定 / 展开状态在打开期间保持 |
-| 4 | Failure + Unrecognized | 1 | Conversation Information Rendering（失败 3 个 + 未识别 2 个 scenario） | Failure 醒目不折叠 + Unknown error 兜底 + 多条不合并；Unrecognized 紧凑可展开、不被当失败 |
-| 5 | Markdown 富渲染 | 1 | Message Reading（Markdown / 代码块 / 表格 / 外链 / 非外链不处理） | Markdown 渲染、代码块横滚 + 复制按钮、宽表格横滚、外链打开 |
+| 2 | Restored snapshot read path | 1 | Conversation View Shell（恢复中 / 恢复成功无内容 / 恢复失败 / 已有内容首屏到底部）、Turn Toolbar（进行中 / 已完成 / 进行中不展示 agent 侧工具栏） | ContentRestore 聚合 + ContentRestorePort + content-restore.status-changed；GET snapshot 贯通历史 entry / turns；空≠失败语义贯通；打开已有对话可稳定阅读；前端由 snapshot turns 派生 busy/idle 并展示静态 toolbar |
+| 3 | Static transcript entry rendering | 2 | Conversation Information Rendering（四类信息、顺序、工作过程、失败、未识别）、Message Reading（Markdown / 代码块 / 表格 / 外链 / 非外链不处理） | InformationClassificationPolicy 接入；静态快照中混合 UserInput / AgentReply / WorkProgress / Failure / Unrecognized；默认折叠、展开状态、Failure 兜底、Markdown 富渲染、代码块复制、宽表格横滚、外链打开 |
 
-### Phase 3 — 对话生命周期（AFK）
+### Phase 3 — Live reading（AFK）
 
 | # | Title | Blocked by | BDD 覆盖 | 范围 |
 |---|---|---|---|---|
-| 6 | ContentRestore + 首屏四态 | 1 | Conversation View Shell（恢复中 / 恢复成功无内容 / 恢复失败） | ContentRestore 聚合 + ContentRestorePort + content-restore.status-changed；空≠失败语义贯通 |
-| 7 | Turn 生命周期 + Toolbar | 1, 2 | Turn Toolbar 全部 scenario | Turn 聚合、TurnSignalPort、busy/idle 派生；用户侧 / agent 侧 toolbar、进行中 turn 不展示 agent 侧 |
-| 8 | PageNotification + Banner 系统 | 1 | Conversation View Notice 全部 | 一次性 banner 自动消失 / 持续状态 banner 不消失 / 多 banner 堆叠 / 无归属 agent 错误 / my-code-x 自身错误 |
+| 4 | Streaming reply without scroll disruption | 2, 3 | Message Reading（正在输出的回复持续更新）、Live Update（新信息进入 / 已有信息更新 / 旧位置稳定 / 底部自然跟随）、Non-Functional（流式增量不整列表重排） | turn.started / turn.completed + ReplyStreamState InProgress→Completed；reply-delta + entry-updated；前端流式拼接、完成态切换；live busy/idle 更新；滚动锚定策略与增量更新性能基线 |
 
 ### Phase 4 — Composer（AFK）
 
 | # | Title | Blocked by | BDD 覆盖 | 范围 |
 |---|---|---|---|---|
-| 9 | 多行 + per-conversation draft | 1 | Composer（多行输入 / 按对话保存 draft / 目标状态不明禁用 / 未选中对话不绑 draft / 空文本不能发送 / 发送失败保留 draft） | 本地按对话维护 draft；多行随内容增长到最大高度后内部滚动；发送禁用准入 |
-| 10 | 补充指令 + 中断 + capability 降级 | 7, 9 | Composer（工作中追加指令 / 工作中无输入中断 / 不支持动作降级） | GET /agent/capabilities + supplementary-instructions + interrupt；主操作按钮三态切换；中断确认 modal |
+| 5 | Composer draft + normal send hardening | 2 | Composer（多行输入 / 按对话保存 draft / 未选中不绑 draft / 空文本不能发送 / 空闲发送 / 发送成功清空 / 发送失败保留 / 目标状态不明确禁用）、Non-Functional（发送输入编码保真） | 本地按对话维护 draft；多行随内容增长到最大高度后内部滚动；POST /inputs Accepted / SendFailed；发送禁用准入；重复发送禁用；UTF-8 / CJK / emoji 保真 |
+| 6 | Supplementary instruction + interrupt | 4, 5 | Composer（工作中追加指令 / 工作中无输入中断 / 不支持动作降级） | GET /agent/capabilities + POST /supplementary-instructions + POST /interrupt；主操作按钮三态切换；中断确认 modal；不模拟 agent cli 不支持的能力 |
 
-### Phase 5 — 实时性扩展（AFK）
-
-| # | Title | Blocked by | BDD 覆盖 | 范围 |
-|---|---|---|---|---|
-| 11 | Live update 滚动与底部跟随 | 1, 2 | Live Update（新信息进入 / 已有信息更新 / 旧位置稳定 / 底部自然跟随） | 滚动锚定策略；与流式增量协作不打断阅读位置 |
-| 12 | SSE 重连 + resync + freshness | 2, 8 | Live Update（重连恢复内容并继续接收）、Conversation View Shell（已有内容时同步状态非阻塞展示） | Last-Event-ID 衔接、cursor 失效走 resync-required、重连后 entry-updated 替代 delta、freshness banner |
-| 13 | 多连接对等 | 9, 12 | Multiple Connections 全部 | 两端 live update 一致 / 任一端发送对端可见 / draft 不跨端 / 重连只恢复对话内容 |
-
-### Phase 6 — Pending Interaction（AFK）
+### Phase 5 — Notice 与弱网恢复（AFK）
 
 | # | Title | Blocked by | BDD 覆盖 | 范围 |
 |---|---|---|---|---|
-| 14 | 单条 pending 响应 | 1 | Pending Interaction（展示 / 选项响应 / 文字补充 / 响应被接受 / 超时或取消） | PendingInteraction 聚合 + InteractionSignalPort + interaction.raised + interaction.status-changed + POST response；状态机 Pending→Resolved/Expired/Cancelled |
-| 15 | 多条 + 跨对话 + 先到先得 | 13, 14 | Pending Interaction（多条并存 / 切换到有 pending 的对话 / 多连接先到先得 / 重复响应被拒绝） | 同对话多个 interaction 独立；first-write-wins + 409 重复拒绝；对端 live update 同步 |
+| 7 | Page notices + freshness banner | 2, 4, 5 | Conversation View Notice 全部、Conversation View Shell（已有内容时同步状态非阻塞展示）、Composer（发送失败非阻塞提示） | agent-error / My-Code-X 页面级错误 / SendFailed / freshness 共用 banner 表现；一次性 banner 自动消失；持续状态 banner 不自动消失；多 banner 垂直堆叠；不插入 transcript |
+| 8 | SSE reconnect + resync | 4, 7 | Live Update（重连恢复内容并继续接收）、Conversation View Shell（已有内容时同步状态非阻塞展示） | Last-Event-ID 衔接；cursor 失效走 resync-required；重新 snapshot + 续订阅；重连后 entry-updated 替代 delta；freshness banner 联动 |
+
+### Phase 6 — 多连接（AFK）
+
+| # | Title | Blocked by | BDD 覆盖 | 范围 |
+|---|---|---|---|---|
+| 9 | Multi-connection transcript parity | 5, 8 | Multiple Connections（多个前端同时接收 live update / 任一前端发送成功后所有连接可见 / draft 不跨客户端同步 / 重连不继承其他连接操作状态） | 同 conversation SSE fanout；任一端发送后全部连接可见；draft 与展开状态保持本地；重连只恢复对话内容 |
+
+### Phase 7 — Pending Interaction（AFK）
+
+| # | Title | Blocked by | BDD 覆盖 | 范围 |
+|---|---|---|---|---|
+| 10 | Single pending interaction | 4 | Pending Interaction（展示 / 选项响应 / 文字补充 / 响应被接受 / 超时或取消） | PendingInteraction 聚合 + InteractionSignalPort + interaction.raised + interaction.status-changed + POST response；单条状态机 Pending→Resolved/Expired/Cancelled |
+| 11 | Multiple pending interactions + first-write-wins | 9, 10 | Pending Interaction（多条并存 / 切换到有 pending 的对话 / 多连接先到先得 / 重复响应被拒绝） | 同对话多个 interaction 独立排序；跨对话 snapshot 恢复；first-write-wins + 409 重复拒绝；对端 live update 同步 |
+
+### Phase 8 — 移动端阅读收口（AFK）
+
+| # | Title | Blocked by | BDD 覆盖 | 范围 |
+|---|---|---|---|---|
+| 12 | Long conversation mobile readability pass | 3, 4, 8, 9 | Non-Functional（长对话移动端保持可阅读 / 渲染回复文本编码保真） | 数百条消息混合 reasoning、工具结果、代码块、表格和普通回复；移动端阅读性能、内存、滚动稳定性与 UTF-8 / CJK / emoji 渲染保真验收 |
 
 ## 横切基线
 
 自切片 1 起每切片验收时检查，不作为独立切片：
 
 - **多连接广播**：所有 SSE 事件向全部订阅者下发；从第一个 SSE 切片起就建立。
-- **滚动锚定**：用户在底部自然跟随，不在底部不打扰；从第一个流式切片起就建立。
+- **滚动锚定**：用户在底部自然跟随，不在底部不打扰；在流式切片中正式验收，之后持续回归。
 - **UTF-8 / CJK / emoji 保真**：发送与渲染两端测试基线。
-- **列表重排与内存监控**：流式增量不触发整列表重排；长对话内存可观测。
+- **列表重排与内存监控**：流式增量不触发整列表重排；长对话移动端阅读在收口切片中专项验收。
