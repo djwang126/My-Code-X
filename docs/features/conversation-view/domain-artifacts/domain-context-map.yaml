@@ -1,0 +1,100 @@
+context-map:
+  project: Conversation View
+
+contexts:
+  - name: ConversationProjection
+    type: core
+    owner: my-code-x
+    description: 一条对话的权威可读投影——消息(含分类)、turn、加载/同步相位、续接位点。
+  - name: InteractionHandling
+    type: supporting
+    owner: my-code-x
+    description: pending interaction 的状态机与后端自持响应锁,保证多连接先到先得。
+  - name: Composer
+    type: supporting
+    owner: my-code-x
+    description: 用户输入的本地 draft 与主操作按钮决策,把输入意图中继给 agent cli(后端无 aggregate)。
+  - name: Notification
+    type: generic
+    owner: my-code-x
+    description: 无归属错误与操作失败的非阻塞 toast 展示、定时消失、堆叠。
+  - name: AgentCli
+    type: core
+    owner: external
+    description: cli 形态 agent(codex/claude code 等)的统称;唯一外部权威系统。
+  - name: AgentLifecycle
+    type: supporting
+    owner: external
+    description: agent cli 的生命周期管理(开/关/keep-alive);独立 feature,本 feature 仅经边界集成。
+
+relationships:
+  - upstream: AgentCli
+    downstream: ConversationProjection
+    type: upstream-downstream
+    integration: acl
+    async: true
+    events: [AgentMessageRecorded, AgentMessageUpdated, TurnStarted, TurnEnded, RecoveredHistorySnapshot, AttributedErrorRaised, UnattributedErrorRaised]
+    translation: "native type → Classification(四类)+NativeType; native status → NativeStatus(纯文案); 更新 → InPlaceUpdate(AppendDelta|FullReplace); cli 固定键 → Message.stableKey; turn 标记 → Turn+TurnState; 续接原料 → ResumeCursor"
+    rationale: "agent cli 是第三方,不为我们改模型(M1);native 概念会扭曲投影模型,必须 ACL 翻译为四大分类。缺失固定键 → AgentCliProtocolViolation → Phase.ProtocolBroken。"
+  - upstream: AgentCli
+    downstream: InteractionHandling
+    type: upstream-downstream
+    integration: acl
+    async: true
+    events: [PendingInteractionRaised, PendingInteractionExpired]
+    translation: "agent 交互请求 → InteractionContent+ResponseOption; agent 失效/取消/超时 → invalidate(Expired); 刻意丢弃 agent 锁语义(响应锁我方自持 H4)"
+    rationale: "M2:必须隔离 agent 的失效语义,不能混进我方先到先得裁决。"
+  - upstream: AgentLifecycle
+    downstream: InteractionHandling
+    type: customer-supplier
+    integration: acl
+    async: true
+    events: [OwningConversationEnded]
+    translation: "OwningConversationEnded(任意结束原因) → InvalidateConversationInteractions(cause=OwningConversationEnded); 刻意丢弃结束原因与计时细节"
+    rationale: "M3/H10:把对话级结束信号翻成『交互不再可能被响应』;内部团队,合作关系。契约风险并入 H11。"
+  - upstream: AgentCli
+    downstream: Composer
+    type: upstream-downstream
+    integration: acl
+    async: false
+    translation: "SubmitNormalInput/AppendInstruction/RequestWorkInterrupt/RespondToInteraction → native 协议; AgentCliCapability → 能力查询; 用户输入回吐(H9)"
+    rationale: "M4:中继出站命令并查询能力,需翻译各 cli 协议与能力差异;与上面两条共用同一 AgentCli ACL(内部分模块)。"
+  - upstream: ConversationProjection
+    downstream: Composer
+    type: customer-supplier
+    integration: conformist
+    async: false
+    rationale: "M5:Composer 读 Projection 的 TurnState/相位/连接(经 ComposerActionView read model)决定主操作按钮动作;turn 语义两边一致,无需翻译。"
+  - upstream: ConversationProjection
+    downstream: Notification
+    type: customer-supplier
+    integration: conformist
+    async: true
+    events: [UnattributedErrorRaised]
+    rationale: "M6:无归属错误推给通用 toast;generic,无领域翻译。"
+  - upstream: InteractionHandling
+    downstream: Notification
+    type: customer-supplier
+    integration: conformist
+    async: true
+    rationale: "M6:操作失败(响应被拒/失败)推给 toast。"
+  - upstream: Composer
+    downstream: Notification
+    type: customer-supplier
+    integration: conformist
+    async: true
+    rationale: "M6:提交/中断失败推给 toast。"
+  - upstream: InteractionHandling
+    downstream: AgentLifecycle
+    type: customer-supplier
+    integration: acl
+    async: true
+    events: [PendingInteractionRaised, PendingInteractionResponseAccepted, PendingInteractionExpired]
+    translation: "(downstream adapter 在 AgentLifecycle feature 侧) pending interaction 状态变化 → keep-alive 判断输入"
+    rationale: "M7:有未决交互就不关 agent;BC2 是事实权威,Lifecycle 订阅其状态。本 feature 只需把这些作为 integration event 发出。"
+  - upstream: AgentLifecycle
+    downstream: ConversationProjection
+    type: customer-supplier
+    integration: acl
+    async: false
+    rationale: "M8:加载经 AgentCliCommandPort.requestHistoryRecovery 触发,『agent 没起先起它』藏在 port 后,本 feature 无感知,不加 Start 命令。启动延迟=HistoryRecovering,失败=RecoveryFailed/ProtocolBroken。"
