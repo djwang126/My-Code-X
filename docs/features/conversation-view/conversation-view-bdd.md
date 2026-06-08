@@ -19,7 +19,7 @@
 
 native type 到各个分类信息的对应关系在各 `agent cli` 接入时确定。通常来说主要普通对话内容只对应普通 message，工作过程则包含 reasoning、文件修改、命令运行等。未识别信息只用于 `agent cli` 无法安全归类或识别 native type 的信息。某些可识别 native type 可能不归入四大分类，进行刻意忽略或留用其他后续功能的展示逻辑。
 
-native status 不作为我们产品内部的状态依据，仅作为一种文案。
+native status 或类似字段不作为我们产品内部的状态依据，仅作为一种文案。
 
 `turn` 边界由 `agent cli` 提供的 turn 信息决定，`Conversation View` 不自行推断。
 
