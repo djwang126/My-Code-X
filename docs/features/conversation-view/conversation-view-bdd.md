@@ -79,18 +79,15 @@ And 因断线、切后台、弱网或重连导致内容可能非最新
 When 前端开始同步对话
 Then 页面展示同步中 banner
 And 页面保持已有内容可滚动阅读
-And 当前对话目标状态变为不明确
 
 When 同步成功
 Then 页面收起同步中 banner
 And 页面内容对齐到后端权威状态
-And 当前对话目标状态恢复明确
 
 When 同步失败
 Then 页面展示「同步失败」banner
 And banner 上展示重试按钮
 And 页面保持已有内容可滚动阅读
-And 当前对话目标状态保持不明确
 
 When 产品用户点击重试
 Then 前端重新开始同步对话
@@ -367,7 +364,7 @@ Then 主操作按钮覆盖中断状态变化，变为补充指令
 When turn进行中、`agent cli` 不支持追加指令且 Composer 有输入
 Then 主操作按钮不覆盖中断状态变化
 
-When 内容正在加载、连接不可用或对话目标状态不明确
+When 内容正在加载、未同步、或连接不可用
 Then Composer 保留当前对话 draft 并禁用主操作按钮
 
 ### Scenario: 发送普通输入或补充指令
