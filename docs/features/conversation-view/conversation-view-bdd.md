@@ -4,7 +4,7 @@
 
 `agent cli` 是 `My-Code-X` 当前对接的 cli 形态 agent 的统称（codex、claude code 等）。相关产品决策默认适用于所有 `agent cli`。
 
-本文档只描述 `Conversation View` 自身的可验收行为。选中、取消选中对话与 `agent cli` 切换由其他功能提供。
+本文档只描述 `Conversation View` 自身的可验收行为。选中、取消选中对话，以及 `agent cli` 切换或 `agent cli` 的生命周期等，由其他功能管理。
 
 ## 背景
 
@@ -23,7 +23,7 @@ native status 或类似字段不作为我们产品内部的状态依据，仅作
 
 `turn` 边界由 `agent cli` 提供的 turn 信息决定，`Conversation View` 不自行推断。
 
-UI 标准由 UImock 提供，只体现样式与布局，不代表代码设计、领域定义或实现细节：[conversation-view-UImock.html](./conversation-view-UImock.html)
+ `agent cli` 的 native 历史恢复功能，恢复出来必定是非运行中的对话，没有进行中的turn。
 
 ## Conversation View Shell
 
@@ -31,9 +31,10 @@ UI 标准由 UImock 提供，只体现样式与布局，不代表代码设计、
 
 Given 当前没有选中对话
 When 产品用户打开 `Conversation View`
-Then 页面展示无选中对话 toast
+Then 信息阅读区域展示含义为 `开始工作` 的文案
 And 信息阅读区域不展示任何对话信息
 And Composer 显示但禁用发送
+And 顶部上下文区域显示产品名
 
 ### Scenario: 顶部上下文区域按标题与目录的有无展示
 
@@ -59,14 +60,16 @@ When 需要加载新选中对话的历史记录
 Then 通过各自 `agent cli` 的 native 历史恢复功能加载权威对话历史
 
 When 对话正在加载
-Then 页面展示加载中 toast
+Then 页面展示 `加载中` banner
 
 When 对话加载成功但没有任何可展示内容
-Then 页面展示无可展示内容 toast
+Then 信息阅读区域展示含义为 `无可展示内容` 的文案
+And 页面收起 `加载中` banner
 
 When 对话加载失败
-Then 页面展示加载失败 toast
-And 页面展示重试按钮
+Then 信息阅读区域展示含义为 `加载失败` 的文案
+信息阅读区域展示重试按钮
+And 页面收起 `加载中` banner
 
 ### Scenario: 已有内容的对话同步到后端权威状态
 
@@ -74,18 +77,18 @@ Given 当前选中对话已有可读内容
 And 因断线、切后台、弱网或重连导致内容可能非最新
 
 When 前端开始同步对话
-Then 页面展示同步中 toast
+Then 页面展示同步中 banner
 And 页面保持已有内容可滚动阅读
 And 当前对话目标状态变为不明确
 
 When 同步成功
-Then 页面收起同步中 toast
+Then 页面收起同步中 banner
 And 页面内容对齐到后端权威状态
 And 当前对话目标状态恢复明确
 
 When 同步失败
-Then 页面展示「同步失败」toast
-And 该 toast 展示重试按钮
+Then 页面展示「同步失败」banner
+And banner 上展示重试按钮
 And 页面保持已有内容可滚动阅读
 And 当前对话目标状态保持不明确
 
@@ -347,22 +350,22 @@ And 超过最大高度后输入框内部滚动
 Given 当前选中对话存在
 
 When `agent cli` 空闲且 Composer 为空
-Then 主操作按钮禁用发送
+Then 主操作按钮为发送普通输入，点击提示含义为 `无有效信息` 的 toast
 
 When `agent cli` 空闲且 Composer 有输入
 Then 主操作按钮为发送普通输入
 
 When 对话工作中、`agent cli` 支持中断且 Composer 为空
-Then 主操作按钮为中断当前工作
+Then 主操作按钮变为中断当前工作
 
 When 对话工作中、`agent cli` 不支持中断且 Composer 为空
-Then 主操作按钮为被禁用的发送普通输入
+Then 主操作按钮变为被禁用的发送普通输入
 
 When 对话工作中、`agent cli` 支持追加指令且 Composer 有输入
-Then 主操作按钮为补充指令
+Then 主操作按钮覆盖中断状态变化，变为补充指令
 
 When 对话工作中、`agent cli` 不支持追加指令且 Composer 有输入
-Then 主操作按钮保持不变
+Then 主操作按钮不覆盖中断状态变化
 
 When 内容正在加载、连接不可用或对话目标状态不明确
 Then Composer 保留当前对话 draft 并禁用主操作按钮
@@ -378,7 +381,8 @@ And Composer 在等待发送结果期间禁用重复发送
 
 When 发送请求被 `agent cli` 接受
 Then Composer 清空当前对话 draft
-And 信息列表内容由 live update 推送决定
+And 发送的产品用户输入在信息列表中的实际内容与位置如果 `agent cli` 提供，则以 `agent cli` 为准
+And 产品用户输入作为普通对话内容
 
 When 发送请求失败
 Then Composer 保持当前对话 draft 不变
