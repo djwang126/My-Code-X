@@ -23,7 +23,7 @@ native status 或类似字段不作为我们产品内部的状态依据，仅作
 
 `turn` 边界由 `agent cli` 提供的 turn 信息决定，`Conversation View` 不自行推断。
 
- `agent cli` 的 native 历史恢复功能，恢复出来必定是非运行中的对话，没有进行中的turn。
+ `agent cli` 的 native 历史恢复功能，恢复出来必定是非运行中的对话，不会有进行中的turn。
 
 ## Conversation View Shell
 
@@ -345,26 +345,26 @@ And 超过最大高度后输入框内部滚动
 
 ### Scenario: 主操作按钮按对话状态、输入与 cli 能力决定动作
 
-主操作按钮的动作由「对话是否工作中」「Composer 是否有输入」「`agent cli` 支持哪些动作」共同决定。
+主操作按钮的动作由「turn是否进行中」「Composer 是否有输入」「`agent cli` 支持哪些动作」共同决定。
 
 Given 当前选中对话存在
 
-When `agent cli` 空闲且 Composer 为空
+When turn非进行中且 Composer 为空
 Then 主操作按钮为发送普通输入，点击提示含义为 `无有效信息` 的 toast
 
-When `agent cli` 空闲且 Composer 有输入
+When turn非进行中且 Composer 有输入
 Then 主操作按钮为发送普通输入
 
-When 对话工作中、`agent cli` 支持中断且 Composer 为空
+When turn进行中、`agent cli` 支持中断且 Composer 为空
 Then 主操作按钮变为中断当前工作
 
-When 对话工作中、`agent cli` 不支持中断且 Composer 为空
+When turn进行中、`agent cli` 不支持中断且 Composer 为空
 Then 主操作按钮变为被禁用的发送普通输入
 
-When 对话工作中、`agent cli` 支持追加指令且 Composer 有输入
+When turn进行中、`agent cli` 支持追加指令且 Composer 有输入
 Then 主操作按钮覆盖中断状态变化，变为补充指令
 
-When 对话工作中、`agent cli` 不支持追加指令且 Composer 有输入
+When turn进行中、`agent cli` 不支持追加指令且 Composer 有输入
 Then 主操作按钮不覆盖中断状态变化
 
 When 内容正在加载、连接不可用或对话目标状态不明确
