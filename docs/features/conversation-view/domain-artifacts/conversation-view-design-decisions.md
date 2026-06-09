@@ -1,6 +1,6 @@
 # Design Decisions — Conversation View
 
-> 本次领域建模中做出的关键决策及其理由。按主题组织,每条含「决策 / 理由 / 影响 / 出处」。
+> 本 feature 领域建模与契约设计中做出的关键决策及其理由。按主题组织,每条含「决策 / 理由 / 影响 / 出处」。
 
 ## DD-1 后端单实例假设
 
@@ -85,6 +85,13 @@
 - **理由**: BDD 明确划归 scope 外;混入会让 Core feature 失焦并污染「阅读体验」模型,且本 feature 无其验收规格(违反 Ask-don't-assume)。
 - **影响**: 本 feature 与 AgentLifecycle 有 3 个集成点(M3/M7/M8),全部经 port 隔离;Lifecycle ACL 职责收紧为只消费 OwningConversationEnded。遗留 H11 待对齐。
 - **出处**: Phase 4,用户确认方案 A。
+
+## DD-13 history-recovery 是声明式幂等命令,订阅纯读
+
+- **决策**: `POST /history-recovery` 语义是「确保这对话已加载」,由后端按当前 Phase 裁决(无投影→从头调 agent cli native recovery;RecoveryFailed→重试;已活跃→no-op)。**首次打开与失败重试发同一命令,无特殊情况**。前端订阅 `/events` 是纯读,不承担触发恢复的副作用;首次打开时前端「订阅 + 发 /history-recovery」并行,前端永不判断是否需要恢复。`/sync` 与之对称(「确保已对齐权威状态」)。
+- **理由**: 前端 dumb、不持投影态(DD-2),无从判断是否需要恢复——只有后端掌握 Phase。多连接下后到的连接打到的本就是活跃对话,命令必须能识别「已加载则 no-op」,这天然要求声明式幂等而非「强制重新加载」。把恢复触发从「订阅副作用」剥离为独立命令,使订阅回归纯读,避免一个动作背两个意图;也避免「重试=拆掉活着的 SSE 连接重连」的浪费(RecoveryFailed 时连接是活的)。
+- **影响**: 读路径只有订阅流一处(无独立 GET projection/capability/pending-list)。`LoadConversationHistoryService` 无 Phase 前置条件断言,改为按 Phase 分支裁决并对已活跃态 no-op。`/history-recovery` 与 `/sync` 成对,均不碰订阅连接,重复发送安全。
+- **出处**: 契约设计阶段,用户指出「重试不应是特殊端点,要么都用要么都不用」后修正。
 
 ## Carried-Forward
 

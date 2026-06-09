@@ -322,7 +322,8 @@ interface PendingInteractionRepository {   // domain layer
 ### LoadConversationHistoryService
 **Input**: `LoadConversationHistory` — conversationId
 **Output**: void
-**Steps**: 1. 新建/取 projection — `ConversationProjectionRepository` 2. `projection.startRecovery()` (→ HistoryRecovering) 3. `save` 4. 经 `AgentCliCommandPort.requestHistoryRecovery`(agent 启动藏于 port 后, M8)
+**语义**: 声明式幂等——「确保该对话已加载」,按当前 Phase 裁决,而非无条件重新加载(契约 DD-13)。首次打开与 RecoveryFailed 重试是同一命令。
+**Steps**: 1. 新建/取 projection — `ConversationProjectionRepository` 2. 按 Phase 分支:`∅`(新建)/`RecoveryFailed` → `projection.startRecovery()` (→ HistoryRecovering)、`save`、经 `AgentCliCommandPort.requestHistoryRecovery`(agent 启动藏于 port 后, M8);已 `HistoryRecovering` → 进行中,no-op;已 `Synced`/`Syncing`/`SyncFailed`(活跃投影,含多连接后到)→ no-op(订阅流自然下发 snapshot);`ProtocolBroken`(终态)→ no-op
 **Error propagation**: —
 **Transaction boundary**: 单事务 ConversationProjection
 
