@@ -37,7 +37,7 @@ export class MessageOrderViolationError extends Error {
 
   public constructor(details: MessageOrderViolationDetails) {
     super(
-      `message ${details.stableKey} sequence ${details.nextSequence} does not continue after ${details.previousSequence}`
+      `message ${details.stableKey} sequence ${details.nextSequence} is not after ${details.previousSequence}`
     );
     this.name = "MessageOrderViolationError";
     this.stableKey = details.stableKey;
@@ -90,9 +90,9 @@ export interface StableKeyCheckInput {
   stableKey: string | null | undefined;
 }
 
-export function assertMessageHasStableKey(input: StableKeyCheckInput): void {
+export function requireStableKey(input: StableKeyCheckInput): string {
   if (input.stableKey !== undefined && input.stableKey !== null && input.stableKey !== "") {
-    return;
+    return input.stableKey;
   }
 
   throw new AgentCliProtocolViolationError({
@@ -102,18 +102,18 @@ export function assertMessageHasStableKey(input: StableKeyCheckInput): void {
   });
 }
 
-export interface SequenceContinuationInput {
+export interface SequenceAppendInput {
   stableKey: string;
   previousSequence: number | null;
   nextSequence: number;
 }
 
-export function assertSequenceContinues(input: SequenceContinuationInput): void {
+export function assertSequenceCanAppend(input: SequenceAppendInput): void {
   if (input.previousSequence === null) {
-    if (input.nextSequence === 1) {
-      return;
-    }
-  } else if (input.nextSequence === input.previousSequence + 1) {
+    return;
+  }
+
+  if (input.nextSequence > input.previousSequence) {
     return;
   }
 

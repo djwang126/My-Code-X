@@ -7,10 +7,10 @@ import {
   MessageOrderViolationError,
   RecoveredConversationStillRunningError,
   ResumeCursorGapError,
-  assertMessageHasStableKey,
   assertRecoveredSnapshotHasNoRunningTurns,
   assertResumeCursorContinues,
-  assertSequenceContinues,
+  assertSequenceCanAppend,
+  requireStableKey,
   shouldProjectClassifiedMessage
 } from "./protocol-invariants";
 
@@ -42,7 +42,7 @@ function createTurn(overrides: Partial<Turn> = {}): Turn {
 describe("agent cli protocol invariants", () => {
   it("treats a missing stable key as a protocol violation", () => {
     expect(() =>
-      assertMessageHasStableKey({
+      requireStableKey({
         cliKind: "codex",
         nativeType: "assistant_message",
         stableKey: ""
@@ -50,19 +50,39 @@ describe("agent cli protocol invariants", () => {
     ).toThrow(AgentCliProtocolViolationError);
   });
 
-  it("accepts the next message sequence and rejects gaps or rewinds", () => {
+  it("returns a present stable key as a trusted domain value", () => {
+    expect(
+      requireStableKey({
+        cliKind: "codex",
+        nativeType: "assistant_message",
+        stableKey: "message-1"
+      })
+    ).toBe("message-1");
+  });
+
+  it("accepts the first agent-provided sequence without forcing it to start at one", () => {
     expect(() =>
-      assertSequenceContinues({
+      assertSequenceCanAppend({
+        stableKey: "message-10",
+        previousSequence: null,
+        nextSequence: 10
+      })
+    ).not.toThrow();
+  });
+
+  it("accepts increasing message sequences and rejects rewinds or duplicates", () => {
+    expect(() =>
+      assertSequenceCanAppend({
         stableKey: "message-2",
         previousSequence: 1,
-        nextSequence: 2
+        nextSequence: 3
       })
     ).not.toThrow();
 
     expect(() =>
-      assertSequenceContinues({
-        stableKey: "message-3",
-        previousSequence: 1,
+      assertSequenceCanAppend({
+        stableKey: "message-2",
+        previousSequence: 3,
         nextSequence: 3
       })
     ).toThrow(MessageOrderViolationError);

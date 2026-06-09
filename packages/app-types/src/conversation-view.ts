@@ -80,14 +80,13 @@ export const pendingInteractionSchema = z.object({
   content: interactionContentSchema
 });
 
-export const messageDeltaSchema = z.discriminatedUnion("mode", [
+export const messageUpdateSchema = z.discriminatedUnion("kind", [
   z.object({
-    mode: z.literal("AppendDelta"),
-    stableKey: z.string(),
+    kind: z.literal("AppendDelta"),
     fields: z.array(messageContentFieldSchema)
   }),
   z.object({
-    mode: z.literal("FullReplace"),
+    kind: z.literal("FullReplace"),
     message: messageSchema
   })
 ]);
@@ -96,17 +95,33 @@ const cursorCarryingEventFields = {
   resumeCursor: z.string().nullable()
 };
 
-export const agentCliDomainEventSchema = z.discriminatedUnion("kind", [
+const messageUpdatedEventSchema = z
+  .object({
+    kind: z.literal("MessageUpdated"),
+    ...cursorCarryingEventFields,
+    stableKey: z.string(),
+    update: messageUpdateSchema
+  })
+  .superRefine((event, context) => {
+    if (
+      event.update.kind === "FullReplace" &&
+      event.stableKey !== event.update.message.stableKey
+    ) {
+      context.addIssue({
+        code: "custom",
+        message: "FullReplace message stableKey must match MessageUpdated stableKey",
+        path: ["update", "message", "stableKey"]
+      });
+    }
+  });
+
+export const agentCliDomainEventSchema = z.union([
   z.object({
     kind: z.literal("MessageAppended"),
     ...cursorCarryingEventFields,
     message: messageSchema
   }),
-  z.object({
-    kind: z.literal("MessageUpdated"),
-    ...cursorCarryingEventFields,
-    delta: messageDeltaSchema
-  }),
+  messageUpdatedEventSchema,
   z.object({
     kind: z.literal("TurnChanged"),
     ...cursorCarryingEventFields,
@@ -182,7 +197,7 @@ export type InteractionState = z.infer<typeof interactionStateSchema>;
 export type ResponseOption = z.infer<typeof responseOptionSchema>;
 export type InteractionContent = z.infer<typeof interactionContentSchema>;
 export type PendingInteraction = z.infer<typeof pendingInteractionSchema>;
-export type MessageDelta = z.infer<typeof messageDeltaSchema>;
+export type MessageUpdate = z.infer<typeof messageUpdateSchema>;
 export type AgentCliDomainEvent = z.infer<typeof agentCliDomainEventSchema>;
 export type AgentCapability = z.infer<typeof agentCapabilitySchema>;
 export type CliKind = z.infer<typeof cliKindSchema>;

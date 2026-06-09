@@ -105,9 +105,9 @@ describe("conversation-view domain contracts", () => {
       {
         kind: "MessageUpdated",
         resumeCursor: "cursor-2",
-        delta: {
-          stableKey: "msg-1",
-          mode: "AppendDelta",
+        stableKey: "msg-1",
+        update: {
+          kind: "AppendDelta",
           fields: [{ name: "stdout", value: "ok" }]
         }
       },
@@ -148,6 +148,28 @@ describe("conversation-view domain contracts", () => {
     ]);
 
     expect(result.success).toBe(true);
+  });
+
+  it("rejects full replace updates whose target identity does not match the replacement message", () => {
+    expect(() =>
+      agentCliDomainEventSchema.parse({
+        kind: "MessageUpdated",
+        resumeCursor: "cursor-2",
+        stableKey: "msg-1",
+        update: {
+          kind: "FullReplace",
+          message: {
+            stableKey: "msg-2",
+            sequence: 1,
+            classification: "NormalConversation",
+            nativeType: "assistant_message",
+            nativeStatus: null,
+            belongsToTurn: "turn-1",
+            content: { fields: [{ name: "text", value: "replacement" }] }
+          }
+        }
+      })
+    ).toThrow("FullReplace message stableKey must match MessageUpdated stableKey");
   });
 
   it("accepts agent capabilities used by composer action decisions", () => {

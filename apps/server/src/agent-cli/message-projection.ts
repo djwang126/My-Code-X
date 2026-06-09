@@ -6,10 +6,10 @@ import type {
 
 import {
   type ClassificationDecision,
-  assertMessageHasStableKey
+  requireStableKey
 } from "./protocol-invariants";
 
-export interface ProjectClassifiedMessageInput {
+export interface ProjectMessageFromClassificationDecisionInput {
   cliKind: CliKind;
   decision: ClassificationDecision;
   stableKey: string | null | undefined;
@@ -20,23 +20,18 @@ export interface ProjectClassifiedMessageInput {
   content: MessageContent;
 }
 
-export function projectClassifiedMessage(
-  input: ProjectClassifiedMessageInput
+export function projectMessageFromClassificationDecision(
+  input: ProjectMessageFromClassificationDecisionInput
 ): Message | null {
   if (input.decision.kind === "Ignored") {
     return null;
   }
 
-  assertMessageHasStableKey({
+  const stableKey = requireStableKey({
     cliKind: input.cliKind,
     nativeType: input.nativeType,
     stableKey: input.stableKey
   });
-
-  const stableKey = input.stableKey;
-  if (stableKey === undefined || stableKey === null || stableKey === "") {
-    return null;
-  }
 
   return {
     stableKey,
